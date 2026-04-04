@@ -25,6 +25,8 @@ type BoardProps = {
   legalMoves: Square[];
   viewMode: "board" | "map";
   districtsBySquare: Map<Square, DistrictCell>;
+  showCoordinates: boolean;
+  showDistrictLabels: boolean;
   onSquareClick: (square: Square) => void;
   onSquareHover: (square: Square) => void;
   onSquareLeave: () => void;
@@ -61,6 +63,8 @@ export function Board({
   legalMoves,
   viewMode,
   districtsBySquare,
+  showCoordinates,
+  showDistrictLabels,
   onSquareClick,
   onSquareHover,
   onSquareLeave
@@ -114,13 +118,17 @@ export function Board({
                 onFocus={() => onSquareHover(square)}
                 onBlur={onSquareLeave}
               >
-                <span className="board-square__coordinate board-square__coordinate--top">
-                  {file === "a" ? rank : ""}
-                </span>
-                <span className="board-square__coordinate board-square__coordinate--bottom">
-                  {rank === "1" ? file : ""}
-                </span>
-                {district ? (
+                {showCoordinates ? (
+                  <>
+                    <span className="board-square__coordinate board-square__coordinate--top">
+                      {file === "a" ? rank : ""}
+                    </span>
+                    <span className="board-square__coordinate board-square__coordinate--bottom">
+                      {rank === "1" ? file : ""}
+                    </span>
+                  </>
+                ) : null}
+                {district && showDistrictLabels ? (
                   <span className={`board-square__district board-square__district--${viewMode}`}>
                     {formatDistrictLabel(district.name, viewMode)}
                   </span>

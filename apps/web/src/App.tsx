@@ -1,12 +1,47 @@
-import { useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode
+} from "react";
 import { getPieceAtSquare } from "@narrative-chess/game-core";
 import { getCharacterEventHistory } from "@narrative-chess/narrative-engine";
 import type { PieceKind, Square } from "@narrative-chess/content-schema";
+import {
+  listAppSettings,
+  resetAppSettings,
+  saveAppSettings,
+  type AppSettings
+} from "./appSettings";
 import { edinburghDistrictsBySquare, getDistrictForSquare } from "./edinburghBoard";
 import { getPieceDisplayName, getPieceGlyph, getPieceKindLabel } from "./chessPresentation";
+import {
+  expandAllWorkspacePanels,
+  getSnappedWorkspaceColumn,
+  getSnappedWorkspaceRow,
+  getWorkspaceGridUnitFractions,
+  getWorkspaceLayoutRowCount,
+  getWorkspacePanelRenderHeight,
+  listWorkspaceLayoutState,
+  resetWorkspaceLayoutState,
+  saveWorkspaceLayoutState,
+  setWorkspacePanelCollapsed,
+  updateWorkspaceColumnFraction,
+  updateWorkspacePanelRect,
+  updateWorkspaceRowHeight,
+  type CollapsibleWorkspacePanelId,
+  type WorkspaceLayoutState,
+  type WorkspacePanelId,
+  type WorkspacePanelRect
+} from "./layoutState";
 import { referenceGames } from "./referenceGames";
 import { Board } from "./components/Board";
 import { Panel } from "./components/Panel";
+import { AppMenu } from "./components/AppMenu";
+import { LayoutToolbar } from "./components/LayoutToolbar";
 import { RoleCatalogPage } from "./components/RoleCatalogPage";
 import { StudyPanel } from "./components/StudyPanel";
 import { useChessMatch } from "./hooks/useChessMatch";
@@ -18,6 +53,24 @@ import {
 } from "./roleCatalog";
 
 type AppPage = "match" | "roles";
+type LayoutEditMode = "move" | "resize";
+
+type ActiveLayoutEdit = {
+  panelId: WorkspacePanelId;
+  mode: LayoutEditMode;
+  originColumn: number;
+  originRow: number;
+  initialRect: WorkspacePanelRect;
+};
+
+const panelTitles: Record<WorkspacePanelId, string> = {
+  board: "Board",
+  moves: "Move History",
+  narrative: "Narrative Log",
+  saved: "Saved Matches",
+  study: "Study Games",
+  status: "Match State"
+};
 
 function statusLabel(isCheck: boolean, isCheckmate: boolean, isStalemate: boolean) {
   if (isCheckmate) {
@@ -54,13 +107,54 @@ function formatSavedAt(savedAt: string) {
   return new Date(savedAt).toLocaleString();
 }
 
+function getWorkspaceGridStyle(layoutState: WorkspaceLayoutState): CSSProperties {
+  const [columnOneUnit, columnTwoUnit, columnThreeUnit] = getWorkspaceGridUnitFractions(
+    layoutState.columnFractions
+  );
+
+  return {
+    "--workspace-col-1-unit": `${columnOneUnit}fr`,
+    "--workspace-col-2-unit": `${columnTwoUnit}fr`,
+    "--workspace-col-3-unit": `${columnThreeUnit}fr`,
+    "--workspace-row-height": `${layoutState.rowHeight}px`
+  } as CSSProperties;
+}
+
+function getWorkspacePanelStyle(
+  layoutState: WorkspaceLayoutState,
+  panelId: WorkspacePanelId,
+  isCompactViewport: boolean
+): CSSProperties | undefined {
+  if (isCompactViewport) {
+    return undefined;
+  }
+
+  const panel = layoutState.panels[panelId];
+
+  return {
+    gridColumn: `${panel.x} / span ${panel.w}`,
+    gridRow: `${panel.y} / span ${getWorkspacePanelRenderHeight(layoutState, panelId)}`
+  };
+}
+
+function getPanelToggleLabel(isCollapsed: boolean) {
+  return isCollapsed ? "Expand" : "Collapse";
+}
+
 export default function App() {
   const [page, setPage] = useState<AppPage>("match");
   const [selectedReferenceGameId, setSelectedReferenceGameId] = useState(referenceGames[0]?.id ?? "");
   const [pastedPgn, setPastedPgn] = useState("");
-  const [viewMode, setViewMode] = useState<"board" | "map">("board");
+  const [settings, setSettings] = useState<AppSettings>(() => listAppSettings());
+  const [viewMode, setViewMode] = useState<"board" | "map">(() => listAppSettings().defaultViewMode);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLayoutMode, setIsLayoutMode] = useState(false);
+  const [isCompactViewport, setIsCompactViewport] = useState(false);
   const [hoveredSquare, setHoveredSquare] = useState<Square | null>(null);
   const [roleCatalog, setRoleCatalog] = useState(() => listRoleCatalog());
+  const [workspaceLayout, setWorkspaceLayout] = useState(() => listWorkspaceLayoutState());
+  const [activeLayoutEdit, setActiveLayoutEdit] = useState<ActiveLayoutEdit | null>(null);
+  const workspaceRef = useRef<HTMLDivElement | null>(null);
   const {
     snapshot,
     boardSquares,
@@ -111,6 +205,145 @@ export default function App() {
     : [];
   const selectedReferenceGame =
     referenceGames.find((game) => game.id === selectedReferenceGameId) ?? referenceGames[0] ?? null;
+  const effectiveLayoutMode = isLayoutMode && !isCompactViewport && page === "match";
+  const workspaceRowCount = useMemo(
+    () => getWorkspaceLayoutRowCount(workspaceLayout),
+    [workspaceLayout]
+  );
+  const workspaceGridStyle = useMemo(
+    () => getWorkspaceGridStyle(workspaceLayout),
+    [workspaceLayout]
+  );
+  const gridOverlayCells = useMemo(
+    () => Array.from({ length: workspaceRowCount * 12 }, (_, index) => index),
+    [workspaceRowCount]
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 1080px)");
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsCompactViewport(event.matches);
+    };
+
+    setIsCompactViewport(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handleChange);
+
+    return () => {
+      mediaQuery.removeEventListener("change", handleChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isCompactViewport) {
+      setIsLayoutMode(false);
+    }
+  }, [isCompactViewport]);
+
+  useEffect(() => {
+    saveAppSettings(settings);
+  }, [settings]);
+
+  useEffect(() => {
+    saveWorkspaceLayoutState(workspaceLayout);
+  }, [workspaceLayout]);
+
+  useEffect(() => {
+    if (!activeLayoutEdit || isCompactViewport) {
+      return;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const workspaceNode = workspaceRef.current;
+      if (!workspaceNode) {
+        return;
+      }
+
+      const rect = workspaceNode.getBoundingClientRect();
+      const nextColumn = getSnappedWorkspaceColumn({
+        offsetX: event.clientX - rect.left,
+        width: rect.width,
+        columnFractions: workspaceLayout.columnFractions
+      });
+      const nextRow = getSnappedWorkspaceRow({
+        offsetY: event.clientY - rect.top,
+        rowHeight: workspaceLayout.rowHeight
+      });
+
+      setWorkspaceLayout((currentLayout) => {
+        if (activeLayoutEdit.mode === "move") {
+          return updateWorkspacePanelRect({
+            layoutState: currentLayout,
+            panelId: activeLayoutEdit.panelId,
+            nextRect: {
+              ...activeLayoutEdit.initialRect,
+              x: activeLayoutEdit.initialRect.x + (nextColumn - activeLayoutEdit.originColumn),
+              y: Math.max(1, activeLayoutEdit.initialRect.y + (nextRow - activeLayoutEdit.originRow))
+            }
+          });
+        }
+
+        return updateWorkspacePanelRect({
+          layoutState: currentLayout,
+          panelId: activeLayoutEdit.panelId,
+          nextRect: {
+            ...activeLayoutEdit.initialRect,
+            w: Math.max(1, nextColumn - activeLayoutEdit.initialRect.x + 1),
+            h: Math.max(2, nextRow - activeLayoutEdit.initialRect.y + 1)
+          }
+        });
+      });
+    };
+
+    const handlePointerUp = () => {
+      setActiveLayoutEdit(null);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [
+    activeLayoutEdit,
+    isCompactViewport,
+    workspaceLayout.columnFractions,
+    workspaceLayout.rowHeight
+  ]);
+
+  const beginPanelEdit =
+    (panelId: WorkspacePanelId, mode: LayoutEditMode) =>
+    (event: ReactPointerEvent<HTMLButtonElement>) => {
+      if (!effectiveLayoutMode || !workspaceRef.current) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const rect = workspaceRef.current.getBoundingClientRect();
+      const originColumn = getSnappedWorkspaceColumn({
+        offsetX: event.clientX - rect.left,
+        width: rect.width,
+        columnFractions: workspaceLayout.columnFractions
+      });
+      const originRow = getSnappedWorkspaceRow({
+        offsetY: event.clientY - rect.top,
+        rowHeight: workspaceLayout.rowHeight
+      });
+
+      setActiveLayoutEdit({
+        panelId,
+        mode,
+        originColumn,
+        originRow,
+        initialRect: workspaceLayout.panels[panelId]
+      });
+    };
 
   const handleLoadReferenceGame = () => {
     if (!selectedReferenceGame) {
@@ -144,6 +377,109 @@ export default function App() {
     setRoleCatalog(resetRoleCatalog());
   };
 
+  const handleTogglePanelCollapse = (panelId: CollapsibleWorkspacePanelId) => {
+    setWorkspaceLayout((currentLayout) =>
+      setWorkspacePanelCollapsed({
+        layoutState: currentLayout,
+        panelId,
+        collapsed: !currentLayout.collapsed[panelId]
+      })
+    );
+  };
+
+  const handleWorkspaceColumnFractionChange = (index: 0 | 1 | 2, value: number) => {
+    setWorkspaceLayout((currentLayout) =>
+      updateWorkspaceColumnFraction({
+        layoutState: currentLayout,
+        index,
+        value
+      })
+    );
+  };
+
+  const handleWorkspaceRowHeightChange = (value: number) => {
+    setWorkspaceLayout((currentLayout) =>
+      updateWorkspaceRowHeight({
+        layoutState: currentLayout,
+        value
+      })
+    );
+  };
+
+  const handleResetLayout = () => {
+    setWorkspaceLayout(resetWorkspaceLayoutState());
+  };
+
+  const handleExpandPanels = () => {
+    setWorkspaceLayout((currentLayout) => expandAllWorkspacePanels(currentLayout));
+  };
+
+  const handleResetSettings = () => {
+    const nextSettings = resetAppSettings();
+    setSettings(nextSettings);
+    setViewMode(nextSettings.defaultViewMode);
+  };
+
+  const handleDefaultViewModeChange = (nextViewMode: "board" | "map") => {
+    setSettings((current) => ({
+      ...current,
+      defaultViewMode: nextViewMode
+    }));
+    setViewMode(nextViewMode);
+  };
+
+  const handleBooleanSettingChange = (
+    key:
+      | "showBoardCoordinates"
+      | "showDistrictLabels"
+      | "showRecentCharacterActions"
+      | "showLayoutGrid",
+    value: boolean
+  ) => {
+    setSettings((current) => ({
+      ...current,
+      [key]: value
+    }));
+  };
+
+  const renderPanelTools = (
+    panelId: CollapsibleWorkspacePanelId,
+    extraActions?: ReactNode
+  ) => (
+    <div className="panel-toolbar">
+      {extraActions}
+      {effectiveLayoutMode ? (
+        <button
+          type="button"
+          className="button button--ghost button--icon"
+          onPointerDown={beginPanelEdit(panelId, "move")}
+          aria-label={`Move ${panelTitles[panelId]} panel`}
+        >
+          Move
+        </button>
+      ) : null}
+      <button
+        type="button"
+        className="button button--ghost button--icon"
+        onClick={() => handleTogglePanelCollapse(panelId)}
+      >
+        {getPanelToggleLabel(workspaceLayout.collapsed[panelId])}
+      </button>
+    </div>
+  );
+
+  const renderResizeHandle = (panelId: WorkspacePanelId) =>
+    effectiveLayoutMode ? (
+      <button
+        type="button"
+        className="workspace-item__resize-handle"
+        onPointerDown={beginPanelEdit(panelId, "resize")}
+        aria-label={`Resize ${panelTitles[panelId]} panel`}
+      >
+        <span />
+      </button>
+    ) : null;
+
   return (
     <div className="app-shell">
       <div className="app-shell__glow app-shell__glow--left" />
@@ -155,21 +491,38 @@ export default function App() {
             <p className="hero__eyebrow">Narrative Chess</p>
             <h1>Narrative Chess</h1>
           </div>
-          <div className="page-switcher">
-            <button
-              type="button"
-              className={`button button--ghost ${page === "match" ? "button--active" : ""}`}
-              onClick={() => setPage("match")}
-            >
-              Match
-            </button>
-            <button
-              type="button"
-              className={`button button--ghost ${page === "roles" ? "button--active" : ""}`}
-              onClick={() => setPage("roles")}
-            >
-              Role Catalog
-            </button>
+
+          <div className="app-header__actions">
+            <AppMenu
+              isOpen={isMenuOpen}
+              isLayoutMode={effectiveLayoutMode}
+              settings={settings}
+              isCompactViewport={isCompactViewport}
+              onToggleOpen={() => setIsMenuOpen((current) => !current)}
+              onToggleLayoutMode={() => setIsLayoutMode((current) => !current)}
+              onResetLayout={handleResetLayout}
+              onExpandPanels={handleExpandPanels}
+              onResetSettings={handleResetSettings}
+              onDefaultViewModeChange={handleDefaultViewModeChange}
+              onBooleanSettingChange={handleBooleanSettingChange}
+            />
+
+            <div className="page-switcher">
+              <button
+                type="button"
+                className={`button button--ghost ${page === "match" ? "button--active" : ""}`}
+                onClick={() => setPage("match")}
+              >
+                Match
+              </button>
+              <button
+                type="button"
+                className={`button button--ghost ${page === "roles" ? "button--active" : ""}`}
+                onClick={() => setPage("roles")}
+              >
+                Role Catalog
+              </button>
+            </div>
           </div>
         </div>
 
@@ -180,7 +533,9 @@ export default function App() {
           </div>
           <div className="status-card">
             <span className="status-card__label">State</span>
-            <span className="status-card__value">{statusLabel(status.isCheck, status.isCheckmate, status.isStalemate)}</span>
+            <span className="status-card__value">
+              {statusLabel(status.isCheck, status.isCheckmate, status.isStalemate)}
+            </span>
           </div>
           <div className="status-card">
             <span className="status-card__label">Moves</span>
@@ -200,361 +555,491 @@ export default function App() {
           onRoleCatalogReset={handleRoleCatalogReset}
         />
       ) : (
-        <main className="workspace-grid">
-          <section className="board-panel workspace-grid__board">
-            <div className="board-panel__header">
-              <div>
-                <p className="section-eyebrow">Board</p>
-                <h2>{isStudyMode ? "Study replay board" : "Edinburgh play surface"}</h2>
-              </div>
-              <div className="board-panel__actions">
-                <button
-                  type="button"
-                  className={`button button--ghost ${viewMode === "board" ? "button--active" : ""}`}
-                  onClick={() => setViewMode("board")}
-                >
-                  Board
-                </button>
-                <button
-                  type="button"
-                  className={`button button--ghost ${viewMode === "map" ? "button--active" : ""}`}
-                  onClick={() => setViewMode("map")}
-                >
-                  Map
-                </button>
-                <button
-                  type="button"
-                  className="button button--ghost"
-                  onClick={handleUndo}
-                  disabled={!canUndo}
-                >
-                  {isStudyMode ? "Undo disabled" : "Undo"}
-                </button>
-              </div>
-            </div>
-
-            <Board
-              snapshot={snapshot}
-              cells={boardSquares}
-              selectedSquare={selectedSquare}
-              hoveredSquare={hoveredSquare}
-              legalMoves={legalMoves}
-              viewMode={viewMode}
-              districtsBySquare={edinburghDistrictsBySquare}
-              onSquareClick={handleSquareClick}
-              onSquareHover={setHoveredSquare}
-              onSquareLeave={() => setHoveredSquare(null)}
+        <>
+          {effectiveLayoutMode ? (
+            <LayoutToolbar
+              columnFractions={workspaceLayout.columnFractions}
+              rowHeight={workspaceLayout.rowHeight}
+              showLayoutGrid={settings.showLayoutGrid}
+              onColumnFractionChange={handleWorkspaceColumnFractionChange}
+              onRowHeightChange={handleWorkspaceRowHeightChange}
+              onToggleLayoutGrid={(checked) => handleBooleanSettingChange("showLayoutGrid", checked)}
+              onResetLayout={handleResetLayout}
             />
+          ) : null}
 
-            <div className="board-panel__footer">
-              <p>
-                {focusedSquare
-                  ? `Focused ${focusedSquare}`
-                  : "Hover any square for city and character context, or click a piece to move."}
-              </p>
-              {lastMove ? <p>Last move: {lastMove.san}</p> : <p>No moves yet.</p>}
-            </div>
+          <main
+            ref={workspaceRef}
+            className={`workspace-grid ${effectiveLayoutMode ? "workspace-grid--layout-mode" : ""}`}
+            style={workspaceGridStyle}
+          >
+            {!isCompactViewport ? (
+              <div
+                className="workspace-grid__sizer"
+                style={{
+                  gridColumn: "1 / -1",
+                  gridRow: `1 / span ${workspaceRowCount}`
+                }}
+                aria-hidden="true"
+              />
+            ) : null}
 
-            <div className="hover-panel">
-              <div className="hover-card">
-                <p className="field-label">City Tile</p>
-                {focusedDistrict ? (
-                  <div className="detail-card">
-                    <div className="detail-card__title-row">
-                      <h3>{focusedDistrict.name}</h3>
-                      <span className="side-pill side-pill--white">
-                        {focusedDistrict.square}
-                      </span>
-                    </div>
-                    <p className="detail-card__description">
-                      {focusedDistrict.locality} | {focusedDistrict.dayProfile}
-                    </p>
-                    <div className="chip-row">
-                      {focusedDistrict.descriptors.map((descriptor) => (
-                        <span key={descriptor} className="chip">
-                          {descriptor}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="chip-row">
-                      {focusedDistrict.landmarks.map((landmark) => (
-                        <span key={landmark} className="chip chip--soft">
-                          {landmark}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="muted">Hover a square to inspect the mapped district.</p>
-                )}
+            {effectiveLayoutMode && settings.showLayoutGrid && !isCompactViewport ? (
+              <div
+                className="workspace-grid__overlay"
+                style={{ gridTemplateRows: `repeat(${workspaceRowCount}, var(--workspace-row-height))` }}
+                aria-hidden="true"
+              >
+                {gridOverlayCells.map((cellIndex) => (
+                  <span key={cellIndex} className="workspace-grid__overlay-cell" />
+                ))}
+              </div>
+            ) : null}
+
+            <section
+              className={[
+                "workspace-item",
+                "workspace-item--board",
+                "board-panel",
+                activeLayoutEdit?.panelId === "board" ? "is-editing" : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              style={getWorkspacePanelStyle(workspaceLayout, "board", isCompactViewport)}
+            >
+              <div className="board-panel__header">
+                <div>
+                  <p className="section-eyebrow">Board</p>
+                  <h2>{isStudyMode ? "Study replay board" : "Edinburgh play surface"}</h2>
+                </div>
+                <div className="board-panel__actions">
+                  <button
+                    type="button"
+                    className={`button button--ghost ${viewMode === "board" ? "button--active" : ""}`}
+                    onClick={() => setViewMode("board")}
+                  >
+                    Board
+                  </button>
+                  <button
+                    type="button"
+                    className={`button button--ghost ${viewMode === "map" ? "button--active" : ""}`}
+                    onClick={() => setViewMode("map")}
+                  >
+                    Map
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--ghost"
+                    onClick={handleUndo}
+                    disabled={!canUndo}
+                  >
+                    {isStudyMode ? "Undo disabled" : "Undo"}
+                  </button>
+                  {effectiveLayoutMode ? (
+                    <button
+                      type="button"
+                      className="button button--ghost button--icon"
+                      onPointerDown={beginPanelEdit("board", "move")}
+                    >
+                      Move
+                    </button>
+                  ) : null}
+                </div>
               </div>
 
-              <div className="hover-card">
-                <p className="field-label">Character on Tile</p>
-                {focusedCharacter && focusedPiece ? (
-                  <div className="detail-card">
-                    <div className="piece-badge">
-                      <span className={`piece-badge__icon piece-badge__icon--${focusedPiece.side}`}>
-                        {getPieceGlyph({ side: focusedPiece.side, kind: focusedPiece.kind })}
-                      </span>
-                      <div>
-                        <p className="piece-badge__label">
-                          {getPieceDisplayName({ side: focusedPiece.side, kind: focusedPiece.kind })}
-                        </p>
-                        <p className="muted">{getPieceKindLabel(focusedPiece.kind)} piece</p>
+              <Board
+                snapshot={snapshot}
+                cells={boardSquares}
+                selectedSquare={selectedSquare}
+                hoveredSquare={hoveredSquare}
+                legalMoves={legalMoves}
+                viewMode={viewMode}
+                districtsBySquare={edinburghDistrictsBySquare}
+                showCoordinates={settings.showBoardCoordinates}
+                showDistrictLabels={settings.showDistrictLabels}
+                onSquareClick={handleSquareClick}
+                onSquareHover={setHoveredSquare}
+                onSquareLeave={() => setHoveredSquare(null)}
+              />
+
+              <div className="board-panel__footer">
+                <p>
+                  {focusedSquare
+                    ? `Focused ${focusedSquare}`
+                    : "Hover any square for city and character context, or click a piece to move."}
+                </p>
+                {lastMove ? <p>Last move: {lastMove.san}</p> : <p>No moves yet.</p>}
+              </div>
+
+              <div className="hover-panel">
+                <div className="hover-card">
+                  <p className="field-label">City Tile</p>
+                  {focusedDistrict ? (
+                    <div className="detail-card">
+                      <div className="detail-card__title-row">
+                        <h3>{focusedDistrict.name}</h3>
+                        <span className="side-pill side-pill--white">{focusedDistrict.square}</span>
                       </div>
-                    </div>
-                    <h3>{focusedCharacter.fullName}</h3>
-                    <p className="detail-card__description">{focusedCharacter.oneLineDescription}</p>
-                    <dl className="detail-grid">
-                      <div>
-                        <dt>Role</dt>
-                        <dd>{focusedCharacter.role}</dd>
-                      </div>
-                      <div>
-                        <dt>Origin</dt>
-                        <dd>{focusedCharacter.districtOfOrigin}</dd>
-                      </div>
-                      <div>
-                        <dt>Faction</dt>
-                        <dd>{focusedCharacter.faction}</dd>
-                      </div>
-                      <div>
-                        <dt>Square</dt>
-                        <dd>{focusedSquare ?? "None"}</dd>
-                      </div>
-                    </dl>
-                    <div className="chip-row">
-                      {focusedCharacter.traits.map((trait) => (
-                        <span key={trait} className="chip">
-                          {trait}
-                        </span>
-                      ))}
-                    </div>
-                    {focusedCharacterMoments.length ? (
-                      <div className="memory-list">
-                        <p className="memory-list__label">Recent actions</p>
-                        {focusedCharacterMoments.map((event) => (
-                          <article key={event.id} className="memory-item">
-                            <span className="memory-item__meta">
-                              Move {event.moveNumber} | {event.eventType}
-                            </span>
-                            <p className="memory-item__headline">{event.headline}</p>
-                          </article>
+                      <p className="detail-card__description">
+                        {focusedDistrict.locality} | {focusedDistrict.dayProfile}
+                      </p>
+                      <div className="chip-row">
+                        {focusedDistrict.descriptors.map((descriptor) => (
+                          <span key={descriptor} className="chip">
+                            {descriptor}
+                          </span>
                         ))}
                       </div>
-                    ) : null}
-                  </div>
-                ) : focusedSquare ? (
-                  <p className="muted">No active piece is standing on this tile right now.</p>
-                ) : (
-                  <p className="muted">Hover a square to inspect the piece standing there.</p>
-                )}
+                      <div className="chip-row">
+                        {focusedDistrict.landmarks.map((landmark) => (
+                          <span key={landmark} className="chip chip--soft">
+                            {landmark}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="muted">Hover a square to inspect the mapped district.</p>
+                  )}
+                </div>
+
+                <div className="hover-card">
+                  <p className="field-label">Character on Tile</p>
+                  {focusedCharacter && focusedPiece ? (
+                    <div className="detail-card">
+                      <div className="piece-badge">
+                        <span className={`piece-badge__icon piece-badge__icon--${focusedPiece.side}`}>
+                          {getPieceGlyph({ side: focusedPiece.side, kind: focusedPiece.kind })}
+                        </span>
+                        <div>
+                          <p className="piece-badge__label">
+                            {getPieceDisplayName({ side: focusedPiece.side, kind: focusedPiece.kind })}
+                          </p>
+                          <p className="muted">{getPieceKindLabel(focusedPiece.kind)} piece</p>
+                        </div>
+                      </div>
+                      <h3>{focusedCharacter.fullName}</h3>
+                      <p className="detail-card__description">{focusedCharacter.oneLineDescription}</p>
+                      <dl className="detail-grid">
+                        <div>
+                          <dt>Role</dt>
+                          <dd>{focusedCharacter.role}</dd>
+                        </div>
+                        <div>
+                          <dt>Origin</dt>
+                          <dd>{focusedCharacter.districtOfOrigin}</dd>
+                        </div>
+                        <div>
+                          <dt>Faction</dt>
+                          <dd>{focusedCharacter.faction}</dd>
+                        </div>
+                        <div>
+                          <dt>Square</dt>
+                          <dd>{focusedSquare ?? "None"}</dd>
+                        </div>
+                      </dl>
+                      <div className="chip-row">
+                        {focusedCharacter.traits.map((trait) => (
+                          <span key={trait} className="chip">
+                            {trait}
+                          </span>
+                        ))}
+                      </div>
+                      {settings.showRecentCharacterActions && focusedCharacterMoments.length ? (
+                        <div className="memory-list">
+                          <p className="memory-list__label">Recent actions</p>
+                          {focusedCharacterMoments.map((event) => (
+                            <article key={event.id} className="memory-item">
+                              <span className="memory-item__meta">
+                                Move {event.moveNumber} | {event.eventType}
+                              </span>
+                              <p className="memory-item__headline">{event.headline}</p>
+                            </article>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : focusedSquare ? (
+                    <p className="muted">No active piece is standing on this tile right now.</p>
+                  ) : (
+                    <p className="muted">Hover a square to inspect the piece standing there.</p>
+                  )}
+                </div>
               </div>
+
+              {renderResizeHandle("board")}
+            </section>
+
+            <div
+              className={[
+                "workspace-item",
+                "workspace-item--moves",
+                activeLayoutEdit?.panelId === "moves" ? "is-editing" : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              style={getWorkspacePanelStyle(workspaceLayout, "moves", isCompactViewport)}
+            >
+              <Panel
+                title="Move History"
+                eyebrow="Rules"
+                collapsed={workspaceLayout.collapsed.moves}
+                action={renderPanelTools("moves")}
+              >
+                <div className="timeline timeline--match-log">
+                  {moveHistory.length ? (
+                    moveHistory.map((move) => {
+                      const linkedEvent = eventByMoveId.get(move.id) ?? null;
+
+                      return (
+                        <article key={move.id} className="timeline__item timeline__item--move">
+                          <div className="timeline__meta">
+                            <span className="timeline__turn">
+                              {move.moveNumber}. {move.side}
+                            </span>
+                            <span className="timeline__san">{move.san}</span>
+                          </div>
+                          <p className="timeline__text">
+                            {move.from} to {move.to}
+                            {move.isCheckmate ? " with checkmate" : move.isCheck ? " with check" : ""}
+                            {move.capturedPieceId ? " and a capture" : ""}
+                          </p>
+                          {linkedEvent ? (
+                            <p className="timeline__link">Story beat: {linkedEvent.headline}</p>
+                          ) : null}
+                        </article>
+                      );
+                    })
+                  ) : (
+                    <p className="muted">The game log will appear here as soon as the first move lands.</p>
+                  )}
+                </div>
+              </Panel>
+              {renderResizeHandle("moves")}
             </div>
-          </section>
 
-          <section className="workspace-grid__moves">
-            <Panel title="Move History" eyebrow="Rules">
-              <div className="timeline timeline--match-log">
-                {moveHistory.length ? (
-                  moveHistory.map((move) => {
-                    const linkedEvent = eventByMoveId.get(move.id) ?? null;
-
-                    return (
-                      <article key={move.id} className="timeline__item timeline__item--move">
-                        <div className="timeline__meta">
-                          <span className="timeline__turn">
-                            {move.moveNumber}. {move.side}
-                          </span>
-                          <span className="timeline__san">{move.san}</span>
-                        </div>
-                        <p className="timeline__text">
-                          {move.from} to {move.to}
-                          {move.isCheckmate ? " with checkmate" : move.isCheck ? " with check" : ""}
-                          {move.capturedPieceId ? " and a capture" : ""}
-                        </p>
-                        {linkedEvent ? (
-                          <p className="timeline__link">
-                            Story beat: {linkedEvent.headline}
-                          </p>
-                        ) : null}
-                      </article>
-                    );
-                  })
-                ) : (
-                  <p className="muted">The game log will appear here as soon as the first move lands.</p>
-                )}
-              </div>
-            </Panel>
-          </section>
-
-          <section className="workspace-grid__narrative">
-            <Panel
-              title="Narrative Log"
-              eyebrow="Story"
-              action={
-                <div className="tone-switcher">
-                  <button
-                    type="button"
-                    className={`button button--ghost ${tonePreset === "grounded" ? "button--active" : ""}`}
-                    onClick={() => updateTonePreset("grounded")}
-                  >
-                    Grounded
-                  </button>
-                  <button
-                    type="button"
-                    className={`button button--ghost ${tonePreset === "civic-noir" ? "button--active" : ""}`}
-                    onClick={() => updateTonePreset("civic-noir")}
-                  >
-                    Civic noir
-                  </button>
-                  <button
-                    type="button"
-                    className={`button button--ghost ${tonePreset === "dark-comedy" ? "button--active" : ""}`}
-                    onClick={() => updateTonePreset("dark-comedy")}
-                  >
-                    Dark comedy
-                  </button>
-                </div>
-              }
+            <div
+              className={[
+                "workspace-item",
+                "workspace-item--narrative",
+                activeLayoutEdit?.panelId === "narrative" ? "is-editing" : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              style={getWorkspacePanelStyle(workspaceLayout, "narrative", isCompactViewport)}
             >
-              <div className="timeline timeline--narrative">
-                {narrativeHistory.length ? (
-                  narrativeHistory.map((event) => {
-                    const linkedMove = moveById.get(event.moveId) ?? null;
-
-                    return (
-                      <article key={event.id} className="timeline__item timeline__item--narrative">
-                        <div className="timeline__meta">
-                          <span className="timeline__turn">
-                            Move {event.moveNumber}
-                          </span>
-                          <span className="timeline__san">{event.eventType}</span>
-                        </div>
-                        <h3 className="timeline__headline">{event.headline}</h3>
-                        <p className="timeline__text">{event.detail}</p>
-                        {linkedMove ? (
-                          <p className="timeline__link">
-                            Board action: {linkedMove.san} | {linkedMove.from} to {linkedMove.to}
-                          </p>
-                        ) : null}
-                      </article>
-                    );
-                  })
-                ) : (
-                  <p className="muted">Each move will add a lightweight narrative beat here.</p>
+              <Panel
+                title="Narrative Log"
+                eyebrow="Story"
+                collapsed={workspaceLayout.collapsed.narrative}
+                action={renderPanelTools(
+                  "narrative",
+                  <div className="tone-switcher">
+                    <button
+                      type="button"
+                      className={`button button--ghost ${tonePreset === "grounded" ? "button--active" : ""}`}
+                      onClick={() => updateTonePreset("grounded")}
+                    >
+                      Grounded
+                    </button>
+                    <button
+                      type="button"
+                      className={`button button--ghost ${tonePreset === "civic-noir" ? "button--active" : ""}`}
+                      onClick={() => updateTonePreset("civic-noir")}
+                    >
+                      Civic noir
+                    </button>
+                    <button
+                      type="button"
+                      className={`button button--ghost ${tonePreset === "dark-comedy" ? "button--active" : ""}`}
+                      onClick={() => updateTonePreset("dark-comedy")}
+                    >
+                      Dark comedy
+                    </button>
+                  </div>
                 )}
-              </div>
-            </Panel>
-          </section>
+              >
+                <div className="timeline timeline--narrative">
+                  {narrativeHistory.length ? (
+                    narrativeHistory.map((event) => {
+                      const linkedMove = moveById.get(event.moveId) ?? null;
 
-          <section className="workspace-grid__saved">
-            <Panel
-              title="Saved Matches"
-              eyebrow="Local"
-              action={
-                <button
-                  type="button"
-                  className="button button--ghost"
-                  onClick={() => saveCurrentMatch()}
-                  disabled={!canSave}
-                >
-                  Save current match
-                </button>
-              }
+                      return (
+                        <article key={event.id} className="timeline__item timeline__item--narrative">
+                          <div className="timeline__meta">
+                            <span className="timeline__turn">Move {event.moveNumber}</span>
+                            <span className="timeline__san">{event.eventType}</span>
+                          </div>
+                          <h3 className="timeline__headline">{event.headline}</h3>
+                          <p className="timeline__text">{event.detail}</p>
+                          {linkedMove ? (
+                            <p className="timeline__link">
+                              Board action: {linkedMove.san} | {linkedMove.from} to {linkedMove.to}
+                            </p>
+                          ) : null}
+                        </article>
+                      );
+                    })
+                  ) : (
+                    <p className="muted">Each move will add a lightweight narrative beat here.</p>
+                  )}
+                </div>
+              </Panel>
+              {renderResizeHandle("narrative")}
+            </div>
+
+            <div
+              className={[
+                "workspace-item",
+                "workspace-item--saved",
+                activeLayoutEdit?.panelId === "saved" ? "is-editing" : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              style={getWorkspacePanelStyle(workspaceLayout, "saved", isCompactViewport)}
             >
-              {savedMatches.length ? (
-                <div className="saved-match-list">
-                  {savedMatches.map((savedMatch) => (
-                    <article key={savedMatch.id} className="saved-match">
-                      <div>
-                        <h3 className="saved-match__title">{savedMatch.name}</h3>
-                        <p className="saved-match__meta">
-                          {formatSavedAt(savedMatch.savedAt)} | {savedMatch.moveCount} moves
-                        </p>
-                      </div>
-                      <div className="saved-match__actions">
-                        <button
-                          type="button"
-                          className="button button--ghost"
-                          onClick={() => loadSavedMatch(savedMatch.id)}
-                        >
-                          Load
-                        </button>
-                        <button
-                          type="button"
-                          className="button button--ghost"
-                          onClick={() => removeSavedMatch(savedMatch.id)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <p className="muted">
-                  {isStudyMode
-                    ? "Local save is disabled in study mode. Resume local play to save a match."
-                    : "No saved matches yet. Save the current local game to keep your place."}
-                </p>
-              )}
-            </Panel>
-          </section>
+              <Panel
+                title="Saved Matches"
+                eyebrow="Local"
+                collapsed={workspaceLayout.collapsed.saved}
+                action={renderPanelTools(
+                  "saved",
+                  <button
+                    type="button"
+                    className="button button--ghost"
+                    onClick={() => saveCurrentMatch()}
+                    disabled={!canSave}
+                  >
+                    Save current match
+                  </button>
+                )}
+              >
+                {savedMatches.length ? (
+                  <div className="saved-match-list">
+                    {savedMatches.map((savedMatch) => (
+                      <article key={savedMatch.id} className="saved-match">
+                        <div>
+                          <h3 className="saved-match__title">{savedMatch.name}</h3>
+                          <p className="saved-match__meta">
+                            {formatSavedAt(savedMatch.savedAt)} | {savedMatch.moveCount} moves
+                          </p>
+                        </div>
+                        <div className="saved-match__actions">
+                          <button
+                            type="button"
+                            className="button button--ghost"
+                            onClick={() => loadSavedMatch(savedMatch.id)}
+                          >
+                            Load
+                          </button>
+                          <button
+                            type="button"
+                            className="button button--ghost"
+                            onClick={() => removeSavedMatch(savedMatch.id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="muted">
+                    {isStudyMode
+                      ? "Local save is disabled in study mode. Resume local play to save a match."
+                      : "No saved matches yet. Save the current local game to keep your place."}
+                  </p>
+                )}
+              </Panel>
+              {renderResizeHandle("saved")}
+            </div>
 
-          <section className="workspace-grid__study">
-            <StudyPanel
-              referenceGames={referenceGames}
-              selectedReferenceGameId={selectedReferenceGameId}
-              onSelectReferenceGame={setSelectedReferenceGameId}
-              onLoadReferenceGame={handleLoadReferenceGame}
-              pastedPgn={pastedPgn}
-              onPgnChange={setPastedPgn}
-              onImportPgn={handleImportPgn}
-              importError={importError}
-              studySession={studySession}
-              canStepBackward={canStepBackward}
-              canStepForward={canStepForward}
-              onJumpToStart={jumpToStart}
-              onStepBackward={stepBackward}
-              onStepForward={stepForward}
-              onJumpToEnd={jumpToEnd}
-              onExitStudy={exitStudyMode}
-            />
-          </section>
+            <div
+              className={[
+                "workspace-item",
+                "workspace-item--study",
+                activeLayoutEdit?.panelId === "study" ? "is-editing" : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              style={getWorkspacePanelStyle(workspaceLayout, "study", isCompactViewport)}
+            >
+              <Panel
+                title="Study Games"
+                eyebrow="Reference"
+                collapsed={workspaceLayout.collapsed.study}
+                action={renderPanelTools("study")}
+              >
+                <StudyPanel
+                  referenceGames={referenceGames}
+                  selectedReferenceGameId={selectedReferenceGameId}
+                  onSelectReferenceGame={setSelectedReferenceGameId}
+                  onLoadReferenceGame={handleLoadReferenceGame}
+                  pastedPgn={pastedPgn}
+                  onPgnChange={setPastedPgn}
+                  onImportPgn={handleImportPgn}
+                  importError={importError}
+                  studySession={studySession}
+                  canStepBackward={canStepBackward}
+                  canStepForward={canStepForward}
+                  onJumpToStart={jumpToStart}
+                  onStepBackward={stepBackward}
+                  onStepForward={stepForward}
+                  onJumpToEnd={jumpToEnd}
+                  onExitStudy={exitStudyMode}
+                  embedded
+                />
+              </Panel>
+              {renderResizeHandle("study")}
+            </div>
 
-          <section className="workspace-grid__status">
-            <Panel title="Match State" eyebrow="Status">
-              <div className="state-list">
-                <div className="state-list__row">
-                  <span>Current turn</span>
-                  <strong>{turnLabel(status.turn)}</strong>
+            <div
+              className={[
+                "workspace-item",
+                "workspace-item--status",
+                activeLayoutEdit?.panelId === "status" ? "is-editing" : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              style={getWorkspacePanelStyle(workspaceLayout, "status", isCompactViewport)}
+            >
+              <Panel
+                title="Match State"
+                eyebrow="Status"
+                collapsed={workspaceLayout.collapsed.status}
+                action={renderPanelTools("status")}
+              >
+                <div className="state-list">
+                  <div className="state-list__row">
+                    <span>Current turn</span>
+                    <strong>{turnLabel(status.turn)}</strong>
+                  </div>
+                  <div className="state-list__row">
+                    <span>Mode</span>
+                    <strong>{isStudyMode ? "Study replay" : "Local play"}</strong>
+                  </div>
+                  <div className="state-list__row">
+                    <span>Board state</span>
+                    <strong>{statusLabel(status.isCheck, status.isCheckmate, status.isStalemate)}</strong>
+                  </div>
+                  <div className="state-list__row">
+                    <span>Focused square</span>
+                    <strong>{focusedSquare ?? "None"}</strong>
+                  </div>
+                  <div className="state-list__row">
+                    <span>Legal targets</span>
+                    <strong>{legalMoves.length}</strong>
+                  </div>
+                  <div className="state-list__row">
+                    <span>Hovered district</span>
+                    <strong>{focusedDistrict?.name ?? "None"}</strong>
+                  </div>
                 </div>
-                <div className="state-list__row">
-                  <span>Mode</span>
-                  <strong>{isStudyMode ? "Study replay" : "Local play"}</strong>
-                </div>
-                <div className="state-list__row">
-                  <span>Board state</span>
-                  <strong>{statusLabel(status.isCheck, status.isCheckmate, status.isStalemate)}</strong>
-                </div>
-                <div className="state-list__row">
-                  <span>Focused square</span>
-                  <strong>{focusedSquare ?? "None"}</strong>
-                </div>
-                <div className="state-list__row">
-                  <span>Legal targets</span>
-                  <strong>{legalMoves.length}</strong>
-                </div>
-                <div className="state-list__row">
-                  <span>Hovered district</span>
-                  <strong>{focusedDistrict?.name ?? "None"}</strong>
-                </div>
-              </div>
-            </Panel>
-          </section>
-        </main>
+              </Panel>
+              {renderResizeHandle("status")}
+            </div>
+          </main>
+        </>
       )}
     </div>
   );
