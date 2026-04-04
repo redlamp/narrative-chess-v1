@@ -6,28 +6,10 @@ import type {
   PieceState,
   Square
 } from "@narrative-chess/content-schema";
+import { getPieceGlyph } from "../chessPresentation";
 
 const files = ["a", "b", "c", "d", "e", "f", "g", "h"] as const;
 const ranks = ["8", "7", "6", "5", "4", "3", "2", "1"] as const;
-
-const glyphs: Record<PieceState["side"], Record<PieceState["kind"], string>> = {
-  white: {
-    pawn: "\u2659",
-    rook: "\u2656",
-    knight: "\u2658",
-    bishop: "\u2657",
-    queen: "\u2655",
-    king: "\u2654"
-  },
-  black: {
-    pawn: "\u265F",
-    rook: "\u265C",
-    knight: "\u265E",
-    bishop: "\u265D",
-    queen: "\u265B",
-    king: "\u265A"
-  }
-};
 
 type BoardCell = {
   square: Square;
@@ -39,10 +21,13 @@ type BoardProps = {
   snapshot: GameSnapshot;
   cells: BoardCell[];
   selectedSquare: Square | null;
+  hoveredSquare: Square | null;
   legalMoves: Square[];
   viewMode: "board" | "map";
   districtsBySquare: Map<Square, DistrictCell>;
   onSquareClick: (square: Square) => void;
+  onSquareHover: (square: Square) => void;
+  onSquareLeave: () => void;
 };
 
 function squareName(file: (typeof files)[number], rank: (typeof ranks)[number]) {
@@ -54,7 +39,10 @@ function getGlyph(piece: PieceState | null) {
     return "";
   }
 
-  return glyphs[piece.side][piece.kind];
+  return getPieceGlyph({
+    side: piece.side,
+    kind: piece.kind
+  });
 }
 
 function formatDistrictLabel(name: string, viewMode: "board" | "map") {
@@ -69,10 +57,13 @@ export function Board({
   snapshot,
   cells,
   selectedSquare,
+  hoveredSquare,
   legalMoves,
   viewMode,
   districtsBySquare,
-  onSquareClick
+  onSquareClick,
+  onSquareHover,
+  onSquareLeave
 }: BoardProps) {
   const cellMap = new Map(cells.map((cell) => [cell.square, cell]));
 
@@ -97,6 +88,7 @@ export function Board({
             const piece = cell?.occupant ?? getPieceAtSquare(snapshot, square);
             const district = districtsBySquare.get(square) ?? null;
             const isSelected = selectedSquare === square;
+            const isHovered = hoveredSquare === square;
             const isLegalTarget = legalMoves.includes(square);
 
             return (
@@ -108,6 +100,7 @@ export function Board({
                   cell?.isLight ? "board-square--light" : "board-square--dark",
                   viewMode === "map" ? "board-square--map" : "",
                   isSelected ? "board-square--selected" : "",
+                  isHovered ? "board-square--hovered" : "",
                   isLegalTarget ? "board-square--target" : ""
                 ]
                   .filter(Boolean)
@@ -116,6 +109,10 @@ export function Board({
                 aria-pressed={isSelected}
                 aria-label={`${square}${piece ? `, ${piece.side} ${piece.kind}` : ""}${district ? `, ${district.name}` : ""}`}
                 onClick={handleClick}
+                onMouseEnter={() => onSquareHover(square)}
+                onMouseLeave={onSquareLeave}
+                onFocus={() => onSquareHover(square)}
+                onBlur={onSquareLeave}
               >
                 <span className="board-square__coordinate board-square__coordinate--top">
                   {file === "a" ? rank : ""}

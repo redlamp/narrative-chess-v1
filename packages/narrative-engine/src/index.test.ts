@@ -87,6 +87,19 @@ describe("createInitialCharacterRoster", () => {
     expect(roster["white-queen"]?.oneLineDescription).toContain("Kaimes");
     expect(roster["white-queen"]?.generationSource).toContain("reviewed city board");
   });
+
+  it("accepts role pool overrides for editable role catalogs", () => {
+    const roster = createInitialCharacterRoster({
+      cityBoard: edinburghBoard,
+      rolePoolsOverride: {
+        queen: ["councillor"],
+        knight: ["bike courier"]
+      }
+    });
+
+    expect(roster["white-queen"]?.role).toBe("councillor");
+    expect(roster["black-knight-b"]?.role).toBe("bike courier");
+  });
 });
 
 describe("createNarrativeEvent", () => {

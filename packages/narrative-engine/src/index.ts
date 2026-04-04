@@ -328,11 +328,13 @@ function buildCharacterSummary(input: {
   blueprint: StartingPieceBlueprint;
   index: number;
   district: DistrictCell | null;
+  rolePoolOverride?: string[];
 }): CharacterSummary {
   const {
     blueprint,
     index,
-    district
+    district,
+    rolePoolOverride
   } = input;
   const seed = index + 1;
   const districtName = district?.name ?? buildFallbackDistrictName(blueprint);
@@ -341,7 +343,10 @@ function buildCharacterSummary(input: {
   const districtSeed = hashText(
     district ? `${district.id}:${district.name}` : `${blueprint.pieceId}:${districtName}`
   );
-  const rolePool = rolePools[blueprint.kind] ?? [blueprint.kind];
+  const rolePool =
+    rolePoolOverride && rolePoolOverride.length > 0
+      ? rolePoolOverride
+      : rolePools[blueprint.kind] ?? [blueprint.kind];
   const traitCount = 4 + (seed % 3 === 0 ? 1 : 0);
   const verbCount = 4 + (seed % 4 === 0 ? 1 : 0);
   const descriptorTraitBiases = collectDescriptorBiases(
@@ -546,6 +551,7 @@ function buildEventDetail(input: {
 
 export function createInitialCharacterRoster(options?: {
   cityBoard?: CityBoard;
+  rolePoolsOverride?: Partial<Record<PieceKind, string[]>>;
 }): Record<string, CharacterSummary> {
   const roster: Record<string, CharacterSummary> = {};
   const districtsBySquare = options?.cityBoard
@@ -557,7 +563,8 @@ export function createInitialCharacterRoster(options?: {
     roster[blueprint.pieceId] = buildCharacterSummary({
       blueprint,
       index,
-      district: districtsBySquare?.get(blueprint.square) ?? null
+      district: districtsBySquare?.get(blueprint.square) ?? null,
+      rolePoolOverride: options?.rolePoolsOverride?.[blueprint.kind]
     });
   }
 
