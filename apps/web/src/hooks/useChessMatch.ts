@@ -16,6 +16,13 @@ import {
 } from "@narrative-chess/narrative-engine";
 import type { GameSnapshot, PieceState, ReferenceGame, Square } from "@narrative-chess/content-schema";
 import { edinburghBoard } from "../edinburghBoard";
+import {
+  deleteSavedMatch as deleteSavedMatchRecord,
+  getSavedMatch,
+  listSavedMatches,
+  saveMatch,
+  type SavedMatchRecord
+} from "../savedMatches";
 
 function isPromotionMove(piece: PieceState | null, to: Square): boolean {
   if (!piece || piece.kind !== "pawn") {
@@ -70,6 +77,7 @@ export function useChessMatch() {
   const [importError, setImportError] = useState<string | null>(null);
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [tonePreset, setTonePreset] = useState<NarrativeTonePreset>("grounded");
+  const [savedMatches, setSavedMatches] = useState<SavedMatchRecord[]>(() => listSavedMatches());
 
   const snapshot = studyReplay ? studyReplay.snapshots[studyIndex] : localSnapshot;
   const isStudyMode = studyReplay !== null;
@@ -85,6 +93,7 @@ export function useChessMatch() {
   const legalMoves = selectedSquare ? listLegalMoves(snapshot, selectedSquare) : [];
   const boardSquares = getBoardSquares(snapshot);
   const canUndo = !isStudyMode && snapshot.moveHistory.length > 0;
+  const canSave = !isStudyMode;
   const canStepBackward = isStudyMode && studyIndex > 0;
   const canStepForward =
     isStudyMode && studyReplay !== null && studyIndex < studyReplay.snapshots.length - 1;
@@ -285,6 +294,46 @@ export function useChessMatch() {
     });
   };
 
+  const saveCurrentMatch = () => {
+    if (isStudyMode) {
+      return false;
+    }
+
+    const nextSavedMatches = saveMatch(localSnapshot);
+    setSavedMatches(nextSavedMatches);
+    return true;
+  };
+
+  const loadSavedMatch = (savedMatchId: string) => {
+    const savedMatch = getSavedMatch(savedMatchId);
+    if (!savedMatch) {
+      setSavedMatches(listSavedMatches());
+      return false;
+    }
+
+    startTransition(() => {
+      setStudyReplay(null);
+      setStudyIndex(0);
+      setImportError(null);
+      setSelectedSquare(null);
+      setLocalSnapshot({
+        ...savedMatch.snapshot,
+        eventHistory: createNarrativeHistory({
+          moves: savedMatch.snapshot.moveHistory,
+          characters: savedMatch.snapshot.characters,
+          tonePreset
+        })
+      });
+      setSavedMatches(listSavedMatches());
+    });
+
+    return true;
+  };
+
+  const removeSavedMatch = (savedMatchId: string) => {
+    setSavedMatches(deleteSavedMatchRecord(savedMatchId));
+  };
+
   return {
     snapshot,
     boardSquares,
@@ -292,7 +341,9 @@ export function useChessMatch() {
     selectedPiece,
     selectedCharacter,
     selectedCharacterMoments,
+    savedMatches,
     legalMoves,
+    canSave,
     canUndo,
     isStudyMode,
     tonePreset,
@@ -319,6 +370,9 @@ export function useChessMatch() {
     stepBackward,
     stepForward,
     jumpToEnd,
-    updateTonePreset
+    updateTonePreset,
+    saveCurrentMatch,
+    loadSavedMatch,
+    removeSavedMatch
   };
 }
