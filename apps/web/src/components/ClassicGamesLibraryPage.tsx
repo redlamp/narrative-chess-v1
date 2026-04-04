@@ -11,7 +11,6 @@ import {
   CardTitle
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { IndexedWorkspace } from "./IndexedWorkspace";
 
@@ -101,6 +100,8 @@ export function ClassicGamesLibraryPage({
 
   return (
     <IndexedWorkspace
+      className="classic-games-workspace"
+      scrollMode="page"
       intro={
         <Card className="page-card page-card--intro">
           <CardHeader className="gap-4">
@@ -130,7 +131,7 @@ export function ClassicGamesLibraryPage({
         </Card>
       }
       index={
-        <Card className="page-card page-card--index">
+        <Card className="page-card page-card--index classic-games-page__index">
           <CardHeader className="gap-4">
             <div className="grid gap-2">
               <CardTitle>Game list</CardTitle>
@@ -148,46 +149,44 @@ export function ClassicGamesLibraryPage({
             />
           </CardHeader>
           <CardContent className="page-card__content pt-0">
-            <ScrollArea className="page-card__scroll-area rounded-lg border">
-              <div className="grid gap-2 p-3">
-                {filteredGames.map((game) => (
-                  <button
-                    key={game.id}
-                    type="button"
-                    onClick={() => onSelectReferenceGame(game.id)}
-                    className={[
-                      "grid gap-2 rounded-lg border px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      game.id === selectedGame?.id
-                        ? "border-foreground/15 bg-muted"
-                        : "bg-background hover:bg-muted/50"
-                    ].join(" ")}
-                    aria-pressed={game.id === selectedGame?.id}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="font-medium">{game.title}</span>
-                      <Badge variant="outline">{game.year}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {game.white} vs {game.black}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="secondary">{game.opening}</Badge>
-                      <Badge variant="outline">{game.result}</Badge>
-                    </div>
-                  </button>
-                ))}
-                {!filteredGames.length ? (
-                  <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                    No classic games matched that search.
+            <div className="classic-games-page__list rounded-lg border p-3">
+              {filteredGames.map((game) => (
+                <button
+                  key={game.id}
+                  type="button"
+                  onClick={() => onSelectReferenceGame(game.id)}
+                  className={[
+                    "grid gap-2 rounded-lg border px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    game.id === selectedGame?.id
+                      ? "border-foreground/15 bg-muted"
+                      : "bg-background hover:bg-muted/50"
+                  ].join(" ")}
+                  aria-pressed={game.id === selectedGame?.id}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium">{game.title}</span>
+                    <Badge variant="outline">{game.year}</Badge>
                   </div>
-                ) : null}
-              </div>
-            </ScrollArea>
+                  <p className="text-sm text-muted-foreground">
+                    {game.white} vs {game.black}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary">{game.opening}</Badge>
+                    <Badge variant="outline">{game.result}</Badge>
+                  </div>
+                </button>
+              ))}
+              {!filteredGames.length ? (
+                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  No classic games matched that search.
+                </div>
+              ) : null}
+            </div>
           </CardContent>
         </Card>
       }
       detail={
-        <Card className="page-card page-card--detail">
+        <Card className="page-card page-card--detail classic-games-page__detail">
           <CardHeader className="gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle>{selectedGame?.title ?? "Classic game detail"}</CardTitle>
@@ -200,7 +199,7 @@ export function ClassicGamesLibraryPage({
                 : "Select a classic game from the left to review its score and notes."}
             </CardDescription>
           </CardHeader>
-          <CardContent className="page-card__content page-card__content--scroll grid gap-4">
+          <CardContent className="page-card__content grid gap-4">
             {selectedGame ? (
               <>
                 <div className="grid gap-4 lg:grid-cols-2">
@@ -268,20 +267,18 @@ export function ClassicGamesLibraryPage({
                     </div>
                     <Badge variant="outline">{selectedGameMovePairs.length} full moves</Badge>
                   </div>
-                  <ScrollArea className="h-[360px] rounded-lg border">
-                    <div className="grid gap-2 p-3">
-                      {selectedGameMovePairs.map((movePair) => (
-                        <article
-                          key={`${selectedGame.id}-${movePair.moveNumber}`}
-                          className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-3 rounded-lg border px-3 py-2 text-sm"
-                        >
-                          <span className="font-medium text-muted-foreground">{movePair.moveNumber}.</span>
-                          <span>{movePair.white}</span>
-                          <span className="text-muted-foreground">{movePair.black ?? "..."}</span>
-                        </article>
-                      ))}
-                    </div>
-                  </ScrollArea>
+                  <div className="classic-games-page__score-list rounded-lg border p-3">
+                    {selectedGameMovePairs.map((movePair) => (
+                      <article
+                        key={`${selectedGame.id}-${movePair.moveNumber}`}
+                        className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-3 rounded-lg border px-3 py-2 text-sm"
+                      >
+                        <span className="font-medium text-muted-foreground">{movePair.moveNumber}.</span>
+                        <span>{movePair.white}</span>
+                        <span className="text-muted-foreground">{movePair.black ?? "..."}</span>
+                      </article>
+                    ))}
+                  </div>
                 </div>
               </>
             ) : (

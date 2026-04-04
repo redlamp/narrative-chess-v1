@@ -46,6 +46,10 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --board-light-square: #f5f5f4;
+  --board-dark-square: #78716c;
+  --board-light-piece-stroke: rgb(17 24 39 / 0.92);
+  --board-dark-piece-stroke: rgb(255 255 255 / 0.96);
 }
 
 * {
@@ -165,6 +169,7 @@ select {
 .indexed-workspace__intro,
 .indexed-workspace__columns,
 .indexed-workspace__index,
+.indexed-workspace__secondary-index,
 .indexed-workspace__detail,
 .page-card-stack {
   min-width: 0;
@@ -191,6 +196,11 @@ select {
   flex-direction: column;
 }
 
+.page-card--secondary-index {
+  display: flex;
+  flex-direction: column;
+}
+
 .page-card__content {
   min-height: 0;
 }
@@ -204,6 +214,16 @@ select {
 
 .page-card__scroll-area {
   height: 560px;
+}
+
+.classic-games-page__list,
+.classic-games-page__score-list {
+  display: grid;
+  gap: 12px;
+}
+
+.classic-games-page__score-list {
+  min-height: 32rem;
 }
 
 .page-card-stack {
@@ -325,6 +345,9 @@ select {
 .layout-toolbar__body,
 .layout-toolbar__controls,
 .layout-toolbar__actions,
+.layout-toolbar__file-section,
+.layout-toolbar__file-controls,
+.layout-toolbar__file-actions,
 .study-panel,
 .study-panel__block,
 .hover-panel,
@@ -359,6 +382,53 @@ select {
 .layout-toolbar__actions {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+}
+
+.layout-toolbar__file-section {
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.layout-toolbar__file-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.layout-toolbar__file-controls {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  align-items: end;
+}
+
+.layout-toolbar__file-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.layout-toolbar__saved-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.layout-toolbar__notice {
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 0.1rem);
+  padding: 12px 14px;
+  font-size: 0.9rem;
+}
+
+.layout-toolbar__notice--neutral,
+.layout-toolbar__notice--success {
+  background: color-mix(in srgb, var(--muted) 72%, white 28%);
+  color: var(--muted-foreground);
+}
+
+.layout-toolbar__notice--error {
+  border-color: color-mix(in srgb, var(--destructive) 24%, var(--border) 76%);
+  background: color-mix(in srgb, var(--destructive) 10%, var(--background) 90%);
+  color: color-mix(in srgb, var(--destructive) 84%, var(--foreground) 16%);
 }
 
 .slider-field {
@@ -573,12 +643,12 @@ select {
 }
 
 .board-square--light {
-  background: #f5f5f4;
+  background: var(--board-light-square);
   color: #111827;
 }
 
 .board-square--dark {
-  background: #78716c;
+  background: var(--board-dark-square);
   color: #f8fafc;
 }
 
@@ -631,7 +701,7 @@ select {
     0 1px 0 rgb(17 24 39 / 0.9),
     0 0 1px rgb(17 24 39 / 0.9),
     0 0 3px rgb(17 24 39 / 0.45);
-  -webkit-text-stroke: 0.95px rgb(17 24 39 / 0.92);
+  -webkit-text-stroke: 0.95px var(--board-light-piece-stroke);
 }
 
 .board-square__piece.is-black {
@@ -640,7 +710,7 @@ select {
     0 1px 0 rgb(255 255 255 / 0.86),
     0 0 1px rgb(255 255 255 / 0.9),
     0 0 3px rgb(255 255 255 / 0.55);
-  -webkit-text-stroke: 0.9px rgb(255 255 255 / 0.96);
+  -webkit-text-stroke: 0.9px var(--board-dark-piece-stroke);
 }
 
 .board-square__piece.is-map.is-white,
@@ -955,7 +1025,9 @@ select {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .layout-toolbar__actions {
+  .layout-toolbar__actions,
+  .layout-toolbar__file-controls,
+  .layout-toolbar__file-actions {
     grid-template-columns: 1fr;
   }
 }
@@ -966,16 +1038,39 @@ select {
     min-height: 46rem;
   }
 
+  .indexed-workspace__columns--three-pane {
+    grid-template-columns: 260px 360px minmax(0, 1fr);
+  }
+
   .indexed-workspace__index,
+  .indexed-workspace__secondary-index,
   .indexed-workspace__detail,
   .page-card-stack {
     min-height: 46rem;
   }
 
   .page-card--index,
+  .page-card--secondary-index,
   .page-card--detail {
     min-height: 46rem;
     max-height: 46rem;
+  }
+
+  .indexed-workspace--page-scroll .indexed-workspace__columns,
+  .classic-games-workspace .indexed-workspace__columns {
+    min-height: 0;
+  }
+
+  .indexed-workspace--page-scroll .indexed-workspace__index,
+  .indexed-workspace--page-scroll .indexed-workspace__detail,
+  .indexed-workspace--page-scroll .page-card--index,
+  .indexed-workspace--page-scroll .page-card--detail,
+  .classic-games-workspace .indexed-workspace__index,
+  .classic-games-workspace .indexed-workspace__detail,
+  .classic-games-workspace .page-card--index,
+  .classic-games-workspace .page-card--detail {
+    min-height: 0;
+    max-height: none;
   }
 }
 
@@ -1018,6 +1113,8 @@ select {
   .role-page__grid,
   .detail-grid,
   .layout-toolbar__controls,
+  .layout-toolbar__file-controls,
+  .layout-toolbar__file-actions,
   .app-menu__actions,
   .hover-panel {
     grid-template-columns: 1fr;
@@ -1132,6 +1229,10 @@ select {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --board-light-square: #d4cbc0;
+  --board-dark-square: #6b5f58;
+  --board-light-piece-stroke: rgb(15 23 42 / 0.95);
+  --board-dark-piece-stroke: rgb(248 250 252 / 0.94);
 }
 
 @layer base {

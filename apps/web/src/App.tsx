@@ -7,11 +7,14 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode
 } from "react";
+import { Moon, Sun } from "lucide-react";
 import { getPieceAtSquare } from "@narrative-chess/game-core";
 import { getCharacterEventHistory } from "@narrative-chess/narrative-engine";
 import type { PieceKind, Square } from "@narrative-chess/content-schema";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  applyAppTheme,
   listAppSettings,
   resetAppSettings,
   saveAppSettings,
@@ -38,7 +41,18 @@ import {
   type WorkspacePanelId,
   type WorkspacePanelRect
 } from "./layoutState";
+import {
+  listKnownWorkspaceLayoutFiles,
+  type WorkspaceLayoutFileReference
+} from "./layoutFiles";
 import { referenceGames } from "./referenceGames";
+import {
+  connectWorkspaceLayoutDirectory,
+  getConnectedWorkspaceLayoutDirectoryName,
+  loadWorkspaceLayoutFileFromDirectory,
+  saveWorkspaceLayoutFileToDirectory,
+  supportsWorkspaceLayoutDirectory
+} from "./fileSystemAccess";
 import { Board } from "./components/Board";
 import { Panel } from "./components/Panel";
 import { AppMenu } from "./components/AppMenu";
@@ -68,6 +82,11 @@ type ActiveLayoutEdit = {
   originColumn: number;
   originRow: number;
   initialRect: WorkspacePanelRect;
+};
+
+type LayoutFileNotice = {
+  tone: "neutral" | "success" | "error";
+  text: string;
 };
 
 const panelTitles: Record<WorkspacePanelId, string> = {
@@ -179,6 +198,14 @@ export default function App() {
   const [hoveredSquare, setHoveredSquare] = useState<Square | null>(null);
   const [roleCatalog, setRoleCatalog] = useState(() => listRoleCatalog());
   const [workspaceLayout, setWorkspaceLayout] = useState(() => listWorkspaceLayoutState());
+  const [layoutFileName, setLayoutFileName] = useState("match-workspace");
+  const [layoutDirectoryName, setLayoutDirectoryName] = useState<string | null>(null);
+  const [layoutFileBusyAction, setLayoutFileBusyAction] = useState<string | null>(null);
+  const [layoutFileNotice, setLayoutFileNotice] = useState<LayoutFileNotice | null>(null);
+  const [knownLayoutFiles, setKnownLayoutFiles] = useState<WorkspaceLayoutFileReference[]>(() =>
+    listKnownWorkspaceLayoutFiles()
+  );
+  const [isLayoutDirectorySupported, setIsLayoutDirectorySupported] = useState(false);
   const [activeLayoutEdit, setActiveLayoutEdit] = useState<ActiveLayoutEdit | null>(null);
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const {
@@ -270,12 +297,38 @@ export default function App() {
   }, [isCompactViewport]);
 
   useEffect(() => {
+    applyAppTheme(settings.theme);
+  }, [settings.theme]);
+
+  useEffect(() => {
     saveAppSettings(settings);
   }, [settings]);
 
   useEffect(() => {
     saveWorkspaceLayoutState(workspaceLayout);
   }, [workspaceLayout]);
+
+  useEffect(() => {
+    setIsLayoutDirectorySupported(supportsWorkspaceLayoutDirectory());
+
+    const rememberedLayoutFiles = listKnownWorkspaceLayoutFiles();
+    if (rememberedLayoutFiles.length) {
+      setKnownLayoutFiles(rememberedLayoutFiles);
+      setLayoutFileName((current) => current || rememberedLayoutFiles[0]?.name || "match-workspace");
+    }
+
+    let cancelled = false;
+
+    void getConnectedWorkspaceLayoutDirectoryName().then((directoryName) => {
+      if (!cancelled) {
+        setLayoutDirectoryName(directoryName);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!activeLayoutEdit || isCompactViewport) {
@@ -528,6 +581,13 @@ export default function App() {
     setViewMode(nextSettings.defaultViewMode);
   };
 
+  const handleThemeChange = (theme: AppSettings["theme"]) => {
+    setSettings((current) => ({
+      ...current,
+      theme
+    }));
+  };
+
   const handleDefaultViewModeChange = (nextViewMode: "board" | "map") => {
     setSettings((current) => ({
       ...current,
@@ -548,6 +608,71 @@ export default function App() {
       ...current,
       [key]: value
     }));
+  };
+
+  const runLayoutFileAction = async (actionName: string, action: () => Promise<void>) => {
+    setLayoutFileBusyAction(actionName);
+    setLayoutFileNotice(null);
+
+    try {
+      await action();
+    } catch (error) {
+      setLayoutFileNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Something went wrong while working with the layout file."
+      });
+    } finally {
+      setLayoutFileBusyAction(null);
+    }
+  };
+
+  const handleConnectLayoutDirectory = () => {
+    void runLayoutFileAction("connect-layout-directory", async () => {
+      const result = await connectWorkspaceLayoutDirectory();
+      setLayoutDirectoryName(result.directoryName);
+      setLayoutFileNotice({
+        tone: "success",
+        text: `Connected layout files to ${result.directoryName}.`
+      });
+    });
+  };
+
+  const handleSaveLayoutFile = () => {
+    void runLayoutFileAction("save-layout-file", async () => {
+      const result = await saveWorkspaceLayoutFileToDirectory({
+        name: layoutFileName,
+        layoutState: workspaceLayout
+      });
+      setKnownLayoutFiles(result.knownFiles);
+      setLayoutDirectoryName(result.directoryName);
+      setLayoutFileName(result.layoutName);
+      setLayoutFileNotice({
+        tone: "success",
+        text: `Saved ${result.layoutName} to ${result.relativePath}.`
+      });
+    });
+  };
+
+  const handleLoadLayoutFile = () => {
+    void runLayoutFileAction("load-layout-file", async () => {
+      const result = await loadWorkspaceLayoutFileFromDirectory(layoutFileName);
+      if (!result) {
+        setLayoutFileNotice({
+          tone: "neutral",
+          text: "No named layout file matched that name in the connected folder."
+        });
+        return;
+      }
+
+      setWorkspaceLayout(saveWorkspaceLayoutState(result.layoutState));
+      setKnownLayoutFiles(result.knownFiles);
+      setLayoutDirectoryName(result.directoryName);
+      setLayoutFileName(result.layoutName);
+      setLayoutFileNotice({
+        tone: "success",
+        text: `Loaded ${result.layoutName} from ${result.relativePath}.`
+      });
+    });
   };
 
   const renderPanelTools = (
@@ -597,6 +722,20 @@ export default function App() {
           </div>
 
           <div className="app-header__actions">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleThemeChange(settings.theme === "dark" ? "light" : "dark")}
+            >
+              {settings.theme === "dark" ? (
+                <Sun data-icon="inline-start" />
+              ) : (
+                <Moon data-icon="inline-start" />
+              )}
+              {settings.theme === "dark" ? "Light theme" : "Dark theme"}
+            </Button>
+
             <AppMenu
               isOpen={isMenuOpen}
               isLayoutMode={effectiveLayoutMode}
@@ -607,6 +746,7 @@ export default function App() {
               onResetLayout={handleResetLayout}
               onExpandPanels={handleExpandPanels}
               onResetSettings={handleResetSettings}
+              onThemeChange={handleThemeChange}
               onDefaultViewModeChange={handleDefaultViewModeChange}
               onBooleanSettingChange={handleBooleanSettingChange}
             />
@@ -690,9 +830,20 @@ export default function App() {
               columnFractions={workspaceLayout.columnFractions}
               rowHeight={workspaceLayout.rowHeight}
               showLayoutGrid={settings.showLayoutGrid}
+              layoutFileName={layoutFileName}
+              layoutDirectoryName={layoutDirectoryName}
+              layoutFileNotice={layoutFileNotice}
+              isLayoutDirectorySupported={isLayoutDirectorySupported}
+              layoutFileBusyAction={layoutFileBusyAction}
+              knownLayoutFiles={knownLayoutFiles}
               onColumnFractionChange={handleWorkspaceColumnFractionChange}
               onRowHeightChange={handleWorkspaceRowHeightChange}
               onToggleLayoutGrid={(checked) => handleBooleanSettingChange("showLayoutGrid", checked)}
+              onLayoutFileNameChange={setLayoutFileName}
+              onConnectLayoutDirectory={handleConnectLayoutDirectory}
+              onLoadLayoutFile={handleLoadLayoutFile}
+              onSaveLayoutFile={handleSaveLayoutFile}
+              onSelectKnownLayoutFile={setLayoutFileName}
               onResetLayout={handleResetLayout}
             />
           ) : null}
@@ -785,7 +936,7 @@ export default function App() {
                 viewMode={viewMode}
                 districtsBySquare={edinburghDistrictsBySquare}
                 showCoordinates={settings.showBoardCoordinates}
-                showDistrictLabels={settings.showDistrictLabels}
+                showDistrictLabels={viewMode === "map" && settings.showDistrictLabels}
                 onSquareClick={handleSquareClick}
                 onSquareHover={setHoveredSquare}
                 onSquareLeave={() => setHoveredSquare(null)}

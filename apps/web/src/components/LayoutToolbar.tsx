@@ -1,15 +1,34 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import type { WorkspaceLayoutFileReference } from "../layoutFiles";
+
+type LayoutFileNotice = {
+  tone: "neutral" | "success" | "error";
+  text: string;
+};
 
 type LayoutToolbarProps = {
   columnFractions: [number, number, number];
   rowHeight: number;
   showLayoutGrid: boolean;
+  layoutFileName: string;
+  layoutDirectoryName: string | null;
+  layoutFileNotice: LayoutFileNotice | null;
+  isLayoutDirectorySupported: boolean;
+  layoutFileBusyAction: string | null;
+  knownLayoutFiles: WorkspaceLayoutFileReference[];
   onColumnFractionChange: (index: 0 | 1 | 2, value: number) => void;
   onRowHeightChange: (value: number) => void;
   onToggleLayoutGrid: (checked: boolean) => void;
+  onLayoutFileNameChange: (value: string) => void;
+  onConnectLayoutDirectory: () => void;
+  onLoadLayoutFile: () => void;
+  onSaveLayoutFile: () => void;
+  onSelectKnownLayoutFile: (name: string) => void;
   onResetLayout: () => void;
 };
 
@@ -17,9 +36,20 @@ export function LayoutToolbar({
   columnFractions,
   rowHeight,
   showLayoutGrid,
+  layoutFileName,
+  layoutDirectoryName,
+  layoutFileNotice,
+  isLayoutDirectorySupported,
+  layoutFileBusyAction,
+  knownLayoutFiles,
   onColumnFractionChange,
   onRowHeightChange,
   onToggleLayoutGrid,
+  onLayoutFileNameChange,
+  onConnectLayoutDirectory,
+  onLoadLayoutFile,
+  onSaveLayoutFile,
+  onSelectKnownLayoutFile,
   onResetLayout
 }: LayoutToolbarProps) {
   return (
@@ -112,6 +142,95 @@ export function LayoutToolbar({
           <Button type="button" variant="outline" size="sm" onClick={onResetLayout}>
             Reset layout
           </Button>
+        </div>
+
+        <div className="layout-toolbar__file-section">
+          <div className="layout-toolbar__file-header">
+            <div className="grid gap-1">
+              <span className="panel__eyebrow">Named Layout Files</span>
+              <p className="muted">
+                Save the current panel arrangement to a JSON file in the repo so it can be loaded again later.
+              </p>
+            </div>
+            {layoutDirectoryName ? <Badge variant="outline">Connected: {layoutDirectoryName}</Badge> : null}
+          </div>
+
+          <div className="layout-toolbar__file-controls">
+            <label className="slider-field">
+              <div className="slider-field__header">
+                <span>Layout file name</span>
+                <strong>{layoutFileName.trim() || "match-workspace"}</strong>
+              </div>
+              <Input
+                name="layout-file-name"
+                autoComplete="off"
+                placeholder="match-workspace"
+                value={layoutFileName}
+                onChange={(event) => onLayoutFileNameChange(event.currentTarget.value)}
+              />
+            </label>
+            <div className="layout-toolbar__file-actions">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onConnectLayoutDirectory}
+                disabled={!isLayoutDirectorySupported || layoutFileBusyAction !== null}
+              >
+                Connect folder
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onLoadLayoutFile}
+                disabled={layoutFileBusyAction !== null}
+              >
+                Load named file
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onSaveLayoutFile}
+                disabled={layoutFileBusyAction !== null}
+              >
+                Save named file
+              </Button>
+            </div>
+          </div>
+
+          {knownLayoutFiles.length ? (
+            <div className="layout-toolbar__saved-files">
+              {knownLayoutFiles.map((file) => (
+                <Button
+                  key={file.fileName}
+                  type="button"
+                  variant={file.name === layoutFileName ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => onSelectKnownLayoutFile(file.name)}
+                >
+                  {file.name}
+                </Button>
+              ))}
+            </div>
+          ) : null}
+
+          {layoutFileNotice ? (
+            <div
+              className={`layout-toolbar__notice layout-toolbar__notice--${layoutFileNotice.tone}`}
+              role="status"
+              aria-live="polite"
+            >
+              {layoutFileNotice.text}
+            </div>
+          ) : null}
+
+          {!isLayoutDirectorySupported ? (
+            <p className="muted">
+              Folder save requires the File System Access API on localhost or HTTPS.
+            </p>
+          ) : null}
         </div>
       </CardContent>
     </Card>
