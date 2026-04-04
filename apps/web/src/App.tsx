@@ -37,6 +37,10 @@ function toneLabel(tonePreset: "grounded" | "civic-noir" | "dark-comedy") {
   }
 }
 
+function formatSavedAt(savedAt: string) {
+  return new Date(savedAt).toLocaleString();
+}
+
 export default function App() {
   const [selectedReferenceGameId, setSelectedReferenceGameId] = useState(referenceGames[0]?.id ?? "");
   const [pastedPgn, setPastedPgn] = useState("");
@@ -48,7 +52,9 @@ export default function App() {
     selectedCharacter,
     selectedCharacterMoments,
     selectedPiece,
+    savedMatches,
     legalMoves,
+    canSave,
     canUndo,
     isStudyMode,
     tonePreset,
@@ -66,7 +72,10 @@ export default function App() {
     stepBackward,
     stepForward,
     jumpToEnd,
-    updateTonePreset
+    updateTonePreset,
+    saveCurrentMatch,
+    loadSavedMatch,
+    removeSavedMatch
   } = useChessMatch();
 
   const status = snapshot.status;
@@ -199,6 +208,58 @@ export default function App() {
             onJumpToEnd={jumpToEnd}
             onExitStudy={exitStudyMode}
           />
+
+          <Panel
+            title="Saved Matches"
+            eyebrow="Local"
+            action={
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => saveCurrentMatch()}
+                disabled={!canSave}
+              >
+                Save current match
+              </button>
+            }
+          >
+            {savedMatches.length ? (
+              <div className="saved-match-list">
+                {savedMatches.map((savedMatch) => (
+                  <article key={savedMatch.id} className="saved-match">
+                    <div>
+                      <h3 className="saved-match__title">{savedMatch.name}</h3>
+                      <p className="saved-match__meta">
+                        {formatSavedAt(savedMatch.savedAt)} | {savedMatch.moveCount} moves
+                      </p>
+                    </div>
+                    <div className="saved-match__actions">
+                      <button
+                        type="button"
+                        className="button button--ghost"
+                        onClick={() => loadSavedMatch(savedMatch.id)}
+                      >
+                        Load
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--ghost"
+                        onClick={() => removeSavedMatch(savedMatch.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">
+                {isStudyMode
+                  ? "Local save is disabled in study mode. Resume local play to save a match."
+                  : "No saved matches yet. Save the current local game to keep your place."}
+              </p>
+            )}
+          </Panel>
 
           <Panel title="Selected District" eyebrow="Edinburgh">
             {selectedDistrict ? (
