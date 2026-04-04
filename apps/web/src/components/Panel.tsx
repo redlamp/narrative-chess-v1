@@ -1,4 +1,12 @@
 import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card";
 
 type PanelProps = {
   title: string;
@@ -9,17 +17,24 @@ type PanelProps = {
   children: ReactNode;
 };
 
-export function Panel({ title, eyebrow, action, className, collapsed = false, children }: PanelProps) {
+export function Panel({
+  title,
+  eyebrow,
+  action,
+  className,
+  collapsed = false,
+  children
+}: PanelProps) {
   return (
-    <section className={["panel", collapsed ? "panel--collapsed" : "", className ?? ""].filter(Boolean).join(" ")}>
-      <div className="panel__header">
-        <div>
+    <Card className={cn("panel", collapsed && "panel--collapsed", className)} size="sm">
+      <CardHeader className="panel__header">
+        <div className="grid gap-1">
           {eyebrow ? <p className="panel__eyebrow">{eyebrow}</p> : null}
-          <h2 className="panel__title">{title}</h2>
+          <CardTitle className="panel__title">{title}</CardTitle>
         </div>
-        {action ? <div className="panel__action">{action}</div> : null}
-      </div>
-      {!collapsed ? <div className="panel__body">{children}</div> : null}
-    </section>
+        {action ? <CardAction className="panel__action">{action}</CardAction> : null}
+      </CardHeader>
+      {!collapsed ? <CardContent className="panel__body">{children}</CardContent> : null}
+    </Card>
   );
 }

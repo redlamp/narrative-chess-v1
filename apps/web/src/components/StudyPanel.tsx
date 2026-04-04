@@ -1,5 +1,9 @@
 import { useState, type ChangeEvent } from "react";
 import type { ReferenceGame } from "@narrative-chess/content-schema";
+import { ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Textarea } from "@/components/ui/textarea";
 import { Panel } from "./Panel";
 
 type StudySession = {
@@ -70,7 +74,7 @@ export function StudyPanel({
         <div className="study-panel__row">
           <select
             id="reference-game-select"
-            className="field-input"
+            className="field-select"
             value={selectedReferenceGameId}
             onChange={handleSelectChange}
           >
@@ -80,46 +84,52 @@ export function StudyPanel({
               </option>
             ))}
           </select>
-          <button type="button" className="button button--ghost" onClick={onLoadReferenceGame}>
+          <Button type="button" variant="outline" size="sm" onClick={onLoadReferenceGame}>
             Load
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="study-panel__block study-panel__disclosure">
-        <button
-          type="button"
-          className="study-panel__summary-toggle"
-          aria-expanded={shouldShowImport}
-          onClick={() => setIsImportOpen((current) => !current)}
-        >
-          <span>PGN Import</span>
-          <span className="study-panel__summary-copy">
-            {shouldShowImport ? "Hide import" : "Paste a line or full game"}
-          </span>
-        </button>
-        {shouldShowImport ? (
-          <div className="study-panel__disclosure-body">
+      <Collapsible
+        className="study-panel__block study-panel__disclosure"
+        open={shouldShowImport}
+        onOpenChange={setIsImportOpen}
+      >
+        <CollapsibleTrigger asChild>
+          <button type="button" className="study-panel__summary-toggle">
+            <span>PGN Import</span>
+            <span className="study-panel__summary-copy">
+              {shouldShowImport ? "Hide import" : "Paste a line or full game"}
+            </span>
+            <ChevronDown
+              className={`study-panel__summary-icon ${shouldShowImport ? "is-open" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="study-panel__disclosure-body">
+          {shouldShowImport ? (
+            <>
             <label className="field-label" htmlFor="pgn-input">
               Paste PGN
             </label>
-            <textarea
+            <Textarea
               id="pgn-input"
-              className="field-textarea"
               value={pastedPgn}
               onChange={handlePgnChange}
               placeholder="Paste a PGN here to load a classic game or opening line."
               rows={8}
             />
             <div className="study-panel__actions">
-              <button type="button" className="button button--ghost" onClick={onImportPgn}>
+              <Button type="button" variant="outline" size="sm" onClick={onImportPgn}>
                 Import PGN
-              </button>
+              </Button>
             </div>
             {importError ? <p className="field-error">{importError}</p> : null}
-          </div>
-        ) : null}
-      </div>
+            </>
+          ) : null}
+        </CollapsibleContent>
+      </Collapsible>
 
       {studySession ? (
         <div className="study-panel__block study-panel__block--session">
@@ -142,21 +152,21 @@ export function StudyPanel({
             </p>
           ) : null}
           <div className="study-panel__actions">
-            <button type="button" className="button button--ghost" onClick={onJumpToStart} disabled={!canStepBackward}>
+            <Button type="button" variant="outline" size="sm" onClick={onJumpToStart} disabled={!canStepBackward}>
               Start
-            </button>
-            <button type="button" className="button button--ghost" onClick={onStepBackward} disabled={!canStepBackward}>
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={onStepBackward} disabled={!canStepBackward}>
               Prev
-            </button>
-            <button type="button" className="button button--ghost" onClick={onStepForward} disabled={!canStepForward}>
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={onStepForward} disabled={!canStepForward}>
               Next
-            </button>
-            <button type="button" className="button button--ghost" onClick={onJumpToEnd} disabled={!canStepForward}>
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={onJumpToEnd} disabled={!canStepForward}>
               End
-            </button>
-            <button type="button" className="button button--ghost" onClick={onExitStudy}>
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={onExitStudy}>
               Resume local game
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}

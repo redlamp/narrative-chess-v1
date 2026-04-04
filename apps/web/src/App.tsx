@@ -10,6 +10,7 @@ import {
 import { getPieceAtSquare } from "@narrative-chess/game-core";
 import { getCharacterEventHistory } from "@narrative-chess/narrative-engine";
 import type { PieceKind, Square } from "@narrative-chess/content-schema";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   listAppSettings,
   resetAppSettings,
@@ -41,6 +42,7 @@ import { referenceGames } from "./referenceGames";
 import { Board } from "./components/Board";
 import { Panel } from "./components/Panel";
 import { AppMenu } from "./components/AppMenu";
+import { CompetitiveLandscapePage } from "./components/CompetitiveLandscapePage";
 import { LayoutToolbar } from "./components/LayoutToolbar";
 import { RoleCatalogPage } from "./components/RoleCatalogPage";
 import { StudyPanel } from "./components/StudyPanel";
@@ -52,7 +54,7 @@ import {
   updateRoleCatalogEntry
 } from "./roleCatalog";
 
-type AppPage = "match" | "roles";
+type AppPage = "match" | "roles" | "research";
 type LayoutEditMode = "move" | "resize";
 
 type ActiveLayoutEdit = {
@@ -482,13 +484,9 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <div className="app-shell__glow app-shell__glow--left" />
-      <div className="app-shell__glow app-shell__glow--right" />
-
       <header className="app-header">
         <div className="app-header__brand">
           <div>
-            <p className="hero__eyebrow">Narrative Chess</p>
             <h1>Narrative Chess</h1>
           </div>
 
@@ -498,7 +496,7 @@ export default function App() {
               isLayoutMode={effectiveLayoutMode}
               settings={settings}
               isCompactViewport={isCompactViewport}
-              onToggleOpen={() => setIsMenuOpen((current) => !current)}
+              onOpenChange={setIsMenuOpen}
               onToggleLayoutMode={() => setIsLayoutMode((current) => !current)}
               onResetLayout={handleResetLayout}
               onExpandPanels={handleExpandPanels}
@@ -507,45 +505,50 @@ export default function App() {
               onBooleanSettingChange={handleBooleanSettingChange}
             />
 
-            <div className="page-switcher">
-              <button
-                type="button"
-                className={`button button--ghost ${page === "match" ? "button--active" : ""}`}
-                onClick={() => setPage("match")}
-              >
-                Match
-              </button>
-              <button
-                type="button"
-                className={`button button--ghost ${page === "roles" ? "button--active" : ""}`}
-                onClick={() => setPage("roles")}
-              >
-                Role Catalog
-              </button>
-            </div>
+            <Tabs
+              value={page}
+              onValueChange={(value) => setPage(value as AppPage)}
+              className="page-switcher-tabs"
+            >
+              <TabsList className="page-switcher">
+                <TabsTrigger value="match">Match</TabsTrigger>
+                <TabsTrigger value="roles">Role Catalog</TabsTrigger>
+                <TabsTrigger value="research">Research</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </div>
 
-        <div className="hero__status app-header__status">
-          <div className="status-card">
-            <span className="status-card__label">Turn</span>
-            <span className="status-card__value">{turnLabel(status.turn)}</span>
+        {page === "match" ? (
+          <div className="hero__status app-header__status">
+            <div className="status-card">
+              <span className="status-card__label">Turn</span>
+              <span className="status-card__value">{turnLabel(status.turn)}</span>
+            </div>
+            <div className="status-card">
+              <span className="status-card__label">State</span>
+              <span className="status-card__value">
+                {statusLabel(status.isCheck, status.isCheckmate, status.isStalemate)}
+              </span>
+            </div>
+            <div className="status-card">
+              <span className="status-card__label">Moves</span>
+              <span className="status-card__value">{snapshot.moveHistory.length}</span>
+            </div>
+            <div className="status-card">
+              <span className="status-card__label">Tone</span>
+              <span className="status-card__value">{toneLabel(tonePreset)}</span>
+            </div>
           </div>
-          <div className="status-card">
-            <span className="status-card__label">State</span>
-            <span className="status-card__value">
-              {statusLabel(status.isCheck, status.isCheckmate, status.isStalemate)}
-            </span>
+        ) : (
+          <div className="app-header__context">
+            <p className="muted">
+              {page === "roles"
+                ? "Edit piece-role pools and feed those changes back into the local roster."
+                : "Review current chess product references, screenshots, and notes for competitive analysis."}
+            </p>
           </div>
-          <div className="status-card">
-            <span className="status-card__label">Moves</span>
-            <span className="status-card__value">{snapshot.moveHistory.length}</span>
-          </div>
-          <div className="status-card">
-            <span className="status-card__label">Tone</span>
-            <span className="status-card__value">{toneLabel(tonePreset)}</span>
-          </div>
-        </div>
+        )}
       </header>
 
       {page === "roles" ? (
@@ -554,6 +557,8 @@ export default function App() {
           onRoleCatalogChange={handleRoleCatalogChange}
           onRoleCatalogReset={handleRoleCatalogReset}
         />
+      ) : page === "research" ? (
+        <CompetitiveLandscapePage />
       ) : (
         <>
           {effectiveLayoutMode ? (

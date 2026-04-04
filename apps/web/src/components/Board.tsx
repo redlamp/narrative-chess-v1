@@ -55,6 +55,32 @@ function formatDistrictLabel(name: string, viewMode: "board" | "map") {
   return `${name.slice(0, 9)}...`;
 }
 
+function shouldShowDistrictLabel({
+  showDistrictLabels,
+  viewMode,
+  piece,
+  isHovered
+}: {
+  showDistrictLabels: boolean;
+  viewMode: "board" | "map";
+  piece: PieceState | null;
+  isHovered: boolean;
+}) {
+  if (!showDistrictLabels) {
+    return false;
+  }
+
+  if (viewMode === "map") {
+    return true;
+  }
+
+  if (!piece) {
+    return true;
+  }
+
+  return isHovered;
+}
+
 export function Board({
   snapshot,
   cells,
@@ -128,7 +154,13 @@ export function Board({
                     </span>
                   </>
                 ) : null}
-                {district && showDistrictLabels ? (
+                {district &&
+                shouldShowDistrictLabel({
+                  showDistrictLabels,
+                  viewMode,
+                  piece,
+                  isHovered
+                }) ? (
                   <span className={`board-square__district board-square__district--${viewMode}`}>
                     {formatDistrictLabel(district.name, viewMode)}
                   </span>

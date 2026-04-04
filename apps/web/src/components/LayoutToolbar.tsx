@@ -1,3 +1,8 @@
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+
 type LayoutToolbarProps = {
   columnFractions: [number, number, number];
   rowHeight: number;
@@ -18,83 +23,97 @@ export function LayoutToolbar({
   onResetLayout
 }: LayoutToolbarProps) {
   return (
-    <section className="layout-toolbar">
-      <div className="layout-toolbar__copy">
+    <Card className="layout-toolbar">
+      <CardHeader className="layout-toolbar__copy">
         <p className="panel__eyebrow">Layout Mode</p>
-        <h2>Drag panel headers, resize from the lower-right corner, and snap to the guide grid.</h2>
-      </div>
+        <CardTitle>Drag panel headers, resize from the lower-right corner, and snap to the guide grid.</CardTitle>
+      </CardHeader>
 
-      <div className="layout-toolbar__controls">
-        <label className="slider-field">
-          <span>Column 1</span>
-          <input
-            type="range"
-            min="0.5"
-            max="4"
-            step="0.25"
-            value={columnFractions[0]}
-            onChange={(event) => onColumnFractionChange(0, Number(event.currentTarget.value))}
-          />
-          <strong>{columnFractions[0].toFixed(2)}fr</strong>
-        </label>
-        <label className="slider-field">
-          <span>Column 2</span>
-          <input
-            type="range"
-            min="0.5"
-            max="4"
-            step="0.25"
-            value={columnFractions[1]}
-            onChange={(event) => onColumnFractionChange(1, Number(event.currentTarget.value))}
-          />
-          <strong>{columnFractions[1].toFixed(2)}fr</strong>
-        </label>
-        <label className="slider-field">
-          <span>Column 3</span>
-          <input
-            type="range"
-            min="0.5"
-            max="4"
-            step="0.25"
-            value={columnFractions[2]}
-            onChange={(event) => onColumnFractionChange(2, Number(event.currentTarget.value))}
-          />
-          <strong>{columnFractions[2].toFixed(2)}fr</strong>
-        </label>
-        <label className="slider-field">
-          <span>Row height</span>
-          <input
-            type="range"
-            min="30"
-            max="80"
-            step="2"
-            value={rowHeight}
-            onChange={(event) => onRowHeightChange(Number(event.currentTarget.value))}
-          />
-          <strong>{rowHeight}px</strong>
-        </label>
-      </div>
+      <CardContent className="layout-toolbar__body">
+        <div className="layout-toolbar__controls">
+          <label className="slider-field">
+            <div className="slider-field__header">
+              <span>Column 1</span>
+              <strong>{columnFractions[0].toFixed(2)}fr</strong>
+            </div>
+            <Slider
+              min={0.5}
+              max={4}
+              step={0.25}
+              value={[columnFractions[0]]}
+              onValueChange={([nextValue]) => {
+                if (typeof nextValue === "number") {
+                  onColumnFractionChange(0, nextValue);
+                }
+              }}
+            />
+          </label>
+          <label className="slider-field">
+            <div className="slider-field__header">
+              <span>Column 2</span>
+              <strong>{columnFractions[1].toFixed(2)}fr</strong>
+            </div>
+            <Slider
+              min={0.5}
+              max={4}
+              step={0.25}
+              value={[columnFractions[1]]}
+              onValueChange={([nextValue]) => {
+                if (typeof nextValue === "number") {
+                  onColumnFractionChange(1, nextValue);
+                }
+              }}
+            />
+          </label>
+          <label className="slider-field">
+            <div className="slider-field__header">
+              <span>Column 3</span>
+              <strong>{columnFractions[2].toFixed(2)}fr</strong>
+            </div>
+            <Slider
+              min={0.5}
+              max={4}
+              step={0.25}
+              value={[columnFractions[2]]}
+              onValueChange={([nextValue]) => {
+                if (typeof nextValue === "number") {
+                  onColumnFractionChange(2, nextValue);
+                }
+              }}
+            />
+          </label>
+          <label className="slider-field">
+            <div className="slider-field__header">
+              <span>Row height</span>
+              <strong>{rowHeight}px</strong>
+            </div>
+            <Slider
+              min={30}
+              max={80}
+              step={2}
+              value={[rowHeight]}
+              onValueChange={([nextValue]) => {
+                if (typeof nextValue === "number") {
+                  onRowHeightChange(nextValue);
+                }
+              }}
+            />
+          </label>
+        </div>
 
-      <div className="layout-toolbar__actions">
-        <label className="menu-toggle menu-toggle--inline">
-          <div>
-            <span className="menu-toggle__label">Show snap grid</span>
-            <span className="menu-toggle__description">Helps line up placements while editing.</span>
-          </div>
-          <input
-            type="checkbox"
-            checked={showLayoutGrid}
-            onChange={(event) => onToggleLayoutGrid(event.currentTarget.checked)}
-          />
-        </label>
-        <button
-          type="button"
-          className="button button--ghost"
-          onClick={onResetLayout}
-        >
-          Reset layout
-        </button>
-      </div>
-    </section>
+        <div className="layout-toolbar__actions">
+          <label className="menu-toggle menu-toggle--inline">
+            <div>
+              <span className="menu-toggle__label">Show snap grid</span>
+              <span className="menu-toggle__description">Helps line up placements while editing.</span>
+            </div>
+            <Switch checked={showLayoutGrid} onCheckedChange={onToggleLayoutGrid} />
+          </label>
+          <Button type="button" variant="outline" size="sm" onClick={onResetLayout}>
+            Reset layout
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

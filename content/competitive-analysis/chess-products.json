@@ -1,0 +1,104 @@
+[
+  {
+    "id": "chess-com",
+    "name": "Chess.com Analysis",
+    "category": "Consumer Platform",
+    "url": "https://www.chess.com/analysis",
+    "source_urls": [
+      "https://www.chess.com/analysis",
+      "https://support.chess.com/en/articles/8646880-what-is-cloud-analysis-and-how-do-i-use-it"
+    ],
+    "screenshot": "/competitive/chess-com-analysis.png",
+    "positioning": "Board-first analysis with a broad consumer funnel into lessons, puzzles, and practice.",
+    "surface_notes": [
+      "Strong left-nav ecosystem keeps analysis adjacent to puzzles, lessons, and training.",
+      "Analysis surface is immediately usable without extra setup.",
+      "Feels optimized for habit-forming daily use rather than deep editorial context."
+    ],
+    "opportunities_for_narrative_chess": [
+      "Keep the board as the primary task surface.",
+      "Make it obvious how players get from a move to a deeper learning mode."
+    ]
+  },
+  {
+    "id": "lichess",
+    "name": "Lichess Analysis Board",
+    "category": "Utility Platform",
+    "url": "https://lichess.org/analysis",
+    "source_urls": [
+      "https://lichess.org/analysis",
+      "https://lichess.org/"
+    ],
+    "screenshot": "/competitive/lichess-analysis.png",
+    "positioning": "Immediate, no-friction analysis and study tooling with a stripped-down utility feel.",
+    "surface_notes": [
+      "Extremely fast path from landing on the page to making moves.",
+      "Board, engine panel, and PGN/FEN inputs all stay visible together.",
+      "Visual language is restrained and functional rather than brand-heavy."
+    ],
+    "opportunities_for_narrative_chess": [
+      "Preserve this level of legibility when the narrative layer is on.",
+      "Avoid forcing story UI to compete with the board."
+    ]
+  },
+  {
+    "id": "aimchess",
+    "name": "Aimchess",
+    "category": "Personalized Training",
+    "url": "https://aimchess.com/",
+    "source_urls": [
+      "https://aimchess.com/"
+    ],
+    "screenshot": "/competitive/aimchess-home.png",
+    "positioning": "Performance analytics and personalized lessons generated from your own games.",
+    "surface_notes": [
+      "The product promise is personalized improvement, not generic content.",
+      "Landing page leans heavily on clean product illustration and progress framing.",
+      "More coaching/productivity-oriented than board-utility-oriented."
+    ],
+    "opportunities_for_narrative_chess": [
+      "Narrative moments can become a coaching lens, not just flavor text.",
+      "Surface recurring player patterns and story beats over time."
+    ]
+  },
+  {
+    "id": "decodechess",
+    "name": "DecodeChess",
+    "category": "Explainable Analysis",
+    "url": "https://decodechess.com/",
+    "source_urls": [
+      "https://decodechess.com/"
+    ],
+    "screenshot": "/competitive/decodechess-home.png",
+    "positioning": "Explainable engine analysis focused on the why behind recommended moves.",
+    "surface_notes": [
+      "Clear 'AI tutor' framing differentiates it from standard engine tools.",
+      "Tabs like threats, plans, concepts, and functionality make analysis feel teachable.",
+      "Product message is strongest when it translates analysis into human language."
+    ],
+    "opportunities_for_narrative_chess": [
+      "Tie narrative text to concrete chess explanations instead of free-floating prose.",
+      "Use story only where it improves understanding of plans, threats, or momentum."
+    ]
+  },
+  {
+    "id": "chessable",
+    "name": "Chessable",
+    "category": "Course Platform",
+    "url": "https://www.chessable.com/",
+    "source_urls": [
+      "https://www.chessable.com/"
+    ],
+    "screenshot": "/competitive/chessable-home.png",
+    "positioning": "Memory-driven opening and course study with a strong instructor and catalog model.",
+    "surface_notes": [
+      "Hero message is direct about retention, openings, and science-backed learning.",
+      "Marketplace scale and instructor credibility are part of the core pitch.",
+      "Less about live board utility, more about repeatable structured study."
+    ],
+    "opportunities_for_narrative_chess": [
+      "Package authored city/story scenarios as learnable study content later.",
+      "Keep the current prototype focused on usable board interactions before expanding course-like systems."
+    ]
+  }
+]
