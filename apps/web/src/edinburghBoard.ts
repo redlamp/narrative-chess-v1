@@ -21,5 +21,5 @@ export function getDistrictForSquare(square: Square | null) {
 }
 
 export function abbreviateDistrictName(name: string) {
-  return name.length <= 11 ? name : `${name.slice(0, 10)}…`;
+  return name.length <= 11 ? name : `${name.slice(0, 10)}...`;
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import edinburghBoardData from "../../../content/cities/edinburgh-board.json";
 import {
   createInitialCharacterRoster,
   createNarrativeHistory,
@@ -8,6 +9,9 @@ import type {
   CharacterSummary,
   MoveRecord
 } from "@narrative-chess/content-schema";
+import { cityBoardSchema } from "@narrative-chess/content-schema";
+
+const edinburghBoard = cityBoardSchema.parse(edinburghBoardData);
 
 function makeActor(overrides: Partial<CharacterSummary> = {}): CharacterSummary {
   return {
@@ -60,6 +64,7 @@ describe("createInitialCharacterRoster", () => {
     expect(entries).toHaveLength(32);
     expect(roster["white-king"]?.fullName).toBeDefined();
     expect(roster["black-queen"]?.faction).toBe("Iron Accord");
+    expect(new Set(entries.map((character) => character.fullName)).size).toBe(32);
 
     for (const character of entries) {
       expect(character.traits.length).toBeGreaterThanOrEqual(4);
@@ -68,6 +73,18 @@ describe("createInitialCharacterRoster", () => {
       expect(character.verbs.length).toBeLessThanOrEqual(6);
       expect(character.reviewStatus).toBe("reviewed");
     }
+  });
+
+  it("uses city board districts and descriptors when a board is provided", () => {
+    const roster = createInitialCharacterRoster({
+      cityBoard: edinburghBoard
+    });
+
+    expect(roster["white-king"]?.districtOfOrigin).toBe("Alnwickhill");
+    expect(roster["black-queen"]?.districtOfOrigin).toBe("Trinity");
+    expect(roster["black-pawn-h"]?.traits).toContain("watchful");
+    expect(roster["white-queen"]?.oneLineDescription).toContain("Kaimes");
+    expect(roster["white-queen"]?.generationSource).toContain("reviewed city board");
   });
 });
 

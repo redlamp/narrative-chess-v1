@@ -12,20 +12,20 @@ const ranks = ["8", "7", "6", "5", "4", "3", "2", "1"] as const;
 
 const glyphs: Record<PieceState["side"], Record<PieceState["kind"], string>> = {
   white: {
-    pawn: "♙",
-    rook: "♖",
-    knight: "♘",
-    bishop: "♗",
-    queen: "♕",
-    king: "♔"
+    pawn: "\u2659",
+    rook: "\u2656",
+    knight: "\u2658",
+    bishop: "\u2657",
+    queen: "\u2655",
+    king: "\u2654"
   },
   black: {
-    pawn: "♟",
-    rook: "♜",
-    knight: "♞",
-    bishop: "♝",
-    queen: "♛",
-    king: "♚"
+    pawn: "\u265F",
+    rook: "\u265C",
+    knight: "\u265E",
+    bishop: "\u265D",
+    queen: "\u265B",
+    king: "\u265A"
   }
 };
 
@@ -62,7 +62,7 @@ function formatDistrictLabel(name: string, viewMode: "board" | "map") {
     return name;
   }
 
-  return `${name.slice(0, 9)}…`;
+  return `${name.slice(0, 9)}...`;
 }
 
 export function Board({
