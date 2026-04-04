@@ -82,6 +82,8 @@ export default function App() {
   const lastEvent = snapshot.eventHistory.at(-1) ?? null;
   const moveHistory = [...snapshot.moveHistory].reverse();
   const narrativeHistory = [...snapshot.eventHistory].reverse();
+  const eventByMoveId = new Map(snapshot.eventHistory.map((event) => [event.moveId, event] as const));
+  const moveById = new Map(snapshot.moveHistory.map((move) => [move.id, move] as const));
   const inspectedSquare = selectedSquare ?? (lastMove?.to ?? null);
   const selectedDistrict = getDistrictForSquare(inspectedSquare);
   const selectedReferenceGame =
@@ -112,10 +114,6 @@ export default function App() {
         <div className="hero__copy">
           <p className="hero__eyebrow">Narrative Chess</p>
           <h1>Play the board first. Let the story follow.</h1>
-          <p className="hero__lede">
-            A clean local chess slice with a minimal narrative trail, move history, undo,
-            built-in study mode for classic games and pasted PGN, and a first-pass Edinburgh board mapping.
-          </p>
         </div>
 
         <div className="hero__status">
@@ -198,7 +196,6 @@ export default function App() {
             onPgnChange={setPastedPgn}
             onImportPgn={handleImportPgn}
             importError={importError}
-            isStudyMode={isStudyMode}
             studySession={studySession}
             canStepBackward={canStepBackward}
             canStepForward={canStepForward}
@@ -391,79 +388,6 @@ export default function App() {
             )}
           </Panel>
 
-          <Panel title="Move History" eyebrow="Rules">
-            <div className="timeline">
-              {moveHistory.length ? (
-                moveHistory.map((move) => (
-                  <article key={move.id} className="timeline__item">
-                    <div className="timeline__meta">
-                      <span className="timeline__turn">
-                        {move.moveNumber}. {move.side}
-                      </span>
-                      <span className="timeline__san">{move.san}</span>
-                    </div>
-                    <p className="timeline__text">
-                      {move.from} to {move.to}
-                      {move.isCheckmate ? " with checkmate" : move.isCheck ? " with check" : ""}
-                      {move.capturedPieceId ? " and a capture" : ""}
-                    </p>
-                  </article>
-                ))
-              ) : (
-                <p className="muted">The game log will appear here as soon as the first move lands.</p>
-              )}
-            </div>
-          </Panel>
-
-          <Panel
-            title="Narrative Log"
-            eyebrow="Story"
-            action={
-              <div className="tone-switcher">
-                <button
-                  type="button"
-                  className={`button button--ghost ${tonePreset === "grounded" ? "button--active" : ""}`}
-                  onClick={() => updateTonePreset("grounded")}
-                >
-                  Grounded
-                </button>
-                <button
-                  type="button"
-                  className={`button button--ghost ${tonePreset === "civic-noir" ? "button--active" : ""}`}
-                  onClick={() => updateTonePreset("civic-noir")}
-                >
-                  Civic noir
-                </button>
-                <button
-                  type="button"
-                  className={`button button--ghost ${tonePreset === "dark-comedy" ? "button--active" : ""}`}
-                  onClick={() => updateTonePreset("dark-comedy")}
-                >
-                  Dark comedy
-                </button>
-              </div>
-            }
-          >
-            <div className="timeline timeline--narrative">
-              {narrativeHistory.length ? (
-                narrativeHistory.map((event) => (
-                  <article key={event.id} className="timeline__item timeline__item--narrative">
-                    <div className="timeline__meta">
-                      <span className="timeline__turn">
-                        Move {event.moveNumber}
-                      </span>
-                      <span className="timeline__san">{event.eventType}</span>
-                    </div>
-                    <h3 className="timeline__headline">{event.headline}</h3>
-                    <p className="timeline__text">{event.detail}</p>
-                  </article>
-                ))
-              ) : (
-                <p className="muted">Each move will add a lightweight narrative beat here.</p>
-              )}
-            </div>
-          </Panel>
-
           <Panel title="Match State" eyebrow="Status">
             <div className="state-list">
               <div className="state-list__row">
@@ -498,6 +422,99 @@ export default function App() {
           </Panel>
         </aside>
       </main>
+
+      <section className="history-grid">
+        <Panel title="Move History" eyebrow="Rules">
+          <div className="timeline">
+            {moveHistory.length ? (
+              moveHistory.map((move) => {
+                const linkedEvent = eventByMoveId.get(move.id) ?? null;
+
+                return (
+                  <article key={move.id} className="timeline__item timeline__item--move">
+                    <div className="timeline__meta">
+                      <span className="timeline__turn">
+                        {move.moveNumber}. {move.side}
+                      </span>
+                      <span className="timeline__san">{move.san}</span>
+                    </div>
+                    <p className="timeline__text">
+                      {move.from} to {move.to}
+                      {move.isCheckmate ? " with checkmate" : move.isCheck ? " with check" : ""}
+                      {move.capturedPieceId ? " and a capture" : ""}
+                    </p>
+                    {linkedEvent ? (
+                      <p className="timeline__link">
+                        Story beat: {linkedEvent.headline}
+                      </p>
+                    ) : null}
+                  </article>
+                );
+              })
+            ) : (
+              <p className="muted">The game log will appear here as soon as the first move lands.</p>
+            )}
+          </div>
+        </Panel>
+
+        <Panel
+          title="Narrative Log"
+          eyebrow="Story"
+          action={
+            <div className="tone-switcher">
+              <button
+                type="button"
+                className={`button button--ghost ${tonePreset === "grounded" ? "button--active" : ""}`}
+                onClick={() => updateTonePreset("grounded")}
+              >
+                Grounded
+              </button>
+              <button
+                type="button"
+                className={`button button--ghost ${tonePreset === "civic-noir" ? "button--active" : ""}`}
+                onClick={() => updateTonePreset("civic-noir")}
+              >
+                Civic noir
+              </button>
+              <button
+                type="button"
+                className={`button button--ghost ${tonePreset === "dark-comedy" ? "button--active" : ""}`}
+                onClick={() => updateTonePreset("dark-comedy")}
+              >
+                Dark comedy
+              </button>
+            </div>
+          }
+        >
+          <div className="timeline timeline--narrative">
+            {narrativeHistory.length ? (
+              narrativeHistory.map((event) => {
+                const linkedMove = moveById.get(event.moveId) ?? null;
+
+                return (
+                  <article key={event.id} className="timeline__item timeline__item--narrative">
+                    <div className="timeline__meta">
+                      <span className="timeline__turn">
+                        Move {event.moveNumber}
+                      </span>
+                      <span className="timeline__san">{event.eventType}</span>
+                    </div>
+                    <h3 className="timeline__headline">{event.headline}</h3>
+                    <p className="timeline__text">{event.detail}</p>
+                    {linkedMove ? (
+                      <p className="timeline__link">
+                        Board action: {linkedMove.san} | {linkedMove.from} to {linkedMove.to}
+                      </p>
+                    ) : null}
+                  </article>
+                );
+              })
+            ) : (
+              <p className="muted">Each move will add a lightweight narrative beat here.</p>
+            )}
+          </div>
+        </Panel>
+      </section>
     </div>
   );
 }

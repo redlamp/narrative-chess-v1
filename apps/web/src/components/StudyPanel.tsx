@@ -1,4 +1,4 @@
-import type { ChangeEvent } from "react";
+import { useState, type ChangeEvent } from "react";
 import type { ReferenceGame } from "@narrative-chess/content-schema";
 import { Panel } from "./Panel";
 
@@ -20,7 +20,6 @@ type StudyPanelProps = {
   onPgnChange: (value: string) => void;
   onImportPgn: () => void;
   importError: string | null;
-  isStudyMode: boolean;
   studySession: StudySession | null;
   canStepBackward: boolean;
   canStepForward: boolean;
@@ -40,7 +39,6 @@ export function StudyPanel({
   onPgnChange,
   onImportPgn,
   importError,
-  isStudyMode,
   studySession,
   canStepBackward,
   canStepForward,
@@ -50,6 +48,9 @@ export function StudyPanel({
   onJumpToEnd,
   onExitStudy
 }: StudyPanelProps) {
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const shouldShowImport = isImportOpen || Boolean(importError);
+
   const handleSelectChange = (event: ChangeEvent<HTMLSelectElement>) => {
     onSelectReferenceGame(event.currentTarget.value);
   };
@@ -59,7 +60,7 @@ export function StudyPanel({
   };
 
   return (
-    <Panel title="Study Games" eyebrow="Import">
+    <Panel title="Study Games" eyebrow="Reference">
       <div className="study-panel">
         <div className="study-panel__block">
           <label className="field-label" htmlFor="reference-game-select">
@@ -84,29 +85,39 @@ export function StudyPanel({
           </div>
         </div>
 
-        <div className="study-panel__block">
-          <label className="field-label" htmlFor="pgn-input">
-            Paste PGN
-          </label>
-          <textarea
-            id="pgn-input"
-            className="field-textarea"
-            value={pastedPgn}
-            onChange={handlePgnChange}
-            placeholder="Paste a PGN here to load a classic game or opening line."
-            rows={8}
-          />
-          <div className="study-panel__actions">
-            <button type="button" className="button button--ghost" onClick={onImportPgn}>
-              Import PGN
-            </button>
-            {isStudyMode ? (
-              <button type="button" className="button button--ghost" onClick={onExitStudy}>
-                Resume local game
-              </button>
-            ) : null}
-          </div>
-          {importError ? <p className="field-error">{importError}</p> : null}
+        <div className="study-panel__block study-panel__disclosure">
+          <button
+            type="button"
+            className="study-panel__summary-toggle"
+            aria-expanded={shouldShowImport}
+            onClick={() => setIsImportOpen((current) => !current)}
+          >
+            <span>PGN Import</span>
+            <span className="study-panel__summary-copy">
+              {shouldShowImport ? "Hide import" : "Paste a line or full game"}
+            </span>
+          </button>
+          {shouldShowImport ? (
+            <div className="study-panel__disclosure-body">
+              <label className="field-label" htmlFor="pgn-input">
+                Paste PGN
+              </label>
+              <textarea
+                id="pgn-input"
+                className="field-textarea"
+                value={pastedPgn}
+                onChange={handlePgnChange}
+                placeholder="Paste a PGN here to load a classic game or opening line."
+                rows={8}
+              />
+              <div className="study-panel__actions">
+                <button type="button" className="button button--ghost" onClick={onImportPgn}>
+                  Import PGN
+                </button>
+              </div>
+              {importError ? <p className="field-error">{importError}</p> : null}
+            </div>
+          ) : null}
         </div>
 
         {studySession ? (
@@ -141,6 +152,9 @@ export function StudyPanel({
               </button>
               <button type="button" className="button button--ghost" onClick={onJumpToEnd} disabled={!canStepForward}>
                 End
+              </button>
+              <button type="button" className="button button--ghost" onClick={onExitStudy}>
+                Resume local game
               </button>
             </div>
           </div>
