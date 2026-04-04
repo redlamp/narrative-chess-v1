@@ -247,6 +247,10 @@ function normalizeRoleCatalog(value: unknown): RoleCatalog {
   return normalizeLegacyRoleCatalog(candidate);
 }
 
+export function hydrateRoleCatalogDraft(candidate: unknown) {
+  return normalizeRoleCatalog(candidate);
+}
+
 export function getDefaultRoleCatalog() {
   return defaultRoleCatalog.map(cloneRoleEntry);
 }
@@ -280,6 +284,27 @@ export function saveRoleCatalog(roleCatalog: RoleCatalog): RoleCatalog {
   }
 
   return nextCatalog;
+}
+
+export function buildRoleCatalogValidation(roleCatalog: RoleCatalog) {
+  const result = roleCatalogSchema.safeParse({
+    roles: roleCatalog
+  });
+
+  if (result.success) {
+    return {
+      isValid: true,
+      issues: [] as string[]
+    };
+  }
+
+  return {
+    isValid: false,
+    issues: result.error.issues.map((issue) => {
+      const path = issue.path.length ? issue.path.join(".") : "root";
+      return `${path}: ${issue.message}`;
+    })
+  };
 }
 
 export function resetRoleCatalog(): RoleCatalog {

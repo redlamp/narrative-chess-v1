@@ -29,6 +29,13 @@ import { IndexedWorkspace } from "./IndexedWorkspace";
 
 type RoleCatalogPageProps = {
   roleCatalog: RoleCatalog;
+  roleCatalogDirectoryName: string | null;
+  isRoleCatalogDirectorySupported: boolean;
+  roleCatalogFileBusyAction: string | null;
+  roleCatalogFileNotice: {
+    tone: "neutral" | "success" | "error";
+    text: string;
+  } | null;
   onRoleCatalogChange: (
     roleId: string,
     field:
@@ -54,6 +61,9 @@ type RoleCatalogPageProps = {
   onRoleCatalogAdd: (pieceKind?: PieceKind) => void;
   onRoleCatalogDuplicate: (roleId: string) => void;
   onRoleCatalogRemove: (roleId: string) => void;
+  onConnectRoleCatalogDirectory: () => void;
+  onLoadRoleCatalogFromDirectory: () => void;
+  onSaveRoleCatalogToDirectory: () => void;
 };
 
 const contentStatusOptions = ["empty", "procedural", "authored"] as const;
@@ -91,11 +101,18 @@ function roleMatchesQuery(role: RoleCatalog[number], query: string) {
 
 export function RoleCatalogPage({
   roleCatalog,
+  roleCatalogDirectoryName,
+  isRoleCatalogDirectorySupported,
+  roleCatalogFileBusyAction,
+  roleCatalogFileNotice,
   onRoleCatalogChange,
   onRoleCatalogReset,
   onRoleCatalogAdd,
   onRoleCatalogDuplicate,
-  onRoleCatalogRemove
+  onRoleCatalogRemove,
+  onConnectRoleCatalogDirectory,
+  onLoadRoleCatalogFromDirectory,
+  onSaveRoleCatalogToDirectory
 }: RoleCatalogPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPieceKind, setSelectedPieceKind] = useState<PieceKind>(
@@ -180,6 +197,62 @@ export function RoleCatalogPage({
                   Reset defaults
                 </Button>
               </div>
+            </div>
+            <div className="grid gap-3 rounded-lg border bg-muted/20 p-4">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                <div className="grid gap-1">
+                  <p className="text-sm font-medium">Repo file save</p>
+                  <p className="text-sm text-muted-foreground">
+                    {roleCatalogDirectoryName
+                      ? `Connected to ${roleCatalogDirectoryName}.`
+                      : "Local browser storage remains the fallback until you connect a folder."}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onConnectRoleCatalogDirectory}
+                    disabled={!isRoleCatalogDirectorySupported || roleCatalogFileBusyAction !== null}
+                  >
+                    Connect folder
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onLoadRoleCatalogFromDirectory}
+                    disabled={!roleCatalogDirectoryName || roleCatalogFileBusyAction !== null}
+                  >
+                    Load from disk
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onSaveRoleCatalogToDirectory}
+                    disabled={!roleCatalogDirectoryName || roleCatalogFileBusyAction !== null}
+                  >
+                    Save to disk
+                  </Button>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                The repo-local file is saved as `content/roles/role-catalog.local.json` when you
+                connect a repo root or content folder.
+              </p>
+              {roleCatalogFileNotice ? (
+                <p
+                  className={cn(
+                    "text-sm",
+                    roleCatalogFileNotice.tone === "error"
+                      ? "text-destructive"
+                      : roleCatalogFileNotice.tone === "success"
+                        ? "text-emerald-700"
+                        : "text-muted-foreground"
+                  )}
+                >
+                  {roleCatalogFileNotice.text}
+                </p>
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
               {pieceKinds.map((pieceKind) => (

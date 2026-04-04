@@ -7,6 +7,7 @@ import {
   listRoleCatalog,
   removeRoleCatalogEntry,
   saveRoleCatalog,
+  hydrateRoleCatalogDraft,
   updateRoleCatalogEntry
 } from "./roleCatalog";
 
@@ -84,5 +85,30 @@ describe("roleCatalog", () => {
       roleId: newEntry.id
     });
     expect(trimmedCatalog.length).toBe(duplicatedCatalog.length - 1);
+  });
+
+  it("hydrates file-backed role catalog data into the shared schema shape", () => {
+    const hydrated = hydrateRoleCatalogDraft({
+      roles: [
+        {
+          id: "rook-sentinel-1",
+          pieceKind: "rook",
+          name: "sentinel",
+          summary: "Watches the file save",
+          traits: ["steady"],
+          verbs: ["guard"],
+          notes: null,
+          generationSource: "local file",
+          generationModel: null,
+          contentStatus: "authored",
+          reviewStatus: "reviewed",
+          reviewNotes: null,
+          lastReviewedAt: null
+        }
+      ]
+    });
+
+    expect(hydrated[0]?.name).toBe("sentinel");
+    expect(hydrated[0]?.pieceKind).toBe("rook");
   });
 });

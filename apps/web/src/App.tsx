@@ -45,8 +45,13 @@ import {
   listKnownWorkspaceLayoutFiles,
   type WorkspaceLayoutFileReference
 } from "./layoutFiles";
-import { referenceGames } from "./referenceGames";
+import { listReferenceGames, type ReferenceGameLibrary } from "./referenceGames";
 import {
+  connectRoleCatalogDirectory,
+  getConnectedRoleCatalogDirectoryName,
+  loadRoleCatalogFromDirectory,
+  saveRoleCatalogDraftToDirectory,
+  supportsDirectoryWrite as supportsRoleCatalogDirectory,
   connectWorkspaceLayoutDirectory,
   getConnectedWorkspaceLayoutDirectoryName,
   loadWorkspaceLayoutFileFromDirectory,
@@ -187,7 +192,12 @@ function getWorkspacePanelStyle(
 
 export default function App() {
   const [page, setPage] = useState<AppPage>(() => getInitialPage());
-  const [selectedReferenceGameId, setSelectedReferenceGameId] = useState(referenceGames[0]?.id ?? "");
+  const [referenceGamesLibrary, setReferenceGamesLibrary] = useState<ReferenceGameLibrary>(() =>
+    listReferenceGames()
+  );
+  const [selectedReferenceGameId, setSelectedReferenceGameId] = useState(
+    () => listReferenceGames()[0]?.id ?? ""
+  );
   const [pastedPgn, setPastedPgn] = useState("");
   const [settings, setSettings] = useState<AppSettings>(() => listAppSettings());
   const [viewMode, setViewMode] = useState<"board" | "map">(() => listAppSettings().defaultViewMode);
@@ -196,6 +206,10 @@ export default function App() {
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const [hoveredSquare, setHoveredSquare] = useState<Square | null>(null);
   const [roleCatalog, setRoleCatalog] = useState(() => listRoleCatalog());
+  const [roleCatalogDirectoryName, setRoleCatalogDirectoryName] = useState<string | null>(null);
+  const [roleCatalogFileBusyAction, setRoleCatalogFileBusyAction] = useState<string | null>(null);
+  const [roleCatalogFileNotice, setRoleCatalogFileNotice] = useState<LayoutFileNotice | null>(null);
+  const [isRoleCatalogDirectorySupported, setIsRoleCatalogDirectorySupported] = useState(false);
   const [workspaceLayout, setWorkspaceLayout] = useState(() => listWorkspaceLayoutState());
   const [layoutFileName, setLayoutFileName] = useState("match-workspace");
   const [layoutDirectoryName, setLayoutDirectoryName] = useState<string | null>(null);
@@ -256,7 +270,9 @@ export default function App() {
       })
     : [];
   const selectedReferenceGame =
-    referenceGames.find((game) => game.id === selectedReferenceGameId) ?? referenceGames[0] ?? null;
+    referenceGamesLibrary.find((game) => game.id === selectedReferenceGameId) ??
+    referenceGamesLibrary[0] ??
+    null;
   const effectiveLayoutMode = isLayoutMode && !isCompactViewport && page === "match";
   const workspaceRowCount = useMemo(
     () => getWorkspaceLayoutRowCount(workspaceLayout),
@@ -270,6 +286,20 @@ export default function App() {
     () => Array.from({ length: workspaceRowCount * 12 }, (_, index) => index),
     [workspaceRowCount]
   );
+
+  useEffect(() => {
+    if (
+      selectedReferenceGameId &&
+      referenceGamesLibrary.some((game) => game.id === selectedReferenceGameId)
+    ) {
+      return;
+    }
+
+    const nextReferenceGameId = referenceGamesLibrary[0]?.id ?? "";
+    if (nextReferenceGameId !== selectedReferenceGameId) {
+      setSelectedReferenceGameId(nextReferenceGameId);
+    }
+  }, [referenceGamesLibrary, selectedReferenceGameId]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -317,6 +347,14 @@ export default function App() {
     }
 
     let cancelled = false;
+
+    setIsRoleCatalogDirectorySupported(supportsRoleCatalogDirectory());
+
+    void getConnectedRoleCatalogDirectoryName().then((directoryName) => {
+      if (!cancelled) {
+        setRoleCatalogDirectoryName(directoryName);
+      }
+    });
 
     void getConnectedWorkspaceLayoutDirectoryName().then((directoryName) => {
       if (!cancelled) {
@@ -438,20 +476,25 @@ export default function App() {
       });
     };
 
-  const handleLoadReferenceGame = () => {
-    if (!selectedReferenceGame) {
+  const loadChosenReferenceGame = (referenceGameId?: string) => {
+    const nextReferenceGame =
+      (referenceGameId
+        ? referenceGamesLibrary.find((game) => game.id === referenceGameId)
+        : null) ?? selectedReferenceGame;
+
+    if (!nextReferenceGame) {
       return;
     }
 
-    loadReferenceGame(selectedReferenceGame);
+    loadReferenceGame(nextReferenceGame);
   };
 
-  const handleLoadReferenceGameFromLibrary = () => {
-    if (!selectedReferenceGame) {
-      return;
-    }
+  const handleLoadReferenceGame = () => {
+    loadChosenReferenceGame();
+  };
 
-    loadReferenceGame(selectedReferenceGame);
+  const handleLoadReferenceGameFromLibrary = (referenceGameId: string) => {
+    loadChosenReferenceGame(referenceGameId);
     setPage("match");
   };
 
@@ -535,6 +578,66 @@ export default function App() {
 
   const handleRoleCatalogReset = () => {
     setRoleCatalog(resetRoleCatalog());
+  };
+
+  const runRoleCatalogFileAction = async (actionName: string, action: () => Promise<void>) => {
+    setRoleCatalogFileBusyAction(actionName);
+    setRoleCatalogFileNotice(null);
+
+    try {
+      await action();
+    } catch (error) {
+      setRoleCatalogFileNotice({
+        tone: "error",
+        text: error instanceof Error
+          ? error.message
+          : "Something went wrong while working with the role catalog file."
+      });
+    } finally {
+      setRoleCatalogFileBusyAction(null);
+    }
+  };
+
+  const handleConnectRoleCatalogDirectory = () => {
+    void runRoleCatalogFileAction("connect-role-catalog-directory", async () => {
+      const result = await connectRoleCatalogDirectory();
+      setRoleCatalogDirectoryName(result.directoryName);
+      setRoleCatalogFileNotice({
+        tone: "success",
+        text: `Connected role catalog files to ${result.directoryName}.`
+      });
+    });
+  };
+
+  const handleSaveRoleCatalogFile = () => {
+    void runRoleCatalogFileAction("save-role-catalog-file", async () => {
+      const result = await saveRoleCatalogDraftToDirectory(roleCatalog);
+      setRoleCatalogDirectoryName(result.directoryName);
+      setRoleCatalogFileNotice({
+        tone: "success",
+        text: `Saved role catalog to ${result.displayPath}.`
+      });
+    });
+  };
+
+  const handleLoadRoleCatalogFile = () => {
+    void runRoleCatalogFileAction("load-role-catalog-file", async () => {
+      const result = await loadRoleCatalogFromDirectory();
+      if (!result) {
+        setRoleCatalogFileNotice({
+          tone: "neutral",
+          text: "No role catalog file matched that name in the connected folder."
+        });
+        return;
+      }
+
+      setRoleCatalog(saveRoleCatalog(result.roleCatalog));
+      setRoleCatalogDirectoryName(result.directoryName);
+      setRoleCatalogFileNotice({
+        tone: "success",
+        text: `Loaded role catalog from ${result.relativePath}.`
+      });
+    });
   };
 
   const handleTogglePanelCollapse = (panelId: CollapsibleWorkspacePanelId) => {
@@ -808,21 +911,29 @@ export default function App() {
 
       {page === "cities" ? (
         <EdinburghReviewPage />
-      ) : page === "classics" ? (
-        <ClassicGamesLibraryPage
-          referenceGames={referenceGames}
-          selectedReferenceGameId={selectedReferenceGameId}
-          onSelectReferenceGame={setSelectedReferenceGameId}
-          onLoadReferenceGame={handleLoadReferenceGameFromLibrary}
-        />
-      ) : page === "roles" ? (
+        ) : page === "classics" ? (
+          <ClassicGamesLibraryPage
+            referenceGames={referenceGamesLibrary}
+            selectedReferenceGameId={selectedReferenceGameId}
+            onSelectReferenceGame={setSelectedReferenceGameId}
+            onLoadReferenceGame={(game) => handleLoadReferenceGameFromLibrary(game.id)}
+            onReferenceGamesChange={setReferenceGamesLibrary}
+          />
+        ) : page === "roles" ? (
         <RoleCatalogPage
           roleCatalog={roleCatalog}
+          roleCatalogDirectoryName={roleCatalogDirectoryName}
+          isRoleCatalogDirectorySupported={isRoleCatalogDirectorySupported}
+          roleCatalogFileBusyAction={roleCatalogFileBusyAction}
+          roleCatalogFileNotice={roleCatalogFileNotice}
           onRoleCatalogChange={handleRoleCatalogChange}
           onRoleCatalogReset={handleRoleCatalogReset}
           onRoleCatalogAdd={handleRoleCatalogAdd}
           onRoleCatalogDuplicate={handleRoleCatalogDuplicate}
           onRoleCatalogRemove={handleRoleCatalogRemove}
+          onConnectRoleCatalogDirectory={handleConnectRoleCatalogDirectory}
+          onLoadRoleCatalogFromDirectory={handleLoadRoleCatalogFile}
+          onSaveRoleCatalogToDirectory={handleSaveRoleCatalogFile}
         />
       ) : page === "research" ? (
         <CompetitiveLandscapePage />
@@ -1260,12 +1371,12 @@ export default function App() {
                 collapsed={workspaceLayout.collapsed.study}
                 action={renderPanelTools("study")}
                 onToggleCollapse={() => handleTogglePanelCollapse("study")}
-              >
-                <StudyPanel
-                  referenceGames={referenceGames}
-                  selectedReferenceGameId={selectedReferenceGameId}
-                  onSelectReferenceGame={setSelectedReferenceGameId}
-                  onLoadReferenceGame={handleLoadReferenceGame}
+                >
+                  <StudyPanel
+                    referenceGames={referenceGamesLibrary}
+                    selectedReferenceGameId={selectedReferenceGameId}
+                    onSelectReferenceGame={setSelectedReferenceGameId}
+                    onLoadReferenceGame={handleLoadReferenceGame}
                   pastedPgn={pastedPgn}
                   onPgnChange={setPastedPgn}
                   onImportPgn={handleImportPgn}

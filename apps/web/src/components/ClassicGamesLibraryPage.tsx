@@ -1,31 +1,44 @@
 import { useEffect, useMemo, useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { Copy, ExternalLink, FolderOpen, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import { createReplayFromPgn, getBoardSquares } from "@narrative-chess/game-core";
 import type {
   DistrictCell,
   MoveRecord,
   ReferenceGame,
+  ReferenceLink,
   Square
 } from "@narrative-chess/content-schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { Board } from "./Board";
 import { IndexedWorkspace } from "./IndexedWorkspace";
+import {
+  connectClassicGamesDirectory,
+  getConnectedClassicGamesDirectoryName,
+  loadClassicGamesFromDirectory,
+  saveClassicGamesDraftToDirectory,
+  supportsLocalContentDirectory
+} from "../fileSystemAccess";
+import {
+  buildReferenceGameLibraryValidation,
+  createReferenceGameFromSource,
+  createReferenceGameTemplate,
+  getDefaultReferenceGames,
+  listReferenceGames,
+  normalizeReferenceGameLibrary,
+  saveReferenceGames
+} from "../referenceGames";
 
 type ClassicGamesLibraryPageProps = {
   referenceGames: ReferenceGame[];
   selectedReferenceGameId: string;
   onSelectReferenceGame: (value: string) => void;
-  onLoadReferenceGame: () => void;
+  onLoadReferenceGame: (game: ReferenceGame) => void;
+  onReferenceGamesChange: (games: ReferenceGame[]) => void;
 };
 
 type MovePair = {
@@ -36,13 +49,15 @@ type MovePair = {
   blackPlyIndex: number | null;
 };
 
+type FileNotice = {
+  tone: "neutral" | "success" | "error";
+  text: string;
+};
+
 const emptyDistrictsBySquare = new Map<Square, DistrictCell>();
 
 function gameMatchesQuery(game: ReferenceGame, query: string) {
-  if (!query) {
-    return true;
-  }
-
+  if (!query) return true;
   const haystack = [
     game.title,
     game.white,
@@ -55,21 +70,15 @@ function gameMatchesQuery(game: ReferenceGame, query: string) {
   ]
     .join(" ")
     .toLowerCase();
-
   return haystack.includes(query.toLowerCase());
 }
 
 function buildMovePairs(moves: MoveRecord[]): MovePair[] {
   const movePairs: MovePair[] = [];
-
   for (let index = 0; index < moves.length; index += 2) {
     const whiteMove = moves[index];
     const blackMove = moves[index + 1] ?? null;
-
-    if (!whiteMove) {
-      continue;
-    }
-
+    if (!whiteMove) continue;
     movePairs.push({
       moveNumber: Math.floor(index / 2) + 1,
       white: whiteMove.san,
@@ -78,7 +87,6 @@ function buildMovePairs(moves: MoveRecord[]): MovePair[] {
       blackPlyIndex: blackMove ? index + 2 : null
     });
   }
-
   return movePairs;
 }
 
@@ -88,35 +96,84 @@ function buildReferenceLinks(game: ReferenceGame) {
     ...game.detailLinks
   ];
   const seenUrls = new Set<string>();
-
   return links.filter((link) => {
-    if (seenUrls.has(link.url)) {
-      return false;
-    }
-
+    if (seenUrls.has(link.url)) return false;
     seenUrls.add(link.url);
     return true;
   });
+}
+
+function formatLinkList(links: ReferenceLink[]) {
+  return links.map((link) => `${link.label} | ${link.url}`).join("\n");
+}
+
+function parseLinkList(value: string) {
+  return value
+    .split(/\r?\n/g)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [label, ...rest] = line.split("|").map((part) => part.trim());
+      const urlCandidate = rest.join(" | ").trim();
+      if (!label || !urlCandidate) return null;
+      try {
+        return { label, url: new URL(urlCandidate).toString() };
+      } catch {
+        return null;
+      }
+    })
+    .filter((link): link is ReferenceLink => link !== null)
+    .slice(0, 8);
+}
+
+function normalizeSourceUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    return new URL(trimmed).toString();
+  } catch {
+    return null;
+  }
+}
+
+function cloneGame(game: ReferenceGame): ReferenceGame {
+  return {
+    ...game,
+    teachingFocus: game.teachingFocus.slice(),
+    detailLinks: game.detailLinks.map((link) => ({ ...link }))
+  };
+}
+
+function createEditableGames(seedGames: ReferenceGame[]) {
+  const normalized = normalizeReferenceGameLibrary(seedGames);
+  return normalized.length > 0 ? normalized.map(cloneGame) : getDefaultReferenceGames();
 }
 
 export function ClassicGamesLibraryPage({
   referenceGames,
   selectedReferenceGameId,
   onSelectReferenceGame,
-  onLoadReferenceGame
+  onLoadReferenceGame,
+  onReferenceGamesChange
 }: ClassicGamesLibraryPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [games, setGames] = useState<ReferenceGame[]>(() => createEditableGames(listReferenceGames()));
+  const [selectedGameId, setSelectedGameId] = useState(
+    selectedReferenceGameId || referenceGames[0]?.id || ""
+  );
   const [pinnedPlyIndex, setPinnedPlyIndex] = useState(0);
   const [hoveredPlyIndex, setHoveredPlyIndex] = useState<number | null>(null);
+  const [isDirectorySupported, setIsDirectorySupported] = useState(false);
+  const [directoryName, setDirectoryName] = useState<string | null>(null);
+  const [fileNotice, setFileNotice] = useState<FileNotice | null>(null);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+
   const filteredGames = useMemo(
-    () => referenceGames.filter((game) => gameMatchesQuery(game, searchQuery)),
-    [referenceGames, searchQuery]
+    () => games.filter((game) => gameMatchesQuery(game, searchQuery)),
+    [games, searchQuery]
   );
   const selectedGame =
-    referenceGames.find((game) => game.id === selectedReferenceGameId) ??
-    filteredGames[0] ??
-    referenceGames[0] ??
-    null;
+    games.find((game) => game.id === selectedGameId) ?? filteredGames[0] ?? games[0] ?? null;
 
   const selectedGameReplay = useMemo(() => {
     if (!selectedGame) {
@@ -157,11 +214,226 @@ export function ClassicGamesLibraryPage({
     () => (selectedGame ? buildReferenceLinks(selectedGame) : []),
     [selectedGame]
   );
+  const selectedGameLinkValue = selectedGame ? formatLinkList(selectedGame.detailLinks) : "";
+  const validation = useMemo(() => buildReferenceGameLibraryValidation(games), [games]);
+
+  useEffect(() => {
+    setIsDirectorySupported(supportsLocalContentDirectory());
+    getConnectedClassicGamesDirectoryName()
+      .then(setDirectoryName)
+      .catch(() => setDirectoryName(null));
+  }, []);
+
+  useEffect(() => {
+    const nextGames = saveReferenceGames(games);
+    onReferenceGamesChange(nextGames);
+  }, [games, onReferenceGamesChange]);
+
+  useEffect(() => {
+    if (referenceGames.length > 0 && games.length === 0) {
+      setGames(createEditableGames(referenceGames));
+    }
+  }, [games.length, referenceGames]);
+
+  useEffect(() => {
+    if (selectedReferenceGameId && selectedReferenceGameId !== selectedGameId) {
+      const exists = games.some((game) => game.id === selectedReferenceGameId);
+      if (exists) {
+        setSelectedGameId(selectedReferenceGameId);
+      }
+    }
+  }, [games, selectedGameId, selectedReferenceGameId]);
+
+  useEffect(() => {
+    if (selectedGameId && games.some((game) => game.id === selectedGameId)) {
+      onSelectReferenceGame(selectedGameId);
+      return;
+    }
+
+    const nextSelectedId = games[0]?.id ?? "";
+    if (nextSelectedId && nextSelectedId !== selectedGameId) {
+      setSelectedGameId(nextSelectedId);
+      onSelectReferenceGame(nextSelectedId);
+    }
+  }, [games, onSelectReferenceGame, selectedGameId]);
 
   useEffect(() => {
     setPinnedPlyIndex(totalPlyCount);
     setHoveredPlyIndex(null);
   }, [selectedGame?.id, totalPlyCount]);
+
+  function selectGame(gameId: string) {
+    setSelectedGameId(gameId);
+    onSelectReferenceGame(gameId);
+  }
+
+  function updateSelectedGame(updater: (game: ReferenceGame) => ReferenceGame) {
+    if (!selectedGame) {
+      return;
+    }
+
+    setGames((current) => current.map((game) => (game.id === selectedGame.id ? updater(game) : game)));
+  }
+
+  function updateSelectedGameField<K extends keyof ReferenceGame>(field: K, value: ReferenceGame[K]) {
+    updateSelectedGame((game) => ({
+      ...game,
+      [field]: value
+    }));
+  }
+
+  function updateSelectedGameTextList(field: "teachingFocus", value: string) {
+    const nextValues = value
+      .split(/\r?\n|,/g)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+
+    updateSelectedGame((game) => ({
+      ...game,
+      [field]: nextValues
+    }));
+  }
+
+  function updateSelectedGameLinks(value: string) {
+    updateSelectedGame((game) => ({
+      ...game,
+      detailLinks: parseLinkList(value)
+    }));
+  }
+
+  async function handleConnectFolder() {
+    setBusyAction("connect-folder");
+    setFileNotice(null);
+
+    try {
+      const connected = await connectClassicGamesDirectory();
+      setDirectoryName(connected.directoryName);
+      setFileNotice({
+        tone: "success",
+        text: `Connected to ${connected.directoryName}.`
+      });
+    } catch (error) {
+      setFileNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Could not connect a folder for classic games."
+      });
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleSaveToFolder() {
+    setBusyAction("save-folder");
+    setFileNotice(null);
+
+    try {
+      const result = await saveClassicGamesDraftToDirectory(games);
+      setDirectoryName(result.directoryName);
+      setFileNotice({
+        tone: "success",
+        text: `Saved classic games to ${result.relativePath}.`
+      });
+    } catch (error) {
+      setFileNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Could not save classic games to disk."
+      });
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleLoadFromFolder() {
+    setBusyAction("load-folder");
+    setFileNotice(null);
+
+    try {
+      const loaded = await loadClassicGamesFromDirectory();
+      if (!loaded) {
+        setFileNotice({
+          tone: "neutral",
+          text: "No saved classic-games.local.json file was found in the connected folder."
+        });
+        return;
+      }
+
+      setGames(loaded.games.map(cloneGame));
+      const nextSelectedId = loaded.games.find((game) => game.id === selectedGameId)?.id ?? loaded.games[0]?.id ?? "";
+      setSelectedGameId(nextSelectedId);
+      if (nextSelectedId) {
+        onSelectReferenceGame(nextSelectedId);
+      }
+      setFileNotice({
+        tone: "success",
+        text: `Loaded classic games from ${loaded.relativePath}.`
+      });
+    } catch (error) {
+      setFileNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Could not load classic games from disk."
+      });
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  function handleResetLibrary() {
+    const nextGames = getDefaultReferenceGames();
+    const nextSelectedId = nextGames[0]?.id ?? "";
+    setGames(nextGames);
+    setSelectedGameId(nextSelectedId);
+    if (nextSelectedId) {
+      onSelectReferenceGame(nextSelectedId);
+    }
+    setFileNotice({
+      tone: "neutral",
+      text: "Reset the classic games library to the checked-in defaults."
+    });
+  }
+
+  function handleAddGame() {
+    const nextGame = createReferenceGameTemplate(games.length);
+    setGames((current) => [...current, nextGame]);
+    setSelectedGameId(nextGame.id);
+    onSelectReferenceGame(nextGame.id);
+    setFileNotice({
+      tone: "neutral",
+      text: "Added a new editable classic game template."
+    });
+  }
+
+  function handleDuplicateGame() {
+    if (!selectedGame) {
+      return;
+    }
+
+    const nextGame = createReferenceGameFromSource(selectedGame, games.length);
+    setGames((current) => [...current, nextGame]);
+    setSelectedGameId(nextGame.id);
+    onSelectReferenceGame(nextGame.id);
+    setFileNotice({
+      tone: "neutral",
+      text: `Duplicated ${selectedGame.title}.`
+    });
+  }
+
+  function handleDeleteGame() {
+    if (!selectedGame) {
+      return;
+    }
+
+    const nextGames = games.filter((game) => game.id !== selectedGame.id);
+    const nextSelectedId = nextGames[0]?.id ?? "";
+    setGames(nextGames);
+    setSelectedGameId(nextSelectedId);
+    if (nextSelectedId) {
+      onSelectReferenceGame(nextSelectedId);
+    }
+    setFileNotice({
+      tone: "neutral",
+      text: `Deleted ${selectedGame.title}.`
+    });
+  }
 
   return (
     <IndexedWorkspace
@@ -172,26 +444,95 @@ export function ClassicGamesLibraryPage({
           <CardHeader className="gap-4">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">Classic Games</Badge>
-              <Badge variant="outline">{referenceGames.length} seeded studies</Badge>
+              <Badge variant="outline">{games.length} editable games</Badge>
+              <Badge variant="outline">Browser saved</Badge>
+              <Badge variant="outline">
+                {directoryName ? `Folder: ${directoryName}` : "Folder not connected"}
+              </Badge>
             </div>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div className="grid gap-2">
                 <CardTitle className="text-3xl tracking-tight">Historic reference game library</CardTitle>
                 <CardDescription className="max-w-4xl text-sm leading-6">
-                  Review a growing set of classic and modern reference games, scan what made each
-                  one historically significant, and hover the game score to preview the board
-                  state move by move before loading any line onto the study board.
+                  Review, edit, and extend a growing set of classic and modern reference games. The
+                  browser copy saves automatically, and you can connect a repo folder when you want a
+                  named file on disk.
                 </CardDescription>
               </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={handleAddGame}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add game
+                </Button>
+                <Button type="button" variant="outline" onClick={handleDuplicateGame} disabled={!selectedGame}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Duplicate
+                </Button>
+                <Button type="button" variant="outline" onClick={handleResetLibrary}>
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Reset defaults
+                </Button>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={onLoadReferenceGame}
-                disabled={!selectedGame}
+                onClick={handleConnectFolder}
+                disabled={!isDirectorySupported || busyAction === "connect-folder"}
               >
-                Load on study board
+                <FolderOpen className="mr-2 h-4 w-4" />
+                Connect folder
               </Button>
-            </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleLoadFromFolder}
+                disabled={!isDirectorySupported || busyAction === "load-folder"}
+              >
+                Load from folder
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSaveToFolder}
+                disabled={!isDirectorySupported || busyAction === "save-folder"}
+              >
+                <Save className="mr-2 h-4 w-4" />
+                Save to folder
+              </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    if (selectedGame) {
+                      onLoadReferenceGame(selectedGame);
+                    }
+                  }}
+                  disabled={!selectedGame}
+                >
+                  Load on study board
+                </Button>
+              </div>
+              {!validation.isValid ? (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                  {validation.issues[0]}
+                </div>
+              ) : null}
+              {fileNotice ? (
+                <p
+                className={[
+                  "rounded-md border px-3 py-2 text-sm",
+                  fileNotice.tone === "error"
+                    ? "border-destructive/30 bg-destructive/5 text-destructive"
+                    : fileNotice.tone === "success"
+                      ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400"
+                      : "border-border bg-muted/40 text-muted-foreground"
+                ].join(" ")}
+              >
+                {fileNotice.text}
+              </p>
+            ) : null}
           </CardHeader>
         </Card>
       }
@@ -200,9 +541,7 @@ export function ClassicGamesLibraryPage({
           <CardHeader className="gap-4">
             <div className="grid gap-2">
               <CardTitle>Game list</CardTitle>
-              <CardDescription>
-                Search by player, opening, title, or teaching focus.
-              </CardDescription>
+              <CardDescription>Search by player, opening, title, or teaching focus.</CardDescription>
             </div>
             <Input
               name="classic-game-search"
@@ -214,12 +553,12 @@ export function ClassicGamesLibraryPage({
             />
           </CardHeader>
           <CardContent className="page-card__content pt-0">
-            <div className="classic-games-page__list rounded-lg border p-3">
+            <div className="grid gap-2">
               {filteredGames.map((game) => (
                 <button
                   key={game.id}
                   type="button"
-                  onClick={() => onSelectReferenceGame(game.id)}
+                  onClick={() => selectGame(game.id)}
                   className={[
                     "grid gap-2 rounded-lg border px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     game.id === selectedGame?.id
@@ -257,6 +596,7 @@ export function ClassicGamesLibraryPage({
               <CardTitle>{selectedGame?.title ?? "Classic game detail"}</CardTitle>
               {selectedGame ? <Badge variant="outline">{selectedGame.year}</Badge> : null}
               {selectedGame ? <Badge variant="secondary">{selectedGame.result}</Badge> : null}
+              {selectedGame ? <Badge variant="outline">{selectedGame.reviewStatus}</Badge> : null}
             </div>
             <CardDescription>
               {selectedGame
@@ -267,120 +607,236 @@ export function ClassicGamesLibraryPage({
           <CardContent className="page-card__content grid gap-5">
             {selectedGame ? (
               <>
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <div className="rounded-lg border bg-muted/20 p-4">
-                      <p className="text-sm font-medium">Why it matters</p>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        {selectedGame.historicalSignificance}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border bg-muted/20 p-4">
-                      <p className="text-sm font-medium">What it teaches</p>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        {selectedGame.summary}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {selectedGame.teachingFocus.map((focus) => (
-                          <Badge key={focus} variant="outline">
-                            {focus}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  {selectedGameLinks.length ? (
-                    <div className="classic-games-page__links">
-                      {selectedGameLinks.map((link) => (
-                        <Button key={link.url} asChild variant="outline" size="sm">
-                          <a href={link.url} target="_blank" rel="noreferrer">
-                            {link.label}
-                            <ExternalLink data-icon="inline-end" />
-                          </a>
-                        </Button>
-                      ))}
-                    </div>
-                  ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" onClick={handleDuplicateGame}>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Duplicate
+                  </Button>
+                  <Button type="button" variant="outline" onClick={handleDeleteGame}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </Button>
                 </div>
 
                 <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="grid gap-4">
+                    <label className="grid gap-2">
+                      <span className="text-sm font-medium">Title</span>
+                      <Input
+                        value={selectedGame.title}
+                        onChange={(event) => updateSelectedGameField("title", event.currentTarget.value)}
+                      />
+                    </label>
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <label className="grid gap-2">
+                        <span className="text-sm font-medium">White</span>
+                        <Input
+                          value={selectedGame.white}
+                          onChange={(event) => updateSelectedGameField("white", event.currentTarget.value)}
+                        />
+                      </label>
+                      <label className="grid gap-2">
+                        <span className="text-sm font-medium">Black</span>
+                        <Input
+                          value={selectedGame.black}
+                          onChange={(event) => updateSelectedGameField("black", event.currentTarget.value)}
+                        />
+                      </label>
+                    </div>
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <label className="grid gap-2">
+                        <span className="text-sm font-medium">Event</span>
+                        <Input
+                          value={selectedGame.event}
+                          onChange={(event) => updateSelectedGameField("event", event.currentTarget.value)}
+                        />
+                      </label>
+                      <label className="grid gap-2">
+                        <span className="text-sm font-medium">Site</span>
+                        <Input
+                          value={selectedGame.site}
+                          onChange={(event) => updateSelectedGameField("site", event.currentTarget.value)}
+                        />
+                      </label>
+                    </div>
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <label className="grid gap-2">
+                        <span className="text-sm font-medium">Year</span>
+                        <Input
+                          type="number"
+                          value={selectedGame.year}
+                          onChange={(event) =>
+                            updateSelectedGameField(
+                              "year",
+                              Number.parseInt(event.currentTarget.value, 10) || selectedGame.year
+                            )
+                          }
+                        />
+                      </label>
+                      <label className="grid gap-2">
+                        <span className="text-sm font-medium">Opening</span>
+                        <Input
+                          value={selectedGame.opening}
+                          onChange={(event) => updateSelectedGameField("opening", event.currentTarget.value)}
+                        />
+                      </label>
+                    </div>
+                    <label className="grid gap-2">
+                      <span className="text-sm font-medium">Result</span>
+                      <Input
+                        value={selectedGame.result}
+                        onChange={(event) => updateSelectedGameField("result", event.currentTarget.value)}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="grid gap-4">
+                    <div className="rounded-lg border bg-muted/20 p-4">
+                      <p className="text-sm font-medium">Why it matters</p>
+                      <Textarea
+                        className="mt-2 min-h-36"
+                        value={selectedGame.historicalSignificance}
+                        onChange={(event) =>
+                          updateSelectedGameField("historicalSignificance", event.currentTarget.value)
+                        }
+                      />
+                    </div>
+                    <div className="rounded-lg border bg-muted/20 p-4">
+                      <p className="text-sm font-medium">What it teaches</p>
+                      <Textarea
+                        className="mt-2 min-h-36"
+                        value={selectedGame.summary}
+                        onChange={(event) => updateSelectedGameField("summary", event.currentTarget.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <label className="grid gap-2">
+                    <span className="text-sm font-medium">Teaching focus</span>
+                    <Textarea
+                      value={selectedGame.teachingFocus.join("\n")}
+                      onChange={(event) => updateSelectedGameTextList("teachingFocus", event.currentTarget.value)}
+                      placeholder="One focus per line"
+                    />
+                  </label>
+                  <label className="grid gap-2">
+                    <span className="text-sm font-medium">Reference links</span>
+                    <Textarea
+                      value={selectedGameLinkValue}
+                      onChange={(event) => updateSelectedGameLinks(event.currentTarget.value)}
+                      placeholder="Label | https://example.com"
+                    />
+                  </label>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <label className="grid gap-2">
+                    <span className="text-sm font-medium">Source URL</span>
+                    <Input
+                      value={selectedGame.sourceUrl ?? ""}
+                      onChange={(event) =>
+                        updateSelectedGameField("sourceUrl", normalizeSourceUrl(event.currentTarget.value))
+                      }
+                      placeholder="https://..."
+                    />
+                  </label>
+                  <label className="grid gap-2">
+                    <span className="text-sm font-medium">Review note</span>
+                    <Input
+                      value={selectedGame.reviewNotes ?? ""}
+                      onChange={(event) =>
+                        updateSelectedGameField("reviewNotes", event.currentTarget.value.trim() || null)
+                      }
+                      placeholder="Optional note"
+                    />
+                  </label>
+                </div>
+
+                <label className="grid gap-2">
+                  <span className="text-sm font-medium">PGN</span>
+                  <Textarea
+                    className="min-h-60 font-mono text-sm"
+                    value={selectedGame.pgn}
+                    onChange={(event) => updateSelectedGameField("pgn", event.currentTarget.value)}
+                  />
+                </label>
+
+                <div className="grid gap-4 lg:grid-cols-2">
                   <div className="rounded-lg border bg-muted/20 p-4">
-                    <dl className="grid gap-3 text-sm">
+                    <p className="text-sm font-medium">Browser-local metadata</p>
+                    <dl className="mt-3 grid gap-3 text-sm">
                       <div className="grid gap-1">
-                        <dt className="font-medium">Site</dt>
-                        <dd className="text-muted-foreground">{selectedGame.site}</dd>
+                        <dt className="font-medium">Generation source</dt>
+                        <dd className="text-muted-foreground">{selectedGame.generationSource}</dd>
                       </div>
                       <div className="grid gap-1">
-                        <dt className="font-medium">Opening</dt>
-                        <dd className="text-muted-foreground">{selectedGame.opening}</dd>
-                      </div>
-                      <div className="grid gap-1">
-                        <dt className="font-medium">Game score</dt>
+                        <dt className="font-medium">Status</dt>
                         <dd className="text-muted-foreground">
-                          PGN movetext rendered as paired white and black moves.
+                          {selectedGame.contentStatus} / {selectedGame.reviewStatus}
+                        </dd>
+                      </div>
+                      <div className="grid gap-1">
+                        <dt className="font-medium">Last reviewed</dt>
+                        <dd className="text-muted-foreground">
+                          {selectedGame.lastReviewedAt ?? "Not yet reviewed"}
                         </dd>
                       </div>
                     </dl>
                   </div>
                   <div className="rounded-lg border bg-muted/20 p-4">
-                    <p className="text-sm font-medium">Review note</p>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      {selectedGame.reviewNotes ?? "No review note recorded yet."}
-                    </p>
+                    <p className="text-sm font-medium">References</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {selectedGameLinks.length ? (
+                        selectedGameLinks.map((link) => (
+                          <Button key={link.url} asChild variant="outline" size="sm">
+                            <a href={link.url} target="_blank" rel="noreferrer">
+                              {link.label}
+                              <ExternalLink data-icon="inline-end" />
+                            </a>
+                          </Button>
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No references recorded yet.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 <Separator />
 
-                <div className="classic-games-page__analysis-grid">
-                  <div className="classic-games-page__preview">
-                    <div className="classic-games-page__preview-header">
-                      <div className="grid gap-1">
-                        <p className="text-sm font-medium">Board preview</p>
-                        <p className="text-sm text-muted-foreground">
-                          {activeMove
-                            ? `Showing the position after ${activeMove.moveNumber}. ${activeMove.san}`
-                            : "Showing the starting position before move 1."}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline">
-                          {activePlyIndex === 0 ? "Start" : `Ply ${activePlyIndex}`}
-                        </Badge>
-                        <Badge variant="secondary">
-                          {activeSnapshot
-                            ? activeSnapshot.status.turn === "white"
-                              ? "White to move"
-                              : "Black to move"
-                            : "Preview unavailable"}
-                        </Badge>
-                      </div>
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.9fr)]">
+                  <div className="grid gap-4">
+                    <div className="grid gap-1">
+                      <p className="text-sm font-medium">Board preview</p>
+                      <p className="text-sm text-muted-foreground">
+                        {activeMove
+                          ? `Showing the position after ${activeMove.moveNumber}. ${activeMove.san}`
+                          : "Showing the starting position before move 1."}
+                      </p>
                     </div>
-
                     {activeSnapshot ? (
-                      <div className="classic-games-page__preview-board">
-                        <Board
-                          snapshot={activeSnapshot}
-                          cells={activeBoardSquares}
-                          selectedSquare={activeMove?.to ?? null}
-                          hoveredSquare={null}
-                          legalMoves={[]}
-                          viewMode="board"
-                          districtsBySquare={emptyDistrictsBySquare}
-                          showCoordinates={true}
-                          showDistrictLabels={false}
-                          onSquareClick={() => {}}
-                          onSquareHover={() => {}}
-                          onSquareLeave={() => {}}
-                        />
-                      </div>
+                      <Board
+                        snapshot={activeSnapshot}
+                        cells={activeBoardSquares}
+                        selectedSquare={activeMove?.to ?? null}
+                        hoveredSquare={null}
+                        legalMoves={[]}
+                        viewMode="board"
+                        districtsBySquare={emptyDistrictsBySquare}
+                        showCoordinates={true}
+                        showDistrictLabels={false}
+                        onSquareClick={() => {}}
+                        onSquareHover={() => {}}
+                        onSquareLeave={() => {}}
+                      />
                     ) : (
                       <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
                         This game preview could not be rendered from the stored PGN.
                       </div>
                     )}
-
-                    <div className="classic-games-page__preview-footer">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         type="button"
                         variant={pinnedPlyIndex === 0 ? "secondary" : "outline"}
@@ -412,25 +868,20 @@ export function ClassicGamesLibraryPage({
                       </div>
                       <Badge variant="outline">{selectedGameMovePairs.length} full moves</Badge>
                     </div>
-                    <div
-                      className="classic-games-page__score-list rounded-lg border p-3"
-                      onMouseLeave={() => setHoveredPlyIndex(null)}
-                    >
+                    <div onMouseLeave={() => setHoveredPlyIndex(null)} className="grid gap-2">
                       {selectedGameMovePairs.map((movePair) => (
                         <article
                           key={`${selectedGame.id}-${movePair.moveNumber}`}
-                          className="classic-games-page__score-row"
+                          className="grid grid-cols-[auto_1fr_1fr] items-stretch gap-2 rounded-lg border p-3"
                         >
-                          <span className="font-medium text-muted-foreground">
-                            {movePair.moveNumber}.
-                          </span>
+                          <span className="font-medium text-muted-foreground">{movePair.moveNumber}.</span>
                           <button
                             type="button"
                             className={[
-                              "classic-games-page__move-button",
+                              "rounded-md border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                               activePlyIndex === movePair.whitePlyIndex
-                                ? "classic-games-page__move-button--active"
-                                : ""
+                                ? "border-foreground/15 bg-muted"
+                                : "bg-background hover:bg-muted/50"
                             ]
                               .filter(Boolean)
                               .join(" ")}
@@ -439,17 +890,19 @@ export function ClassicGamesLibraryPage({
                             onBlur={() => setHoveredPlyIndex(null)}
                             onClick={() => setPinnedPlyIndex(movePair.whitePlyIndex)}
                           >
-                            <span className="classic-games-page__move-side">White</span>
+                            <span className="block text-xs uppercase tracking-wide text-muted-foreground">
+                              White
+                            </span>
                             <span>{movePair.white}</span>
                           </button>
                           {movePair.blackPlyIndex ? (
                             <button
                               type="button"
                               className={[
-                                "classic-games-page__move-button",
+                                "rounded-md border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                                 activePlyIndex === movePair.blackPlyIndex
-                                  ? "classic-games-page__move-button--active"
-                                  : ""
+                                  ? "border-foreground/15 bg-muted"
+                                  : "bg-background hover:bg-muted/50"
                               ]
                                 .filter(Boolean)
                                 .join(" ")}
@@ -462,11 +915,13 @@ export function ClassicGamesLibraryPage({
                                 }
                               }}
                             >
-                              <span className="classic-games-page__move-side">Black</span>
+                              <span className="block text-xs uppercase tracking-wide text-muted-foreground">
+                                Black
+                              </span>
                               <span>{movePair.black}</span>
                             </button>
                           ) : (
-                            <span className="classic-games-page__move-button classic-games-page__move-button--empty">
+                            <span className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
                               ...
                             </span>
                           )}

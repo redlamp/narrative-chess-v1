@@ -1,4 +1,10 @@
-import { cityBoardSchema, type CityBoard } from "@narrative-chess/content-schema";
+import {
+  cityBoardSchema,
+  referenceGameLibrarySchema,
+  type CityBoard,
+  type ReferenceGame
+} from "@narrative-chess/content-schema";
+import { hydrateRoleCatalogDraft, type RoleCatalog } from "./roleCatalog";
 import { hydrateEdinburghBoardDraft } from "./edinburghReviewState";
 import {
   createWorkspaceLayoutFileName,
@@ -67,9 +73,15 @@ type LocalSaveTarget = {
 
 const localDraftFileName = "edinburgh-board.local.json";
 const canonicalBoardFileName = "edinburgh-board.json";
+const localClassicGamesFileName = "classic-games.local.json";
+const canonicalClassicGamesFileName = "classic-games.json";
+const localRoleCatalogFileName = "role-catalog.local.json";
+const canonicalRoleCatalogFileName = "role-catalog.json";
 const directoryDbName = "narrative-chess-local-content";
 const directoryStoreName = "handles";
 const edinburghDirectoryHandleKey = "edinburgh-review-directory";
+const classicGamesDirectoryHandleKey = "classic-games-directory";
+const roleCatalogDirectoryHandleKey = "role-catalog-directory";
 const workspaceLayoutDirectoryHandleKey = "workspace-layout-directory";
 
 type PersistedHandleRecord = {
@@ -91,6 +103,22 @@ type LoadedWorkspaceLayoutFile = {
   relativePath: string;
   savedAt: string;
   knownFiles: WorkspaceLayoutFileReference[];
+};
+
+type LoadedClassicGamesLibrary = {
+  directoryName: string;
+  fileName: string;
+  games: ReferenceGame[];
+  relativePath: string;
+  sourceKind: "draft" | "canonical";
+};
+
+type LoadedRoleCatalogLibrary = {
+  directoryName: string;
+  fileName: string;
+  relativePath: string;
+  roleCatalog: RoleCatalog;
+  sourceKind: "draft" | "canonical";
 };
 
 function openDirectoryDatabase() {
@@ -236,6 +264,195 @@ async function resolveEdinburghBoardTarget(
     displayPath: localDraftFileName,
     fileExists: Boolean(directFile)
   };
+}
+
+async function resolveClassicGamesTarget(
+  rootDirectoryHandle: LocalDirectoryHandle
+): Promise<LocalSaveTarget> {
+  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
+  if (contentDirectory) {
+    const gamesDirectory = await getOptionalDirectoryHandle(contentDirectory, "games");
+    if (gamesDirectory) {
+      const existingFile = await getOptionalFileHandle(gamesDirectory, localClassicGamesFileName);
+      return {
+        directoryHandle: gamesDirectory,
+        fileName: localClassicGamesFileName,
+        displayPath: `content/games/${localClassicGamesFileName}`,
+        fileExists: Boolean(existingFile)
+      };
+    }
+  }
+
+  const directGamesDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "games");
+  if (directGamesDirectory) {
+    const existingFile = await getOptionalFileHandle(directGamesDirectory, localClassicGamesFileName);
+    return {
+      directoryHandle: directGamesDirectory,
+      fileName: localClassicGamesFileName,
+      displayPath: `games/${localClassicGamesFileName}`,
+      fileExists: Boolean(existingFile)
+    };
+  }
+
+  const directFile = await getOptionalFileHandle(rootDirectoryHandle, localClassicGamesFileName);
+  return {
+    directoryHandle: rootDirectoryHandle,
+    fileName: localClassicGamesFileName,
+    displayPath: localClassicGamesFileName,
+    fileExists: Boolean(directFile)
+  };
+}
+
+async function resolveClassicGamesSearchTargets(
+  rootDirectoryHandle: LocalDirectoryHandle
+) {
+  const targets: LocalSaveTarget[] = [];
+
+  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
+  if (contentDirectory) {
+    const gamesDirectory = await getOptionalDirectoryHandle(contentDirectory, "games");
+    if (gamesDirectory) {
+      const existingFile = await getOptionalFileHandle(gamesDirectory, localClassicGamesFileName);
+      if (existingFile) {
+        targets.push({
+          directoryHandle: gamesDirectory,
+          fileName: localClassicGamesFileName,
+          displayPath: `content/games/${localClassicGamesFileName}`,
+          fileExists: true
+        });
+      }
+    }
+  }
+
+  const directGamesDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "games");
+  if (directGamesDirectory) {
+    const existingFile = await getOptionalFileHandle(directGamesDirectory, localClassicGamesFileName);
+    if (existingFile) {
+      targets.push({
+        directoryHandle: directGamesDirectory,
+        fileName: localClassicGamesFileName,
+        displayPath: `games/${localClassicGamesFileName}`,
+        fileExists: true
+      });
+    }
+  }
+
+  const directFile = await getOptionalFileHandle(rootDirectoryHandle, localClassicGamesFileName);
+  if (directFile) {
+    targets.push({
+      directoryHandle: rootDirectoryHandle,
+      fileName: localClassicGamesFileName,
+      displayPath: localClassicGamesFileName,
+      fileExists: true
+    });
+  }
+
+  return targets;
+}
+
+async function resolveRoleCatalogTarget(
+  rootDirectoryHandle: LocalDirectoryHandle
+): Promise<LocalSaveTarget> {
+  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
+  if (contentDirectory) {
+    const rolesDirectory = await getOrCreateDirectoryHandle(contentDirectory, "roles");
+    const existingFile = await getOptionalFileHandle(rolesDirectory, localRoleCatalogFileName);
+    return {
+      directoryHandle: rolesDirectory,
+      fileName: localRoleCatalogFileName,
+      displayPath: `content/roles/${localRoleCatalogFileName}`,
+      fileExists: Boolean(existingFile)
+    };
+  }
+
+  const directRolesDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "roles");
+  if (directRolesDirectory) {
+    const existingFile = await getOptionalFileHandle(directRolesDirectory, localRoleCatalogFileName);
+    return {
+      directoryHandle: directRolesDirectory,
+      fileName: localRoleCatalogFileName,
+      displayPath: `roles/${localRoleCatalogFileName}`,
+      fileExists: Boolean(existingFile)
+    };
+  }
+
+  if (rootDirectoryHandle.name.toLowerCase() === "roles") {
+    const existingFile = await getOptionalFileHandle(rootDirectoryHandle, localRoleCatalogFileName);
+    return {
+      directoryHandle: rootDirectoryHandle,
+      fileName: localRoleCatalogFileName,
+      displayPath: localRoleCatalogFileName,
+      fileExists: Boolean(existingFile)
+    };
+  }
+
+  const rootRolesDirectory = await getOrCreateDirectoryHandle(rootDirectoryHandle, "roles");
+  const existingFile = await getOptionalFileHandle(rootRolesDirectory, localRoleCatalogFileName);
+  return {
+    directoryHandle: rootRolesDirectory,
+    fileName: localRoleCatalogFileName,
+    displayPath: `roles/${localRoleCatalogFileName}`,
+    fileExists: Boolean(existingFile)
+  };
+}
+
+async function resolveRoleCatalogSearchTargets(
+  rootDirectoryHandle: LocalDirectoryHandle
+) {
+  const targets: LocalSaveTarget[] = [];
+
+  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
+  if (contentDirectory) {
+    const rolesDirectory = await getOptionalDirectoryHandle(contentDirectory, "roles");
+    if (rolesDirectory) {
+      const existingFile = await getOptionalFileHandle(rolesDirectory, localRoleCatalogFileName);
+      if (existingFile) {
+        targets.push({
+          directoryHandle: rolesDirectory,
+          fileName: localRoleCatalogFileName,
+          displayPath: `content/roles/${localRoleCatalogFileName}`,
+          fileExists: true
+        });
+      }
+    }
+  }
+
+  const directRolesDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "roles");
+  if (directRolesDirectory) {
+    const existingFile = await getOptionalFileHandle(directRolesDirectory, localRoleCatalogFileName);
+    if (existingFile) {
+      targets.push({
+        directoryHandle: directRolesDirectory,
+        fileName: localRoleCatalogFileName,
+        displayPath: `roles/${localRoleCatalogFileName}`,
+        fileExists: true
+      });
+    }
+  }
+
+  if (rootDirectoryHandle.name.toLowerCase() === "roles") {
+    const directFile = await getOptionalFileHandle(rootDirectoryHandle, localRoleCatalogFileName);
+    if (directFile) {
+      targets.push({
+        directoryHandle: rootDirectoryHandle,
+        fileName: localRoleCatalogFileName,
+        displayPath: localRoleCatalogFileName,
+        fileExists: true
+      });
+    }
+  }
+
+  const directFile = await getOptionalFileHandle(rootDirectoryHandle, localRoleCatalogFileName);
+  if (directFile) {
+    targets.push({
+      directoryHandle: rootDirectoryHandle,
+      fileName: localRoleCatalogFileName,
+      displayPath: localRoleCatalogFileName,
+      fileExists: true
+    });
+  }
+
+  return targets;
 }
 
 async function resolveWorkspaceLayoutTarget(
@@ -384,6 +601,34 @@ export async function getConnectedEdinburghReviewDirectoryName() {
   return handle?.name ?? null;
 }
 
+export async function connectClassicGamesDirectory() {
+  const handle = await pickLocalDirectory();
+  await writeStoredDirectoryHandle(classicGamesDirectoryHandleKey, handle);
+
+  return {
+    directoryName: handle.name
+  };
+}
+
+export async function getConnectedClassicGamesDirectoryName() {
+  const handle = await readStoredDirectoryHandle(classicGamesDirectoryHandleKey);
+  return handle?.name ?? null;
+}
+
+export async function connectRoleCatalogDirectory() {
+  const handle = await pickLocalDirectory();
+  await writeStoredDirectoryHandle(roleCatalogDirectoryHandleKey, handle);
+
+  return {
+    directoryName: handle.name
+  };
+}
+
+export async function getConnectedRoleCatalogDirectoryName() {
+  const handle = await readStoredDirectoryHandle(roleCatalogDirectoryHandleKey);
+  return handle?.name ?? null;
+}
+
 export async function saveEdinburghBoardToDirectory(
   rootDirectoryHandle: LocalDirectoryHandle,
   board: CityBoard
@@ -437,9 +682,199 @@ export async function saveEdinburghDraftToDirectory(board: CityBoard) {
 
   return {
     directoryName: handle.name,
+    displayPath: result.displayPath,
     relativePath: result.displayPath,
     mode: result.mode
   };
+}
+
+async function requireClassicGamesDirectoryHandle() {
+  const handle = await readStoredDirectoryHandle(classicGamesDirectoryHandleKey);
+
+  if (!handle) {
+    throw new Error("Connect a repo root or content folder before saving classic games to disk.");
+  }
+
+  return handle;
+}
+
+export async function saveClassicGamesDraftToDirectory(games: ReferenceGame[]) {
+  const handle = await requireClassicGamesDirectoryHandle();
+  const parsedGames = referenceGameLibrarySchema.parse(games);
+
+  await ensureReadWritePermission(handle);
+
+  const target = await resolveClassicGamesTarget(handle);
+  await ensureReadWritePermission(target.directoryHandle);
+
+  const fileHandle = await target.directoryHandle.getFileHandle(target.fileName, {
+    create: true
+  });
+  const writable = await fileHandle.createWritable();
+
+  await writable.write(`${JSON.stringify(parsedGames, null, 2)}\n`);
+  await writable.close();
+
+  return {
+    directoryName: handle.name,
+    displayPath: target.displayPath,
+    mode: target.fileExists ? "updated" : "created",
+    relativePath: target.displayPath
+  } as const;
+}
+
+export async function saveClassicGamesToDirectory(
+  rootDirectoryHandle: LocalDirectoryHandle,
+  games: ReferenceGame[]
+) {
+  const parsedGames = referenceGameLibrarySchema.parse(games);
+  await ensureReadWritePermission(rootDirectoryHandle);
+
+  const target = await resolveClassicGamesTarget(rootDirectoryHandle);
+  await ensureReadWritePermission(target.directoryHandle);
+
+  const fileHandle = await target.directoryHandle.getFileHandle(target.fileName, {
+    create: true
+  });
+  const writable = await fileHandle.createWritable();
+
+  await writable.write(`${JSON.stringify(parsedGames, null, 2)}\n`);
+  await writable.close();
+
+  return {
+    displayPath: target.displayPath,
+    directoryName: rootDirectoryHandle.name,
+    mode: target.fileExists ? "updated" : "created"
+  } as const;
+}
+
+export async function loadClassicGamesFromDirectory(): Promise<LoadedClassicGamesLibrary | null> {
+  const handle = await readStoredDirectoryHandle(classicGamesDirectoryHandleKey);
+  if (!handle) {
+    return null;
+  }
+
+  await ensureReadWritePermission(handle);
+
+  const targets = await resolveClassicGamesSearchTargets(handle);
+  for (const target of targets) {
+    const rawGames = await readJsonFile(target.directoryHandle, target.fileName);
+    const parsedGames = referenceGameLibrarySchema.safeParse(rawGames);
+
+    if (!parsedGames.success) {
+      continue;
+    }
+
+    return {
+      directoryName: handle.name,
+      fileName: target.fileName,
+      games: parsedGames.data,
+      relativePath: target.displayPath,
+      sourceKind: target.fileName === localClassicGamesFileName ? "draft" : "canonical"
+    };
+  }
+
+  const canonicalFile = await readJsonFile(handle, canonicalClassicGamesFileName);
+  const parsedCanonical = referenceGameLibrarySchema.safeParse(canonicalFile);
+  if (parsedCanonical.success) {
+    return {
+      directoryName: handle.name,
+      fileName: canonicalClassicGamesFileName,
+      games: parsedCanonical.data,
+      relativePath: canonicalClassicGamesFileName,
+      sourceKind: "canonical"
+    };
+  }
+
+  return null;
+}
+
+async function requireRoleCatalogDirectoryHandle() {
+  const handle = await readStoredDirectoryHandle(roleCatalogDirectoryHandleKey);
+
+  if (!handle) {
+    throw new Error("Connect a repo root or content folder before saving the role catalog to disk.");
+  }
+
+  return handle;
+}
+
+export async function saveRoleCatalogToDirectory(rootDirectoryHandle: LocalDirectoryHandle, roleCatalog: RoleCatalog) {
+  const parsedRoleCatalog = hydrateRoleCatalogDraft({ roles: roleCatalog });
+  await ensureReadWritePermission(rootDirectoryHandle);
+
+  const target = await resolveRoleCatalogTarget(rootDirectoryHandle);
+  await ensureReadWritePermission(target.directoryHandle);
+
+  const fileHandle = await target.directoryHandle.getFileHandle(target.fileName, {
+    create: true
+  });
+  const writable = await fileHandle.createWritable();
+
+  await writable.write(`${JSON.stringify({ roles: parsedRoleCatalog }, null, 2)}\n`);
+  await writable.close();
+
+  return {
+    displayPath: target.displayPath,
+    mode: target.fileExists ? "updated" : "created"
+  } as const;
+}
+
+export async function saveRoleCatalogDraftToDirectory(roleCatalog: RoleCatalog) {
+  const handle = await requireRoleCatalogDirectoryHandle();
+  const result = await saveRoleCatalogToDirectory(handle, roleCatalog);
+
+  return {
+    directoryName: handle.name,
+    displayPath: result.displayPath,
+    relativePath: result.displayPath,
+    mode: result.mode
+  };
+}
+
+export async function loadRoleCatalogFromDirectoryHandle(
+  rootDirectoryHandle: LocalDirectoryHandle
+): Promise<LoadedRoleCatalogLibrary | null> {
+  await ensureReadWritePermission(rootDirectoryHandle);
+
+  const targets = await resolveRoleCatalogSearchTargets(rootDirectoryHandle);
+  for (const target of targets) {
+    const rawRoleCatalog = await readJsonFile(target.directoryHandle, target.fileName);
+    if (!rawRoleCatalog) {
+      continue;
+    }
+
+    return {
+      directoryName: rootDirectoryHandle.name,
+      fileName: target.fileName,
+      roleCatalog: hydrateRoleCatalogDraft(rawRoleCatalog),
+      relativePath: target.displayPath,
+      sourceKind: target.fileName === localRoleCatalogFileName ? "draft" : "canonical"
+    };
+  }
+
+  const canonicalFile = await readJsonFile(rootDirectoryHandle, canonicalRoleCatalogFileName);
+  if (canonicalFile) {
+    return {
+      directoryName: rootDirectoryHandle.name,
+      fileName: canonicalRoleCatalogFileName,
+      roleCatalog: hydrateRoleCatalogDraft(canonicalFile),
+      relativePath: canonicalRoleCatalogFileName,
+      sourceKind: "canonical"
+    };
+  }
+
+  return null;
+}
+
+export async function loadRoleCatalogFromDirectory(): Promise<LoadedRoleCatalogLibrary | null> {
+  const handle = await readStoredDirectoryHandle(roleCatalogDirectoryHandleKey);
+
+  if (!handle) {
+    return null;
+  }
+
+  return loadRoleCatalogFromDirectoryHandle(handle);
 }
 
 export async function loadEdinburghDraftFromDirectory(
