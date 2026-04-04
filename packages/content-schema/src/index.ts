@@ -195,6 +195,12 @@ export const gameSnapshotSchema = z.object({
 });
 export type GameSnapshot = z.infer<typeof gameSnapshotSchema>;
 
+export const referenceLinkSchema = z.object({
+  label: z.string(),
+  url: z.string().url()
+});
+export type ReferenceLink = z.infer<typeof referenceLinkSchema>;
+
 export const referenceGameSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -209,6 +215,7 @@ export const referenceGameSchema = z.object({
   historicalSignificance: z.string(),
   teachingFocus: z.array(z.string()).min(1),
   sourceUrl: z.string().url().nullable(),
+  detailLinks: z.array(referenceLinkSchema).default([]),
   pgn: z.string(),
   generationSource: z.string(),
   generationModel: z.string().nullable(),

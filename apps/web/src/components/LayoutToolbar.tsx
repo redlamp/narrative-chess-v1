@@ -21,6 +21,8 @@ type LayoutToolbarProps = {
   isLayoutDirectorySupported: boolean;
   layoutFileBusyAction: string | null;
   knownLayoutFiles: WorkspaceLayoutFileReference[];
+  onToggleLayoutMode: () => void;
+  onExpandPanels: () => void;
   onColumnFractionChange: (index: 0 | 1 | 2, value: number) => void;
   onRowHeightChange: (value: number) => void;
   onToggleLayoutGrid: (checked: boolean) => void;
@@ -42,6 +44,8 @@ export function LayoutToolbar({
   isLayoutDirectorySupported,
   layoutFileBusyAction,
   knownLayoutFiles,
+  onToggleLayoutMode,
+  onExpandPanels,
   onColumnFractionChange,
   onRowHeightChange,
   onToggleLayoutGrid,
@@ -55,8 +59,21 @@ export function LayoutToolbar({
   return (
     <Card className="layout-toolbar">
       <CardHeader className="layout-toolbar__copy">
-        <p className="panel__eyebrow">Layout Mode</p>
-        <CardTitle>Drag panel headers, resize from the lower-right corner, and snap to the guide grid.</CardTitle>
+        <div className="grid gap-2">
+          <p className="panel__eyebrow">Layout Mode</p>
+          <CardTitle>Drag panel headers, resize from the lower-right corner, and snap to the guide grid.</CardTitle>
+        </div>
+        <div className="layout-toolbar__mode-actions">
+          <Button type="button" variant="secondary" size="sm" onClick={onToggleLayoutMode}>
+            Exit layout mode
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={onExpandPanels}>
+            Expand panels
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={onResetLayout}>
+            Reset layout
+          </Button>
+        </div>
       </CardHeader>
 
       <CardContent className="layout-toolbar__body">
@@ -139,9 +156,6 @@ export function LayoutToolbar({
             </div>
             <Switch checked={showLayoutGrid} onCheckedChange={onToggleLayoutGrid} />
           </label>
-          <Button type="button" variant="outline" size="sm" onClick={onResetLayout}>
-            Reset layout
-          </Button>
         </div>
 
         <div className="layout-toolbar__file-section">

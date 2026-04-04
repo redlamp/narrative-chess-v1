@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
@@ -11,13 +10,8 @@ import type { AppSettings } from "../appSettings";
 
 type AppMenuProps = {
   isOpen: boolean;
-  isLayoutMode: boolean;
   settings: AppSettings;
-  isCompactViewport: boolean;
   onOpenChange: (open: boolean) => void;
-  onToggleLayoutMode: () => void;
-  onResetLayout: () => void;
-  onExpandPanels: () => void;
   onResetSettings: () => void;
   onThemeChange: (value: AppSettings["theme"]) => void;
   onDefaultViewModeChange: (value: "board" | "map") => void;
@@ -60,13 +54,8 @@ function SettingsToggleRow({
 
 export function AppMenu({
   isOpen,
-  isLayoutMode,
   settings,
-  isCompactViewport,
   onOpenChange,
-  onToggleLayoutMode,
-  onResetLayout,
-  onExpandPanels,
   onResetSettings,
   onThemeChange,
   onDefaultViewModeChange,
@@ -75,43 +64,12 @@ export function AppMenu({
   return (
     <DropdownMenu open={isOpen} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" aria-expanded={isOpen}>
-          <Settings2 data-icon="inline-start" />
-          Menu
+        <Button variant="outline" size="icon-sm" aria-expanded={isOpen} aria-label="Open settings">
+          <Settings2 />
         </Button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="app-menu__content">
-        <div className="app-menu__section">
-          <div className="app-menu__section-header">
-            <p className="panel__eyebrow">Workspace</p>
-            <p className="muted">Controls for editing the match layout.</p>
-          </div>
-          <div className="app-menu__actions">
-            <Button
-              variant={isLayoutMode ? "secondary" : "outline"}
-              size="sm"
-              onClick={onToggleLayoutMode}
-              disabled={isCompactViewport}
-            >
-              {isLayoutMode ? "Exit layout mode" : "Enter layout mode"}
-            </Button>
-            <Button variant="outline" size="sm" onClick={onExpandPanels}>
-              Expand all panels
-            </Button>
-            <Button variant="outline" size="sm" onClick={onResetLayout}>
-              Reset layout
-            </Button>
-          </div>
-          {isCompactViewport ? (
-            <p className="muted">
-              Layout editing is available on wider screens so the snap grid stays usable.
-            </p>
-          ) : null}
-        </div>
-
-        <DropdownMenuSeparator />
-
         <div className="app-menu__section">
           <div className="app-menu__section-header">
             <p className="panel__eyebrow">Settings</p>

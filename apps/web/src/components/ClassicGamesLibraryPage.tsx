@@ -1,6 +1,12 @@
-import { useMemo, useState } from "react";
-import { createReplayFromPgn } from "@narrative-chess/game-core";
-import type { MoveRecord, ReferenceGame } from "@narrative-chess/content-schema";
+import { useEffect, useMemo, useState } from "react";
+import { ExternalLink } from "lucide-react";
+import { createReplayFromPgn, getBoardSquares } from "@narrative-chess/game-core";
+import type {
+  DistrictCell,
+  MoveRecord,
+  ReferenceGame,
+  Square
+} from "@narrative-chess/content-schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Board } from "./Board";
 import { IndexedWorkspace } from "./IndexedWorkspace";
 
 type ClassicGamesLibraryPageProps = {
@@ -25,7 +32,11 @@ type MovePair = {
   moveNumber: number;
   white: string;
   black: string | null;
+  whitePlyIndex: number;
+  blackPlyIndex: number | null;
 };
+
+const emptyDistrictsBySquare = new Map<Square, DistrictCell>();
 
 function gameMatchesQuery(game: ReferenceGame, query: string) {
   if (!query) {
@@ -39,7 +50,8 @@ function gameMatchesQuery(game: ReferenceGame, query: string) {
     game.opening,
     game.summary,
     game.historicalSignificance,
-    ...game.teachingFocus
+    ...game.teachingFocus,
+    ...game.detailLinks.map((link) => link.label)
   ]
     .join(" ")
     .toLowerCase();
@@ -61,11 +73,30 @@ function buildMovePairs(moves: MoveRecord[]): MovePair[] {
     movePairs.push({
       moveNumber: Math.floor(index / 2) + 1,
       white: whiteMove.san,
-      black: blackMove?.san ?? null
+      black: blackMove?.san ?? null,
+      whitePlyIndex: index + 1,
+      blackPlyIndex: blackMove ? index + 2 : null
     });
   }
 
   return movePairs;
+}
+
+function buildReferenceLinks(game: ReferenceGame) {
+  const links = [
+    ...(game.sourceUrl ? [{ label: "Match details", url: game.sourceUrl }] : []),
+    ...game.detailLinks
+  ];
+  const seenUrls = new Set<string>();
+
+  return links.filter((link) => {
+    if (seenUrls.has(link.url)) {
+      return false;
+    }
+
+    seenUrls.add(link.url);
+    return true;
+  });
 }
 
 export function ClassicGamesLibraryPage({
@@ -75,6 +106,8 @@ export function ClassicGamesLibraryPage({
   onLoadReferenceGame
 }: ClassicGamesLibraryPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [pinnedPlyIndex, setPinnedPlyIndex] = useState(0);
+  const [hoveredPlyIndex, setHoveredPlyIndex] = useState<number | null>(null);
   const filteredGames = useMemo(
     () => referenceGames.filter((game) => gameMatchesQuery(game, searchQuery)),
     [referenceGames, searchQuery]
@@ -84,19 +117,51 @@ export function ClassicGamesLibraryPage({
     filteredGames[0] ??
     referenceGames[0] ??
     null;
-  const selectedGameMovePairs = useMemo(() => {
+
+  const selectedGameReplay = useMemo(() => {
     if (!selectedGame) {
-      return [];
+      return null;
     }
 
     try {
-      const replay = createReplayFromPgn(selectedGame.pgn);
-      const finalSnapshot = replay.snapshots.at(-1);
-      return buildMovePairs(finalSnapshot?.moveHistory ?? []);
+      return createReplayFromPgn(selectedGame.pgn);
     } catch {
-      return [];
+      return null;
     }
   }, [selectedGame]);
+
+  const selectedGameMovePairs = useMemo(() => {
+    if (!selectedGameReplay) {
+      return [];
+    }
+
+    const finalSnapshot = selectedGameReplay.snapshots.at(-1);
+    return buildMovePairs(finalSnapshot?.moveHistory ?? []);
+  }, [selectedGameReplay]);
+
+  const totalPlyCount = selectedGameReplay ? Math.max(0, selectedGameReplay.snapshots.length - 1) : 0;
+  const activePlyIndex = hoveredPlyIndex ?? pinnedPlyIndex;
+  const activeSnapshot =
+    selectedGameReplay?.snapshots[activePlyIndex] ??
+    selectedGameReplay?.snapshots[0] ??
+    null;
+  const activeMove =
+    activePlyIndex > 0 && activeSnapshot
+      ? activeSnapshot.moveHistory[activePlyIndex - 1] ?? null
+      : null;
+  const activeBoardSquares = useMemo(
+    () => (activeSnapshot ? getBoardSquares(activeSnapshot) : []),
+    [activeSnapshot]
+  );
+  const selectedGameLinks = useMemo(
+    () => (selectedGame ? buildReferenceLinks(selectedGame) : []),
+    [selectedGame]
+  );
+
+  useEffect(() => {
+    setPinnedPlyIndex(totalPlyCount);
+    setHoveredPlyIndex(null);
+  }, [selectedGame?.id, totalPlyCount]);
 
   return (
     <IndexedWorkspace
@@ -113,9 +178,9 @@ export function ClassicGamesLibraryPage({
               <div className="grid gap-2">
                 <CardTitle className="text-3xl tracking-tight">Historic reference game library</CardTitle>
                 <CardDescription className="max-w-4xl text-sm leading-6">
-                  Review a growing set of classic games, scan what made each one historically
-                  significant, and load any line onto the study board for step-through analysis.
-                  The move history in chess is commonly called the game score or PGN movetext.
+                  Review a growing set of classic and modern reference games, scan what made each
+                  one historically significant, and hover the game score to preview the board
+                  state move by move before loading any line onto the study board.
                 </CardDescription>
               </div>
               <Button
@@ -199,27 +264,43 @@ export function ClassicGamesLibraryPage({
                 : "Select a classic game from the left to review its score and notes."}
             </CardDescription>
           </CardHeader>
-          <CardContent className="page-card__content grid gap-4">
+          <CardContent className="page-card__content grid gap-5">
             {selectedGame ? (
               <>
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <div className="rounded-lg border bg-muted/20 p-4">
-                    <p className="text-sm font-medium">Why it matters</p>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      {selectedGame.historicalSignificance}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border bg-muted/20 p-4">
-                    <p className="text-sm font-medium">What it teaches</p>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{selectedGame.summary}</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {selectedGame.teachingFocus.map((focus) => (
-                        <Badge key={focus} variant="outline">
-                          {focus}
-                        </Badge>
-                      ))}
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-lg border bg-muted/20 p-4">
+                      <p className="text-sm font-medium">Why it matters</p>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {selectedGame.historicalSignificance}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border bg-muted/20 p-4">
+                      <p className="text-sm font-medium">What it teaches</p>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {selectedGame.summary}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {selectedGame.teachingFocus.map((focus) => (
+                          <Badge key={focus} variant="outline">
+                            {focus}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
                   </div>
+                  {selectedGameLinks.length ? (
+                    <div className="classic-games-page__links">
+                      {selectedGameLinks.map((link) => (
+                        <Button key={link.url} asChild variant="outline" size="sm">
+                          <a href={link.url} target="_blank" rel="noreferrer">
+                            {link.label}
+                            <ExternalLink data-icon="inline-end" />
+                          </a>
+                        </Button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="grid gap-4 lg:grid-cols-2">
@@ -234,15 +315,9 @@ export function ClassicGamesLibraryPage({
                         <dd className="text-muted-foreground">{selectedGame.opening}</dd>
                       </div>
                       <div className="grid gap-1">
-                        <dt className="font-medium">Source</dt>
+                        <dt className="font-medium">Game score</dt>
                         <dd className="text-muted-foreground">
-                          {selectedGame.sourceUrl ? (
-                            <a href={selectedGame.sourceUrl} target="_blank" rel="noreferrer">
-                              Historical reference
-                            </a>
-                          ) : (
-                            "No source URL"
-                          )}
+                          PGN movetext rendered as paired white and black moves.
                         </dd>
                       </div>
                     </dl>
@@ -257,27 +332,147 @@ export function ClassicGamesLibraryPage({
 
                 <Separator />
 
-                <div className="grid gap-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="grid gap-1">
-                      <p className="text-sm font-medium">Game score</p>
-                      <p className="text-sm text-muted-foreground">
-                        PGN movetext rendered as paired white and black moves.
-                      </p>
+                <div className="classic-games-page__analysis-grid">
+                  <div className="classic-games-page__preview">
+                    <div className="classic-games-page__preview-header">
+                      <div className="grid gap-1">
+                        <p className="text-sm font-medium">Board preview</p>
+                        <p className="text-sm text-muted-foreground">
+                          {activeMove
+                            ? `Showing the position after ${activeMove.moveNumber}. ${activeMove.san}`
+                            : "Showing the starting position before move 1."}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline">
+                          {activePlyIndex === 0 ? "Start" : `Ply ${activePlyIndex}`}
+                        </Badge>
+                        <Badge variant="secondary">
+                          {activeSnapshot
+                            ? activeSnapshot.status.turn === "white"
+                              ? "White to move"
+                              : "Black to move"
+                            : "Preview unavailable"}
+                        </Badge>
+                      </div>
                     </div>
-                    <Badge variant="outline">{selectedGameMovePairs.length} full moves</Badge>
-                  </div>
-                  <div className="classic-games-page__score-list rounded-lg border p-3">
-                    {selectedGameMovePairs.map((movePair) => (
-                      <article
-                        key={`${selectedGame.id}-${movePair.moveNumber}`}
-                        className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-3 rounded-lg border px-3 py-2 text-sm"
+
+                    {activeSnapshot ? (
+                      <div className="classic-games-page__preview-board">
+                        <Board
+                          snapshot={activeSnapshot}
+                          cells={activeBoardSquares}
+                          selectedSquare={activeMove?.to ?? null}
+                          hoveredSquare={null}
+                          legalMoves={[]}
+                          viewMode="board"
+                          districtsBySquare={emptyDistrictsBySquare}
+                          showCoordinates={true}
+                          showDistrictLabels={false}
+                          onSquareClick={() => {}}
+                          onSquareHover={() => {}}
+                          onSquareLeave={() => {}}
+                        />
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                        This game preview could not be rendered from the stored PGN.
+                      </div>
+                    )}
+
+                    <div className="classic-games-page__preview-footer">
+                      <Button
+                        type="button"
+                        variant={pinnedPlyIndex === 0 ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => setPinnedPlyIndex(0)}
+                        disabled={!selectedGameReplay}
                       >
-                        <span className="font-medium text-muted-foreground">{movePair.moveNumber}.</span>
-                        <span>{movePair.white}</span>
-                        <span className="text-muted-foreground">{movePair.black ?? "..."}</span>
-                      </article>
-                    ))}
+                        Start position
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={pinnedPlyIndex === totalPlyCount ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => setPinnedPlyIndex(totalPlyCount)}
+                        disabled={!selectedGameReplay}
+                      >
+                        Final position
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="grid gap-1">
+                        <p className="text-sm font-medium">Game score</p>
+                        <p className="text-sm text-muted-foreground">
+                          Hover or focus a move to update the preview board.
+                        </p>
+                      </div>
+                      <Badge variant="outline">{selectedGameMovePairs.length} full moves</Badge>
+                    </div>
+                    <div
+                      className="classic-games-page__score-list rounded-lg border p-3"
+                      onMouseLeave={() => setHoveredPlyIndex(null)}
+                    >
+                      {selectedGameMovePairs.map((movePair) => (
+                        <article
+                          key={`${selectedGame.id}-${movePair.moveNumber}`}
+                          className="classic-games-page__score-row"
+                        >
+                          <span className="font-medium text-muted-foreground">
+                            {movePair.moveNumber}.
+                          </span>
+                          <button
+                            type="button"
+                            className={[
+                              "classic-games-page__move-button",
+                              activePlyIndex === movePair.whitePlyIndex
+                                ? "classic-games-page__move-button--active"
+                                : ""
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            onMouseEnter={() => setHoveredPlyIndex(movePair.whitePlyIndex)}
+                            onFocus={() => setHoveredPlyIndex(movePair.whitePlyIndex)}
+                            onBlur={() => setHoveredPlyIndex(null)}
+                            onClick={() => setPinnedPlyIndex(movePair.whitePlyIndex)}
+                          >
+                            <span className="classic-games-page__move-side">White</span>
+                            <span>{movePair.white}</span>
+                          </button>
+                          {movePair.blackPlyIndex ? (
+                            <button
+                              type="button"
+                              className={[
+                                "classic-games-page__move-button",
+                                activePlyIndex === movePair.blackPlyIndex
+                                  ? "classic-games-page__move-button--active"
+                                  : ""
+                              ]
+                                .filter(Boolean)
+                                .join(" ")}
+                              onMouseEnter={() => setHoveredPlyIndex(movePair.blackPlyIndex)}
+                              onFocus={() => setHoveredPlyIndex(movePair.blackPlyIndex)}
+                              onBlur={() => setHoveredPlyIndex(null)}
+                              onClick={() => {
+                                if (movePair.blackPlyIndex) {
+                                  setPinnedPlyIndex(movePair.blackPlyIndex);
+                                }
+                              }}
+                            >
+                              <span className="classic-games-page__move-side">Black</span>
+                              <span>{movePair.black}</span>
+                            </button>
+                          ) : (
+                            <span className="classic-games-page__move-button classic-games-page__move-button--empty">
+                              ...
+                            </span>
+                          )}
+                        </article>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </>

@@ -224,7 +224,8 @@ select {
 }
 
 .classic-games-page__score-list {
-  min-height: 32rem;
+  min-height: 0;
+  align-content: start;
 }
 
 .page-card-stack {
@@ -336,6 +337,11 @@ select {
   gap: 6px;
 }
 
+.layout-toolbar__mode-actions {
+  display: grid;
+  gap: 8px;
+}
+
 .layout-toolbar__copy h2 {
   margin: 0;
   font-size: 1rem;
@@ -381,7 +387,7 @@ select {
 }
 
 .layout-toolbar__actions {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
 }
 
@@ -496,6 +502,22 @@ select {
   align-items: start;
 }
 
+.workspace-layout-shell {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+}
+
+.workspace-layout-shell--editing {
+  grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr);
+}
+
+.workspace-layout-shell__sidebar {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+}
+
 .workspace-grid__sizer {
   visibility: hidden;
   pointer-events: none;
@@ -569,6 +591,18 @@ select {
   padding-bottom: 0;
 }
 
+.panel__heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.panel__toggle {
+  margin-top: 1px;
+  flex: 0 0 auto;
+}
+
 .panel__header,
 .board-panel__header,
 .saved-match,
@@ -598,6 +632,97 @@ select {
   gap: 14px;
   min-height: 0;
   flex: 1 1 auto;
+}
+
+.classic-games-page__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.classic-games-page__analysis-grid,
+.classic-games-page__preview,
+.classic-games-page__preview-header,
+.classic-games-page__preview-footer {
+  display: grid;
+  gap: 14px;
+}
+
+.classic-games-page__analysis-grid {
+  align-items: start;
+}
+
+.classic-games-page__preview {
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 0.15rem);
+  background: color-mix(in srgb, var(--muted) 26%, var(--background) 74%);
+  padding: 16px;
+  align-content: start;
+}
+
+.classic-games-page__preview-footer {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.classic-games-page__preview-board {
+  display: grid;
+  place-items: center;
+}
+
+.classic-games-page__preview-board .board-grid {
+  width: min(100%, 420px);
+  max-width: 420px;
+}
+
+.classic-games-page__score-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.classic-games-page__move-button {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 0.05rem);
+  background: var(--background);
+  padding: 10px 12px;
+  text-align: left;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.classic-games-page__move-button:hover,
+.classic-games-page__move-button:focus-visible {
+  background: var(--muted);
+  border-color: color-mix(in srgb, var(--ring) 26%, var(--border) 74%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 22%, transparent 78%);
+  outline: 0;
+}
+
+.classic-games-page__move-button--active {
+  background: color-mix(in srgb, var(--secondary) 82%, var(--background) 18%);
+  border-color: color-mix(in srgb, var(--ring) 32%, var(--border) 68%);
+}
+
+.classic-games-page__move-button--empty {
+  display: grid;
+  place-items: center;
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--muted) 48%, var(--background) 52%);
+}
+
+.classic-games-page__move-side {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
 }
 
 .board-panel {
@@ -1031,6 +1156,10 @@ select {
   .layout-toolbar__file-actions {
     grid-template-columns: 1fr;
   }
+
+  .workspace-layout-shell--editing {
+    grid-template-columns: minmax(17rem, 19rem) minmax(0, 1fr);
+  }
 }
 
 @media (min-width: 1280px) {
@@ -1041,6 +1170,15 @@ select {
 
   .indexed-workspace__columns--three-pane {
     grid-template-columns: 260px 360px minmax(0, 1fr);
+  }
+
+  .classic-games-page__analysis-grid {
+    grid-template-columns: minmax(20rem, 26rem) minmax(0, 1fr);
+  }
+
+  .classic-games-page__preview {
+    position: sticky;
+    top: 24px;
   }
 
   .indexed-workspace__index,
@@ -1080,6 +1218,14 @@ select {
 }
 
 @media (max-width: 1080px) {
+  .workspace-layout-shell--editing {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-layout-shell__sidebar {
+    position: static;
+  }
+
   .workspace-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-rows: auto;
@@ -1117,6 +1263,9 @@ select {
   .workspace-grid,
   .role-page__grid,
   .detail-grid,
+  .classic-games-page__analysis-grid,
+  .classic-games-page__score-row,
+  .classic-games-page__preview-footer,
   .layout-toolbar__controls,
   .layout-toolbar__file-controls,
   .layout-toolbar__file-actions,

@@ -185,10 +185,6 @@ function getWorkspacePanelStyle(
   };
 }
 
-function getPanelToggleLabel(isCollapsed: boolean) {
-  return isCollapsed ? "Expand" : "Collapse";
-}
-
 export default function App() {
   const [page, setPage] = useState<AppPage>(() => getInitialPage());
   const [selectedReferenceGameId, setSelectedReferenceGameId] = useState(referenceGames[0]?.id ?? "");
@@ -681,28 +677,27 @@ export default function App() {
   const renderPanelTools = (
     panelId: CollapsibleWorkspacePanelId,
     extraActions?: ReactNode
-  ) => (
-    <div className="panel-toolbar">
-      {extraActions}
-      {effectiveLayoutMode ? (
-        <button
-          type="button"
-          className="button button--ghost button--icon"
-          onPointerDown={beginPanelEdit(panelId, "move")}
-          aria-label={`Move ${panelTitles[panelId]} panel`}
-        >
-          Move
-        </button>
-      ) : null}
-      <button
-        type="button"
-        className="button button--ghost button--icon"
-        onClick={() => handleTogglePanelCollapse(panelId)}
-      >
-        {getPanelToggleLabel(workspaceLayout.collapsed[panelId])}
-      </button>
-    </div>
-  );
+  ) => {
+    if (!effectiveLayoutMode && !extraActions) {
+      return undefined;
+    }
+
+    return (
+      <div className="panel-toolbar">
+        {extraActions}
+        {effectiveLayoutMode ? (
+          <button
+            type="button"
+            className="button button--ghost button--icon"
+            onPointerDown={beginPanelEdit(panelId, "move")}
+            aria-label={`Move ${panelTitles[panelId]} panel`}
+          >
+            Move
+          </button>
+        ) : null}
+      </div>
+    );
+  };
 
   const renderResizeHandle = (panelId: WorkspacePanelId) =>
     effectiveLayoutMode ? (
@@ -727,6 +722,16 @@ export default function App() {
           <div className="app-header__actions">
             <Button
               type="button"
+              variant={effectiveLayoutMode ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setIsLayoutMode((current) => !current)}
+              disabled={page !== "match" || isCompactViewport}
+            >
+              {effectiveLayoutMode ? "Exit layout" : "Edit layout"}
+            </Button>
+
+            <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={() => handleThemeChange(settings.theme === "dark" ? "light" : "dark")}
@@ -741,13 +746,8 @@ export default function App() {
 
             <AppMenu
               isOpen={isMenuOpen}
-              isLayoutMode={effectiveLayoutMode}
               settings={settings}
-              isCompactViewport={isCompactViewport}
               onOpenChange={setIsMenuOpen}
-              onToggleLayoutMode={() => setIsLayoutMode((current) => !current)}
-              onResetLayout={handleResetLayout}
-              onExpandPanels={handleExpandPanels}
               onResetSettings={handleResetSettings}
               onThemeChange={handleThemeChange}
               onDefaultViewModeChange={handleDefaultViewModeChange}
@@ -827,28 +827,32 @@ export default function App() {
       ) : page === "research" ? (
         <CompetitiveLandscapePage />
       ) : (
-        <>
+        <div className={`workspace-layout-shell ${effectiveLayoutMode ? "workspace-layout-shell--editing" : ""}`}>
           {effectiveLayoutMode ? (
-            <LayoutToolbar
-              columnFractions={workspaceLayout.columnFractions}
-              rowHeight={workspaceLayout.rowHeight}
-              showLayoutGrid={settings.showLayoutGrid}
-              layoutFileName={layoutFileName}
-              layoutDirectoryName={layoutDirectoryName}
-              layoutFileNotice={layoutFileNotice}
-              isLayoutDirectorySupported={isLayoutDirectorySupported}
-              layoutFileBusyAction={layoutFileBusyAction}
-              knownLayoutFiles={knownLayoutFiles}
-              onColumnFractionChange={handleWorkspaceColumnFractionChange}
-              onRowHeightChange={handleWorkspaceRowHeightChange}
-              onToggleLayoutGrid={(checked) => handleBooleanSettingChange("showLayoutGrid", checked)}
-              onLayoutFileNameChange={setLayoutFileName}
-              onConnectLayoutDirectory={handleConnectLayoutDirectory}
-              onLoadLayoutFile={handleLoadLayoutFile}
-              onSaveLayoutFile={handleSaveLayoutFile}
-              onSelectKnownLayoutFile={setLayoutFileName}
-              onResetLayout={handleResetLayout}
-            />
+            <aside className="workspace-layout-shell__sidebar">
+              <LayoutToolbar
+                columnFractions={workspaceLayout.columnFractions}
+                rowHeight={workspaceLayout.rowHeight}
+                showLayoutGrid={settings.showLayoutGrid}
+                layoutFileName={layoutFileName}
+                layoutDirectoryName={layoutDirectoryName}
+                layoutFileNotice={layoutFileNotice}
+                isLayoutDirectorySupported={isLayoutDirectorySupported}
+                layoutFileBusyAction={layoutFileBusyAction}
+                knownLayoutFiles={knownLayoutFiles}
+                onToggleLayoutMode={() => setIsLayoutMode(false)}
+                onExpandPanels={handleExpandPanels}
+                onColumnFractionChange={handleWorkspaceColumnFractionChange}
+                onRowHeightChange={handleWorkspaceRowHeightChange}
+                onToggleLayoutGrid={(checked) => handleBooleanSettingChange("showLayoutGrid", checked)}
+                onLayoutFileNameChange={setLayoutFileName}
+                onConnectLayoutDirectory={handleConnectLayoutDirectory}
+                onLoadLayoutFile={handleLoadLayoutFile}
+                onSaveLayoutFile={handleSaveLayoutFile}
+                onSelectKnownLayoutFile={setLayoutFileName}
+                onResetLayout={handleResetLayout}
+              />
+            </aside>
           ) : null}
 
           <main
@@ -1068,6 +1072,7 @@ export default function App() {
                 eyebrow="Rules"
                 collapsed={workspaceLayout.collapsed.moves}
                 action={renderPanelTools("moves")}
+                onToggleCollapse={() => handleTogglePanelCollapse("moves")}
               >
                 <div className="timeline timeline--match-log">
                   {moveHistory.length ? (
@@ -1141,6 +1146,7 @@ export default function App() {
                     </button>
                   </div>
                 )}
+                onToggleCollapse={() => handleTogglePanelCollapse("narrative")}
               >
                 <div className="timeline timeline--narrative">
                   {narrativeHistory.length ? (
@@ -1196,6 +1202,7 @@ export default function App() {
                     Save current match
                   </button>
                 )}
+                onToggleCollapse={() => handleTogglePanelCollapse("saved")}
               >
                 {savedMatches.length ? (
                   <div className="saved-match-list">
@@ -1252,6 +1259,7 @@ export default function App() {
                 eyebrow="Reference"
                 collapsed={workspaceLayout.collapsed.study}
                 action={renderPanelTools("study")}
+                onToggleCollapse={() => handleTogglePanelCollapse("study")}
               >
                 <StudyPanel
                   referenceGames={referenceGames}
@@ -1291,6 +1299,7 @@ export default function App() {
                 eyebrow="Status"
                 collapsed={workspaceLayout.collapsed.status}
                 action={renderPanelTools("status")}
+                onToggleCollapse={() => handleTogglePanelCollapse("status")}
               >
                 <div className="state-list">
                   <div className="state-list__row">
@@ -1322,7 +1331,7 @@ export default function App() {
               {renderResizeHandle("status")}
             </div>
           </main>
-        </>
+        </div>
       )}
     </div>
   );
