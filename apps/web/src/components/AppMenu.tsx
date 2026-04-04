@@ -19,6 +19,7 @@ type AppMenuProps = {
   onResetLayout: () => void;
   onExpandPanels: () => void;
   onResetSettings: () => void;
+  onThemeChange: (value: AppSettings["theme"]) => void;
   onDefaultViewModeChange: (value: "board" | "map") => void;
   onBooleanSettingChange: (
     key:
@@ -67,6 +68,7 @@ export function AppMenu({
   onResetLayout,
   onExpandPanels,
   onResetSettings,
+  onThemeChange,
   onDefaultViewModeChange,
   onBooleanSettingChange
 }: AppMenuProps) {
@@ -117,6 +119,26 @@ export function AppMenu({
           </div>
 
           <div className="menu-segment">
+            <span className="menu-segment__label">Theme</span>
+            <div className="menu-segment__actions">
+              <Button
+                variant={settings.theme === "light" ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => onThemeChange("light")}
+              >
+                Light
+              </Button>
+              <Button
+                variant={settings.theme === "dark" ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => onThemeChange("dark")}
+              >
+                Dark
+              </Button>
+            </div>
+          </div>
+
+          <div className="menu-segment">
             <span className="menu-segment__label">Default board view</span>
             <div className="menu-segment__actions">
               <Button
@@ -144,8 +166,8 @@ export function AppMenu({
               onChange={(checked) => onBooleanSettingChange("showBoardCoordinates", checked)}
             />
             <SettingsToggleRow
-              label="District labels"
-              description="Show city-district names directly on the tiles."
+              label="Map labels"
+              description="Show district names directly on the tiles in map view."
               checked={settings.showDistrictLabels}
               onChange={(checked) => onBooleanSettingChange("showDistrictLabels", checked)}
             />

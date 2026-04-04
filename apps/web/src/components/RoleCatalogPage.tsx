@@ -4,6 +4,7 @@ import type {
   PieceKind,
   ReviewStatus
 } from "@narrative-chess/content-schema";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -69,10 +70,7 @@ function parseListValue(value: string) {
     .filter(Boolean);
 }
 
-function roleMatchesQuery(
-  role: RoleCatalog[number],
-  query: string
-) {
+function roleMatchesQuery(role: RoleCatalog[number], query: string) {
   if (!query) {
     return true;
   }
@@ -100,28 +98,64 @@ export function RoleCatalogPage({
   onRoleCatalogRemove
 }: RoleCatalogPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedPieceKind, setSelectedPieceKind] = useState<PieceKind>(
+    roleCatalog[0]?.pieceKind ?? "pawn"
+  );
   const [selectedRoleId, setSelectedRoleId] = useState(roleCatalog[0]?.id ?? "");
   const groupedRoles = useMemo(() => groupRoleCatalogByPieceKind(roleCatalog), [roleCatalog]);
-  const filteredRoles = useMemo(
-    () => roleCatalog.filter((role) => roleMatchesQuery(role, searchQuery)),
-    [roleCatalog, searchQuery]
+  const filteredRoleGroups = useMemo(
+    () =>
+      pieceKinds.reduce(
+        (catalog, pieceKind) => {
+          catalog[pieceKind] = groupedRoles[pieceKind].filter((role) =>
+            roleMatchesQuery(role, searchQuery)
+          );
+          return catalog;
+        },
+        {} as Record<PieceKind, RoleCatalog>
+      ),
+    [groupedRoles, searchQuery]
   );
+  const selectedPieceRoles = filteredRoleGroups[selectedPieceKind] ?? [];
   const selectedRole =
+    selectedPieceRoles.find((role) => role.id === selectedRoleId) ??
+    groupedRoles[selectedPieceKind].find((role) => role.id === selectedRoleId) ??
+    selectedPieceRoles[0] ??
+    groupedRoles[selectedPieceKind][0] ??
     findRoleCatalogEntry(roleCatalog, selectedRoleId) ??
-    filteredRoles[0] ??
     roleCatalog[0] ??
     null;
 
   useEffect(() => {
-    if (!selectedRole || selectedRole.id === selectedRoleId) {
+    const pieceHasVisibleRoles = selectedPieceRoles.length > 0;
+    if (pieceHasVisibleRoles || !searchQuery) {
       return;
     }
 
-    setSelectedRoleId(selectedRole.id);
-  }, [selectedRole, selectedRoleId]);
+    const nextPieceKind =
+      pieceKinds.find((pieceKind) => filteredRoleGroups[pieceKind].length > 0) ?? selectedPieceKind;
+    if (nextPieceKind !== selectedPieceKind) {
+      setSelectedPieceKind(nextPieceKind);
+    }
+  }, [filteredRoleGroups, searchQuery, selectedPieceKind, selectedPieceRoles.length]);
+
+  useEffect(() => {
+    if (!selectedRole) {
+      return;
+    }
+
+    if (selectedRole.pieceKind !== selectedPieceKind) {
+      setSelectedPieceKind(selectedRole.pieceKind);
+    }
+
+    if (selectedRole.id !== selectedRoleId) {
+      setSelectedRoleId(selectedRole.id);
+    }
+  }, [selectedPieceKind, selectedRole, selectedRoleId]);
 
   return (
     <IndexedWorkspace
+      className="role-catalog-workspace"
       intro={
         <Card className="page-card page-card--intro">
           <CardHeader className="gap-4">
@@ -133,13 +167,13 @@ export function RoleCatalogPage({
               <div className="grid gap-2">
                 <CardTitle className="text-3xl tracking-tight">Piece roles and job definitions</CardTitle>
                 <CardDescription className="max-w-4xl text-sm leading-6">
-                  Browse the full role list, select one entry, and edit the details that shape the
-                  lightweight character roster. Changes save locally and feed back into new match
-                  rosters immediately.
+                  Start from the chess piece family, drill into a named role, and then edit the
+                  record in detail. Changes save locally and feed back into new match rosters
+                  immediately.
                 </CardDescription>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={() => onRoleCatalogAdd(selectedRole?.pieceKind)}>
+                <Button type="button" variant="outline" onClick={() => onRoleCatalogAdd(selectedPieceKind)}>
                   Add role
                 </Button>
                 <Button type="button" variant="outline" onClick={onRoleCatalogReset}>
@@ -159,11 +193,64 @@ export function RoleCatalogPage({
       }
       index={
         <Card className="page-card page-card--index">
+          <CardHeader className="gap-3">
+            <div className="grid gap-2">
+              <CardTitle>Piece groups</CardTitle>
+              <CardDescription>
+                Choose the chess piece family first, then pick a role from the next column.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="page-card__content pt-0">
+            <div className="grid gap-2">
+              {pieceKinds.map((pieceKind) => {
+                const totalCount = groupedRoles[pieceKind].length;
+                const visibleCount = filteredRoleGroups[pieceKind].length;
+
+                return (
+                  <button
+                    key={pieceKind}
+                    type="button"
+                    onClick={() => setSelectedPieceKind(pieceKind)}
+                    className={cn(
+                      "grid gap-2 rounded-lg border px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      pieceKind === selectedPieceKind
+                        ? "border-foreground/15 bg-muted"
+                        : "bg-background hover:bg-muted/50"
+                    )}
+                    aria-pressed={pieceKind === selectedPieceKind}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span aria-hidden="true" className="text-lg leading-none">
+                          {getPieceGlyph({ side: "white", kind: pieceKind })}
+                        </span>
+                        <span className="font-medium">{getPieceKindLabel(pieceKind)}</span>
+                      </div>
+                      <Badge variant="outline">{totalCount}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {searchQuery
+                        ? `${visibleCount} matching roles`
+                        : `${totalCount} roles available for this piece family.`}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      }
+      secondaryIndex={
+        <Card className="page-card page-card--index page-card--secondary-index">
           <CardHeader className="gap-4">
             <div className="grid gap-2">
-              <CardTitle>Role index</CardTitle>
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle>{getPieceKindLabel(selectedPieceKind)} roles</CardTitle>
+                <Badge variant="outline">{selectedPieceRoles.length} visible</Badge>
+              </div>
               <CardDescription>
-                Search the catalog and jump directly into one role definition.
+                Search within the catalog, then choose a specific role to edit.
               </CardDescription>
             </div>
             <Input
@@ -171,41 +258,39 @@ export function RoleCatalogPage({
               autoComplete="off"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.currentTarget.value)}
-              placeholder="Search by role, piece type, trait, or verb"
+              placeholder="Search by role, trait, verb, or summary"
               aria-label="Search piece roles"
             />
           </CardHeader>
           <CardContent className="page-card__content pt-0">
             <ScrollArea className="page-card__scroll-area rounded-lg border">
               <div className="grid gap-2 p-3">
-                {filteredRoles.map((role) => (
+                {selectedPieceRoles.map((role) => (
                   <button
                     key={role.id}
                     type="button"
-                    onClick={() => setSelectedRoleId(role.id)}
-                    className={[
+                    onClick={() => {
+                      setSelectedPieceKind(role.pieceKind);
+                      setSelectedRoleId(role.id);
+                    }}
+                    className={cn(
                       "grid gap-2 rounded-lg border px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       role.id === selectedRole?.id
                         ? "border-foreground/15 bg-muted"
                         : "bg-background hover:bg-muted/50"
-                    ].join(" ")}
+                    )}
                     aria-pressed={role.id === selectedRole?.id}
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <span aria-hidden="true" className="text-lg leading-none">
-                          {getPieceGlyph({ side: "white", kind: role.pieceKind })}
-                        </span>
-                        <span className="font-medium">{role.name}</span>
-                      </div>
-                      <Badge variant="outline">{getPieceKindLabel(role.pieceKind)}</Badge>
+                      <span className="font-medium">{role.name}</span>
+                      <Badge variant="outline">{role.reviewStatus}</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">{role.summary}</p>
                   </button>
                 ))}
-                {!filteredRoles.length ? (
+                {!selectedPieceRoles.length ? (
                   <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                    No roles matched that search.
+                    No {getPieceKindLabel(selectedPieceKind).toLowerCase()} roles matched that search.
                   </div>
                 ) : null}
               </div>
@@ -444,7 +529,7 @@ export function RoleCatalogPage({
               </>
             ) : (
               <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                Select a role from the left to review it in detail.
+                Select a piece family and role to review it in detail.
               </div>
             )}
           </CardContent>

@@ -1,4 +1,5 @@
 export type AppSettings = {
+  theme: "light" | "dark";
   defaultViewMode: "board" | "map";
   showBoardCoordinates: boolean;
   showDistrictLabels: boolean;
@@ -9,6 +10,7 @@ export type AppSettings = {
 const storageKey = "narrative-chess:app-settings:v1";
 
 const defaultAppSettings: AppSettings = {
+  theme: "light",
   defaultViewMode: "board",
   showBoardCoordinates: true,
   showDistrictLabels: true,
@@ -28,6 +30,10 @@ export function getDefaultAppSettings(): AppSettings {
   return { ...defaultAppSettings };
 }
 
+export function normalizeAppTheme(value: unknown): AppSettings["theme"] {
+  return value === "dark" ? "dark" : "light";
+}
+
 export function normalizeAppSettings(value: unknown): AppSettings {
   if (!value || typeof value !== "object") {
     return getDefaultAppSettings();
@@ -36,6 +42,7 @@ export function normalizeAppSettings(value: unknown): AppSettings {
   const candidate = value as Record<string, unknown>;
 
   return {
+    theme: normalizeAppTheme(candidate.theme),
     defaultViewMode: candidate.defaultViewMode === "map" ? "map" : "board",
     showBoardCoordinates:
       typeof candidate.showBoardCoordinates === "boolean"
@@ -54,6 +61,16 @@ export function normalizeAppSettings(value: unknown): AppSettings {
         ? candidate.showLayoutGrid
         : defaultAppSettings.showLayoutGrid
   };
+}
+
+export function applyAppTheme(theme: AppSettings["theme"]) {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const normalizedTheme = normalizeAppTheme(theme);
+  document.documentElement.classList.toggle("dark", normalizedTheme === "dark");
+  document.documentElement.style.colorScheme = normalizedTheme;
 }
 
 export function listAppSettings(): AppSettings {
