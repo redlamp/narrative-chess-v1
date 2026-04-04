@@ -1,8 +1,8 @@
 import { startTransition, useState } from "react";
 import {
   applyMove,
-  createReplayFromPgn,
   createInitialGameSnapshot,
+  createReplayFromPgn,
   getBoardSquares,
   getPieceAtSquare,
   listLegalMoves,
@@ -10,8 +10,8 @@ import {
 } from "@narrative-chess/game-core";
 import {
   createInitialCharacterRoster,
-  createNarrativeHistory,
-  createNarrativeEvent
+  createNarrativeEvent,
+  createNarrativeHistory
 } from "@narrative-chess/narrative-engine";
 import type {
   CharacterSummary,
@@ -19,11 +19,9 @@ import type {
   MoveRecord,
   PieceState,
   ReferenceGame,
-  StartingPieceBlueprint,
   Square
 } from "@narrative-chess/content-schema";
-import { startingPieceBlueprints } from "@narrative-chess/content-schema";
-import { edinburghDistrictsBySquare } from "../edinburghBoard";
+import { edinburghBoard } from "../edinburghBoard";
 
 function createFallbackCharacter(piece: PieceState): CharacterSummary {
   const sideLabel = piece.side === "white" ? "North" : "South";
@@ -57,32 +55,11 @@ function isPromotionMove(piece: PieceState | null, to: Square): boolean {
   return (piece.side === "white" && to.endsWith("8")) || (piece.side === "black" && to.endsWith("1"));
 }
 
-function applyDistrictOrigins(
-  characters: Record<string, CharacterSummary>,
-  blueprints: StartingPieceBlueprint[]
-) {
-  const nextCharacters = { ...characters };
-
-  for (const blueprint of blueprints) {
-    const district = edinburghDistrictsBySquare.get(blueprint.square);
-    if (!district || !nextCharacters[blueprint.pieceId]) {
-      continue;
-    }
-
-    nextCharacters[blueprint.pieceId] = {
-      ...nextCharacters[blueprint.pieceId],
-      districtOfOrigin: district.name
-    };
-  }
-
-  return nextCharacters;
-}
-
 function createSnapshot(): GameSnapshot {
-  const characters = applyDistrictOrigins(
-    createInitialCharacterRoster(),
-    startingPieceBlueprints
-  );
+  const characters = createInitialCharacterRoster({
+    cityBoard: edinburghBoard
+  });
+
   return createInitialGameSnapshot(characters);
 }
 
@@ -127,7 +104,8 @@ export function useChessMatch() {
   const boardSquares = getBoardSquares(snapshot);
   const canUndo = !isStudyMode && snapshot.moveHistory.length > 0;
   const canStepBackward = isStudyMode && studyIndex > 0;
-  const canStepForward = isStudyMode && studyReplay !== null && studyIndex < studyReplay.snapshots.length - 1;
+  const canStepForward =
+    isStudyMode && studyReplay !== null && studyIndex < studyReplay.snapshots.length - 1;
   const lastMove = snapshot.moveHistory.at(-1) ?? null;
 
   const loadStudyReplay = (input: {
@@ -138,7 +116,9 @@ export function useChessMatch() {
     sourceUrl: string | null;
   }) => {
     try {
-      const characters = createInitialCharacterRoster();
+      const characters = createInitialCharacterRoster({
+        cityBoard: edinburghBoard
+      });
       const replay = createReplayFromPgn(input.pgn, characters);
       const snapshots = withNarrativeHistory(replay.snapshots);
 
@@ -184,7 +164,6 @@ export function useChessMatch() {
     const targetPiece = appliedMove.move.capturedPieceId
       ? snapshot.characters[appliedMove.move.capturedPieceId] ?? null
       : null;
-
     const event = createNarrativeEvent({
       move: appliedMove.move as MoveRecord,
       actor,
@@ -240,7 +219,7 @@ export function useChessMatch() {
     return loadStudyReplay({
       pgn: game.pgn,
       title: game.title,
-      subtitle: `${game.white} vs ${game.black} · ${game.year}`,
+      subtitle: `${game.white} vs ${game.black} | ${game.year}`,
       summary: game.summary,
       sourceUrl: game.sourceUrl
     });

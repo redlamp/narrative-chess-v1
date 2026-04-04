@@ -268,6 +268,14 @@ export default function App() {
                     <dt>Square</dt>
                     <dd>{selectedSquare ?? "None"}</dd>
                   </div>
+                  <div>
+                    <dt>Source</dt>
+                    <dd>{selectedCharacter.generationSource}</dd>
+                  </div>
+                  <div>
+                    <dt>Review</dt>
+                    <dd>{selectedCharacter.reviewStatus}</dd>
+                  </div>
                 </dl>
                 <div className="chip-row">
                   {selectedCharacter.traits.map((trait) => (
