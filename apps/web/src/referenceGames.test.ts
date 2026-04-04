@@ -63,4 +63,18 @@ describe("referenceGames", () => {
     expect(listReferenceGames()[0]?.title).toBe("Edited title");
     expect(resetReferenceGames()[0]?.title).toBe(getDefaultReferenceGames()[0]?.title);
   });
+
+  it("falls back to the legacy classic-games storage key", () => {
+    window.localStorage.setItem(
+      "narrative-chess:classic-games",
+      JSON.stringify([
+        {
+          ...getDefaultReferenceGames()[0],
+          title: "Legacy classic game"
+        }
+      ])
+    );
+
+    expect(listReferenceGames()[0]?.title).toBe("Legacy classic game");
+  });
 });

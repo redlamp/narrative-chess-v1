@@ -22,7 +22,7 @@ Gaps that still matter:
 ## Active Queue
 
 ### 1. Shared Content Persistence
-Status: in progress
+Status: completed (first pass)
 
 Goal:
 - move Roles and Classics onto the same repo-local draft workflow used by Cities
@@ -32,12 +32,15 @@ Deliverables:
 - repo-local draft files for roles and classic games under `content/`
 - validation feedback before writing files
 
+Result:
+- Roles and Classics now both have repo-local draft workflows, with Classics synced back into the app shell instead of remaining a disconnected local editor.
+
 Why first:
 - this removes the highest-risk content loss path
 - it makes future curation visible in the repo instead of hiding it in `localStorage`
 
 ### 2. Classics As A Real Editor
-Status: queued
+Status: completed (first pass)
 
 Goal:
 - turn the Classics page into a growing editable library, not just a viewer
@@ -47,8 +50,11 @@ Deliverables:
 - edit metadata, significance notes, links, and PGN
 - keep board preview and study-mode loading wired to the edited draft
 
+Result:
+- The Classics page now behaves like an editable study library and the selected edited game can be loaded into study mode directly.
+
 ### 3. Shared Index + Detail Editor Pattern
-Status: queued
+Status: in progress
 
 Goal:
 - align Cities, Roles, and Classics around one reusable editing shell

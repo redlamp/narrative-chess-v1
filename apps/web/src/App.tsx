@@ -45,7 +45,7 @@ import {
   listKnownWorkspaceLayoutFiles,
   type WorkspaceLayoutFileReference
 } from "./layoutFiles";
-import { referenceGames } from "./referenceGames";
+import { listReferenceGames, type ReferenceGameLibrary } from "./referenceGames";
 import {
   connectRoleCatalogDirectory,
   getConnectedRoleCatalogDirectoryName,
@@ -192,7 +192,12 @@ function getWorkspacePanelStyle(
 
 export default function App() {
   const [page, setPage] = useState<AppPage>(() => getInitialPage());
-  const [selectedReferenceGameId, setSelectedReferenceGameId] = useState(referenceGames[0]?.id ?? "");
+  const [referenceGamesLibrary, setReferenceGamesLibrary] = useState<ReferenceGameLibrary>(() =>
+    listReferenceGames()
+  );
+  const [selectedReferenceGameId, setSelectedReferenceGameId] = useState(
+    () => listReferenceGames()[0]?.id ?? ""
+  );
   const [pastedPgn, setPastedPgn] = useState("");
   const [settings, setSettings] = useState<AppSettings>(() => listAppSettings());
   const [viewMode, setViewMode] = useState<"board" | "map">(() => listAppSettings().defaultViewMode);
@@ -265,7 +270,9 @@ export default function App() {
       })
     : [];
   const selectedReferenceGame =
-    referenceGames.find((game) => game.id === selectedReferenceGameId) ?? referenceGames[0] ?? null;
+    referenceGamesLibrary.find((game) => game.id === selectedReferenceGameId) ??
+    referenceGamesLibrary[0] ??
+    null;
   const effectiveLayoutMode = isLayoutMode && !isCompactViewport && page === "match";
   const workspaceRowCount = useMemo(
     () => getWorkspaceLayoutRowCount(workspaceLayout),
@@ -279,6 +286,20 @@ export default function App() {
     () => Array.from({ length: workspaceRowCount * 12 }, (_, index) => index),
     [workspaceRowCount]
   );
+
+  useEffect(() => {
+    if (
+      selectedReferenceGameId &&
+      referenceGamesLibrary.some((game) => game.id === selectedReferenceGameId)
+    ) {
+      return;
+    }
+
+    const nextReferenceGameId = referenceGamesLibrary[0]?.id ?? "";
+    if (nextReferenceGameId !== selectedReferenceGameId) {
+      setSelectedReferenceGameId(nextReferenceGameId);
+    }
+  }, [referenceGamesLibrary, selectedReferenceGameId]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -455,20 +476,25 @@ export default function App() {
       });
     };
 
-  const handleLoadReferenceGame = () => {
-    if (!selectedReferenceGame) {
+  const loadChosenReferenceGame = (referenceGameId?: string) => {
+    const nextReferenceGame =
+      (referenceGameId
+        ? referenceGamesLibrary.find((game) => game.id === referenceGameId)
+        : null) ?? selectedReferenceGame;
+
+    if (!nextReferenceGame) {
       return;
     }
 
-    loadReferenceGame(selectedReferenceGame);
+    loadReferenceGame(nextReferenceGame);
   };
 
-  const handleLoadReferenceGameFromLibrary = () => {
-    if (!selectedReferenceGame) {
-      return;
-    }
+  const handleLoadReferenceGame = () => {
+    loadChosenReferenceGame();
+  };
 
-    loadReferenceGame(selectedReferenceGame);
+  const handleLoadReferenceGameFromLibrary = (referenceGameId: string) => {
+    loadChosenReferenceGame(referenceGameId);
     setPage("match");
   };
 
@@ -885,14 +911,15 @@ export default function App() {
 
       {page === "cities" ? (
         <EdinburghReviewPage />
-      ) : page === "classics" ? (
-        <ClassicGamesLibraryPage
-          referenceGames={referenceGames}
-          selectedReferenceGameId={selectedReferenceGameId}
-          onSelectReferenceGame={setSelectedReferenceGameId}
-          onLoadReferenceGame={handleLoadReferenceGameFromLibrary}
-        />
-      ) : page === "roles" ? (
+        ) : page === "classics" ? (
+          <ClassicGamesLibraryPage
+            referenceGames={referenceGamesLibrary}
+            selectedReferenceGameId={selectedReferenceGameId}
+            onSelectReferenceGame={setSelectedReferenceGameId}
+            onLoadReferenceGame={(game) => handleLoadReferenceGameFromLibrary(game.id)}
+            onReferenceGamesChange={setReferenceGamesLibrary}
+          />
+        ) : page === "roles" ? (
         <RoleCatalogPage
           roleCatalog={roleCatalog}
           roleCatalogDirectoryName={roleCatalogDirectoryName}
@@ -1344,12 +1371,12 @@ export default function App() {
                 collapsed={workspaceLayout.collapsed.study}
                 action={renderPanelTools("study")}
                 onToggleCollapse={() => handleTogglePanelCollapse("study")}
-              >
-                <StudyPanel
-                  referenceGames={referenceGames}
-                  selectedReferenceGameId={selectedReferenceGameId}
-                  onSelectReferenceGame={setSelectedReferenceGameId}
-                  onLoadReferenceGame={handleLoadReferenceGame}
+                >
+                  <StudyPanel
+                    referenceGames={referenceGamesLibrary}
+                    selectedReferenceGameId={selectedReferenceGameId}
+                    onSelectReferenceGame={setSelectedReferenceGameId}
+                    onLoadReferenceGame={handleLoadReferenceGame}
                   pastedPgn={pastedPgn}
                   onPgnChange={setPastedPgn}
                   onImportPgn={handleImportPgn}

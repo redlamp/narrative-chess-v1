@@ -331,14 +331,14 @@ export function updateReferenceGame(input: {
 
     const nextGame: ReferenceGame = cloneReferenceGame(game);
     if (input.field === "teachingFocus" && Array.isArray(input.value)) {
-      nextGame.teachingFocus = input.value
+      nextGame.teachingFocus = (input.value as string[])
         .map((entry) => entry.trim())
         .filter(Boolean);
       return normalizeReferenceGame(nextGame, index);
     }
 
     if (input.field === "detailLinks" && Array.isArray(input.value)) {
-      nextGame.detailLinks = input.value
+      nextGame.detailLinks = (input.value as ReferenceLink[])
         .map((link) => ({
           label: link.label.trim(),
           url: link.url.trim()
