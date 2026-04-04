@@ -1,102 +1,112 @@
 # Narrative Chess
 
-Narrative Chess is a web-based chess game with a generative narrative layer.
+Narrative Chess is a web-based chess game with a lightweight generative narrative layer.
 
-The board is a city. The pieces are people. Each move contributes to an emergent social narrative built on top of playable chess.
+The board is still chess first. The narrative system is there to add flavor, not to obscure legality, board state, or turn flow.
 
-## Current Project Status
+## Current Status
 
-This repository is being set up around an early prototype focused on:
-- legal local chess
-- clear board UI
-- minimal narrative event logging
-- a lightweight path toward city-based boards
+The repository is now bootstrapped into an early Milestone 1 vertical slice.
 
-The first major target is a clean local chess vertical slice, followed by an Edinburgh-based board prototype.
+What is working today:
+- local playable chess in a 2D board UI
+- legal move validation via `chess.js`
+- move history
+- undo
+- check, checkmate, and stalemate status in the UI
+- deterministic placeholder character roster
+- minimal narrative event log for moves
 
-## Product Direction
+What is intentionally not in scope yet:
+- multiplayer
+- 3D board rendering
+- real city mapping
+- advanced AI strength
+- authored Edinburgh data
 
-High-level product planning lives in:
-- `docs/prd.md`
+The next major product step after this slice is Milestone 2: mapping one city, likely Edinburgh, onto the board without sacrificing chess clarity.
 
-Repo operating rules for coding agents live in:
-- `AGENTS.md`
-
-## Planned Repository Structure
+## Repository Structure
 
 ```text
 apps/
-  web/
+  web/                 React + Vite client for the playable local prototype
 packages/
-  game-core/
-  content-schema/
-  narrative-engine/
+  content-schema/      Shared TypeScript and Zod contracts
+  game-core/           Chess rules integration, move helpers, and board state
+  narrative-engine/    Character roster and move-to-event generation
 content/
-  cities/
-  templates/
+  templates/           Editable narrative template data
 docs/
-AGENTS.md
+  prd.md               Working product requirements document
+AGENTS.md              Project guidance for coding agents
 README.md
 ```
 
-## Early Milestones
+## Tech Stack
 
-### Milestone 0 — Project Foundation
-- repo structure
-- TypeScript setup
-- linting, formatting, and tests
-- baseline React app
-- shared schemas
-- basic docs
+Current implementation:
+- React + TypeScript
+- Vite
+- `chess.js`
+- Zod
+- Vitest
+- ESLint
+- pnpm workspace
 
-### Milestone 1 — Core Chess Vertical Slice
-- legal chess rules
-- move history
-- undo
-- board UI
-- minimal narrative event log
-- optional low-skill legal-move opponent
+Planned later, not yet implemented:
+- shadcn/ui or another UI system as needed
+- saved games and backend services
+- city data pipeline
+- richer map-mode and 3D presentation
 
-### Milestone 2 — City Board Prototype
-- Edinburgh board mapping
-- district metadata
-- board and city data alignment
-- simple map-mode support
+## Local Development
 
-## Default Tech Direction
+This repo uses the pnpm workspace defined in [`package.json`](/C:/workspace/narrative-chess/package.json) and [`pnpm-workspace.yaml`](/C:/workspace/narrative-chess/pnpm-workspace.yaml).
 
-- frontend: React + TypeScript
-- UI: shadcn/ui
-- game logic: chess.js or equivalent
-- state: Zustand or Redux Toolkit
-- schemas: TypeScript + Zod
-- backend later: Supabase or PostgreSQL-backed service
-- 3D later: Three.js, only after the 2D prototype proves out
-
-## Development Principles
-
-- chess clarity comes first
-- narrative should enrich, not obscure, gameplay
-- content should stay editable and reviewable
-- avoid overbuilding systems before the current milestone is proven
-- prefer small, testable contracts between packages
-
-## Suggested Local Commands
-
-These are the intended commands once the repo is bootstrapped:
+If `pnpm` is not already installed globally, use Corepack:
 
 ```bash
-pnpm install
-pnpm dev
-pnpm build
-pnpm test
-pnpm lint
-pnpm typecheck
+corepack pnpm install
+corepack pnpm dev
 ```
 
-Update this section once the actual tooling is in place.
+Useful commands:
 
-## Definition of Done for the First Playable Slice
+```bash
+corepack pnpm install
+corepack pnpm dev
+corepack pnpm build
+corepack pnpm test
+corepack pnpm lint
+corepack pnpm typecheck
+```
+
+The `dev` and `build` scripts target `apps/web`.
+
+## Milestone Guidance
+
+The project direction is:
+1. chess clarity and correctness
+2. lightweight narrative value
+3. city-context presentation
+4. richer map or 3D presentation later
+
+Milestone 1 focus:
+- legal local chess
+- move history
+- undo
+- clear board UI
+- minimal narrative hooks
+
+Milestone 1 non-goals:
+- multiplayer
+- 3D board
+- authored city research
+- advanced AI
+- comic or vignette systems
+
+## Definition Of Done For The First Playable Slice
 
 The first playable slice is considered successful when:
 - a player can complete a full local game
@@ -104,24 +114,19 @@ The first playable slice is considered successful when:
 - check, checkmate, and stalemate are surfaced in the UI
 - undo restores the exact prior game state
 - a minimal narrative event is generated for every move
-- if the AI opponent is included, it completes legal turns reliably at a hobbyist-friendly level
 
-## Notes for Codex / Claude Code
+## Working Notes
 
-Before starting work:
-1. read `AGENTS.md`
-2. read `docs/prd.md`
+Before making substantive changes:
+1. read [`AGENTS.md`](/C:/workspace/narrative-chess/AGENTS.md)
+2. read [`docs/prd.md`](/C:/workspace/narrative-chess/docs/prd.md)
 3. confirm the current milestone
 4. work within a bounded package or folder
 5. call out schema changes explicitly
 
-## Near-Term Setup Tasks
-
-- create the monorepo structure
-- bootstrap the React app
-- add shared schema package
-- add chess rules integration
-- add initial board UI
-- add docs/prd.md from the working PRD
-- copy the repo-ready `AGENTS.md` into the repo root
-
+Current package boundaries:
+- `apps/web` owns UI, route-level composition, and panels
+- `packages/game-core` owns chess legality and move/state helpers
+- `packages/content-schema` owns shared types and validation schemas
+- `packages/narrative-engine` owns event generation and lightweight narrative hooks
+- `content/` owns editable structured content
