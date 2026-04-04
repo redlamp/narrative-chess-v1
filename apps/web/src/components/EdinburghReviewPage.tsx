@@ -11,7 +11,6 @@ import {
   CardTitle
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { edinburghBoard } from "../edinburghBoard";
@@ -32,6 +31,14 @@ import {
 type SaveNotice = {
   tone: "neutral" | "success" | "error";
   text: string;
+};
+
+type TrackedCity = {
+  id: string;
+  name: string;
+  country: string;
+  summary: string;
+  districtCount: number;
 };
 
 const cityOverviewId = "city-overview";
@@ -106,6 +113,7 @@ function districtMatchesSearch(district: DistrictCell, query: string) {
 
 export function EdinburghReviewPage() {
   const [draft, setDraft] = useState<CityBoard>(() => listEdinburghBoardDraft());
+  const [selectedCityId, setSelectedCityId] = useState(() => edinburghBoard.id);
   const [selectedRecordId, setSelectedRecordId] = useState(cityOverviewId);
   const [searchQuery, setSearchQuery] = useState("");
   const [directoryName, setDirectoryName] = useState<string | null>(null);
@@ -113,6 +121,20 @@ export function EdinburghReviewPage() {
   const [saveNotice, setSaveNotice] = useState<SaveNotice | null>(null);
   const [isDirectorySupported, setIsDirectorySupported] = useState(false);
   const validation = useMemo(() => buildEdinburghBoardValidation(draft), [draft]);
+  const trackedCities = useMemo<TrackedCity[]>(
+    () => [
+      {
+        id: draft.id,
+        name: draft.name,
+        country: draft.country,
+        summary: draft.summary,
+        districtCount: draft.districts.length
+      }
+    ],
+    [draft]
+  );
+  const selectedCity =
+    trackedCities.find((city) => city.id === selectedCityId) ?? trackedCities[0] ?? null;
 
   useEffect(() => {
     setIsDirectorySupported(supportsLocalContentDirectory());
@@ -135,6 +157,14 @@ export function EdinburghReviewPage() {
       saveEdinburghBoardDraft(draft);
     }
   }, [draft, validation.isValid]);
+
+  useEffect(() => {
+    if (!selectedCity || selectedCity.id === selectedCityId) {
+      return;
+    }
+
+    setSelectedCityId(selectedCity.id);
+  }, [selectedCity, selectedCityId]);
 
   useEffect(() => {
     if (
@@ -196,31 +226,31 @@ export function EdinburghReviewPage() {
   };
 
   return (
-    <main className="indexed-workspace">
+    <main className="indexed-workspace indexed-workspace--page-scroll cities-workspace">
       <Card className="page-card page-card--intro">
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">Edinburgh Review</Badge>
+            <Badge variant="secondary">Cities</Badge>
+            <Badge variant="outline">{trackedCities.length} tracked city</Badge>
             <Badge variant="outline">64 mapped districts</Badge>
             <Badge variant={validation.isValid ? "outline" : "destructive"}>
               {validation.isValid ? "Schema valid" : `${validation.issues.length} validation issues`}
             </Badge>
             {directoryName ? <Badge variant="outline">Connected: {directoryName}</Badge> : null}
           </div>
-          <CardTitle className="text-3xl tracking-tight">Edinburgh city and district workspace</CardTitle>
+          <CardTitle className="text-3xl tracking-tight">City and district workspace</CardTitle>
           <CardDescription className="max-w-4xl text-sm leading-6">
-            Review the gathered Edinburgh mapping, switch between city-level and district-level
-            records, and write a repo-local draft file when you want the changes available to
-            future passes. Browser edits autosave locally, and the directory save writes a separate
-            draft file so the canonical board mapping stays untouched until we intentionally
-            promote it.
+            Review gathered city boards, move from city selection into district detail, and write a
+            repo-local draft file when you want the changes available to future passes. The current
+            workspace is seeded with Edinburgh and structured so more cities can slot into the same
+            pattern over time.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-lg border bg-muted/30 p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Localities</p>
-              <p className="mt-2 text-2xl font-semibold">{localityCounts.length}</p>
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Tracked cities</p>
+              <p className="mt-2 text-2xl font-semibold">{trackedCities.length}</p>
             </div>
             <div className="rounded-lg border bg-muted/30 p-4">
               <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Reviewed</p>
@@ -272,6 +302,8 @@ export function EdinburghReviewPage() {
                   }
 
                   setDraft(saveEdinburghBoardDraft(result.board));
+                  setSelectedCityId(result.board.id);
+                  setSelectedRecordId(cityOverviewId);
                   setSaveNotice({
                     tone: "success",
                     text: `Loaded ${result.sourceKind} data from ${result.relativePath}.`
@@ -318,6 +350,7 @@ export function EdinburghReviewPage() {
               onClick={() => {
                 const nextDraft = resetEdinburghBoardDraft();
                 setDraft(nextDraft);
+                setSelectedCityId(nextDraft.id);
                 setSelectedRecordId(cityOverviewId);
                 setSaveNotice({
                   tone: "neutral",
@@ -371,13 +404,55 @@ export function EdinburghReviewPage() {
         </CardContent>
       </Card>
 
-      <div className="indexed-workspace__columns">
-        <Card className="page-card page-card--index">
+      <div className="indexed-workspace__columns indexed-workspace__columns--three-pane">
+        <Card className="page-card page-card--index page-card--secondary-index">
           <CardHeader className="gap-4">
             <div className="grid gap-2">
-              <CardTitle>City records</CardTitle>
+              <CardTitle>Cities</CardTitle>
               <CardDescription>
-                Search the 64 mapped squares and switch between the city overview and district records.
+                Start with the city, then drill into districts and detail to the right.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="page-card__content pt-0">
+            <div className="cities-page__list">
+              {trackedCities.map((city) => (
+                <button
+                  key={city.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCityId(city.id);
+                    setSelectedRecordId(cityOverviewId);
+                  }}
+                  className={cn(
+                    "grid gap-2 rounded-lg border px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    city.id === selectedCity?.id
+                      ? "border-foreground/15 bg-muted"
+                      : "bg-background hover:bg-muted/50"
+                  )}
+                  aria-pressed={city.id === selectedCity?.id}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium">{city.name}</span>
+                    <Badge variant="outline">{city.districtCount}</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{city.country}</p>
+                  <p className="text-sm text-muted-foreground">{city.summary}</p>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="page-card page-card--index page-card--secondary-index">
+          <CardHeader className="gap-4">
+            <div className="grid gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle>Districts</CardTitle>
+                {selectedCity ? <Badge variant="outline">{selectedCity.name}</Badge> : null}
+              </div>
+              <CardDescription>
+                Select the city overview or drill into a district record like Edinburgh {">"} Broughton.
               </CardDescription>
             </div>
             <Input
@@ -397,8 +472,7 @@ export function EdinburghReviewPage() {
             </div>
           </CardHeader>
           <CardContent className="page-card__content pt-0">
-            <ScrollArea className="page-card__scroll-area rounded-lg border">
-              <div className="grid gap-2 p-3">
+            <div className="cities-page__list rounded-lg border p-3">
                 <button
                   type="button"
                   onClick={() => setSelectedRecordId(cityOverviewId)}
@@ -444,8 +518,7 @@ export function EdinburghReviewPage() {
                     No districts matched that search.
                   </div>
                 ) : null}
-              </div>
-            </ScrollArea>
+            </div>
           </CardContent>
         </Card>
 
@@ -453,12 +526,15 @@ export function EdinburghReviewPage() {
           {selectedRecordId === cityOverviewId ? (
           <Card className="page-card page-card--detail">
             <CardHeader className="gap-2">
-              <CardTitle>City detail editor</CardTitle>
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle>City detail editor</CardTitle>
+                {selectedCity ? <Badge variant="outline">{selectedCity.name}</Badge> : null}
+              </div>
               <CardDescription>
-                Edit the city-level summary, provenance, and source details that frame the Edinburgh board.
+                Edit the city-level summary, provenance, and source details that frame the active board mapping.
               </CardDescription>
             </CardHeader>
-            <CardContent className="page-card__content page-card__content--scroll grid gap-4">
+            <CardContent className="page-card__content grid gap-4">
               <div className="grid gap-4 lg:grid-cols-2">
                 <label className="grid gap-2">
                   <span className="text-sm font-medium">City name</span>
@@ -582,14 +658,15 @@ export function EdinburghReviewPage() {
             <CardHeader className="gap-3">
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle>District detail editor</CardTitle>
+                {selectedCity ? <Badge variant="outline">{selectedCity.name}</Badge> : null}
+                {selectedDistrict ? <Badge variant="secondary">{selectedDistrict.name}</Badge> : null}
                 {selectedDistrict ? <Badge variant="outline">{selectedDistrict.square}</Badge> : null}
-                {selectedDistrict ? <Badge variant="secondary">{selectedDistrict.locality}</Badge> : null}
               </div>
               <CardDescription>
                 Edit the district record and keep the draft grounded in readable, reviewable city context.
               </CardDescription>
             </CardHeader>
-            <CardContent className="page-card__content page-card__content--scroll grid gap-4">
+            <CardContent className="page-card__content grid gap-4">
               <>
                   <div className="grid gap-4 lg:grid-cols-2">
                     <label className="grid gap-2">

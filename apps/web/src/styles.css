@@ -217,6 +217,7 @@ select {
 }
 
 .classic-games-page__list,
+.cities-page__list,
 .classic-games-page__score-list {
   display: grid;
   gap: 12px;
@@ -1062,12 +1063,16 @@ select {
   }
 
   .indexed-workspace--page-scroll .indexed-workspace__index,
+  .indexed-workspace--page-scroll .indexed-workspace__secondary-index,
   .indexed-workspace--page-scroll .indexed-workspace__detail,
   .indexed-workspace--page-scroll .page-card--index,
+  .indexed-workspace--page-scroll .page-card--secondary-index,
   .indexed-workspace--page-scroll .page-card--detail,
   .classic-games-workspace .indexed-workspace__index,
+  .classic-games-workspace .indexed-workspace__secondary-index,
   .classic-games-workspace .indexed-workspace__detail,
   .classic-games-workspace .page-card--index,
+  .classic-games-workspace .page-card--secondary-index,
   .classic-games-workspace .page-card--detail {
     min-height: 0;
     max-height: none;

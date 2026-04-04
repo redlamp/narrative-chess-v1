@@ -73,7 +73,7 @@ import {
   updateRoleCatalogEntry
 } from "./roleCatalog";
 
-type AppPage = "match" | "classics" | "edinburgh" | "roles" | "research";
+type AppPage = "match" | "classics" | "cities" | "roles" | "research";
 type LayoutEditMode = "move" | "resize";
 
 type ActiveLayoutEdit = {
@@ -102,7 +102,7 @@ function isAppPage(value: string | null): value is AppPage {
   return (
     value === "match" ||
     value === "classics" ||
-    value === "edinburgh" ||
+    value === "cities" ||
     value === "roles" ||
     value === "research"
   );
@@ -114,6 +114,9 @@ function getInitialPage() {
   }
 
   const requestedPage = new URLSearchParams(window.location.search).get("page");
+  if (requestedPage === "edinburgh") {
+    return "cities";
+  }
   return isAppPage(requestedPage) ? requestedPage : ("match" as AppPage);
 }
 
@@ -759,7 +762,7 @@ export default function App() {
               <TabsList className="page-switcher">
                 <TabsTrigger value="match">Match</TabsTrigger>
                 <TabsTrigger value="classics">Classics</TabsTrigger>
-                <TabsTrigger value="edinburgh">Edinburgh</TabsTrigger>
+                <TabsTrigger value="cities">Cities</TabsTrigger>
                 <TabsTrigger value="roles">Role Catalog</TabsTrigger>
                 <TabsTrigger value="research">Research</TabsTrigger>
               </TabsList>
@@ -791,8 +794,8 @@ export default function App() {
         ) : (
           <div className="app-header__context">
             <p className="muted">
-              {page === "edinburgh"
-                ? "Review the gathered Edinburgh board mapping, edit district notes, and save updates locally."
+              {page === "cities"
+                ? "Review gathered city boards, switch between cities and districts, and save updates locally."
                 : page === "classics"
                 ? "Review classic games, historical notes, and the study score before loading a line onto the board."
                 : page === "roles"
@@ -803,7 +806,7 @@ export default function App() {
         )}
       </header>
 
-      {page === "edinburgh" ? (
+      {page === "cities" ? (
         <EdinburghReviewPage />
       ) : page === "classics" ? (
         <ClassicGamesLibraryPage
