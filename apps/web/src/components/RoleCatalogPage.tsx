@@ -123,7 +123,7 @@ export function RoleCatalogPage({
   return (
     <IndexedWorkspace
       intro={
-        <Card>
+        <Card className="page-card page-card--intro">
           <CardHeader className="gap-4">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">Role Catalog</Badge>
@@ -158,7 +158,7 @@ export function RoleCatalogPage({
         </Card>
       }
       index={
-        <Card className="min-h-[720px]">
+        <Card className="page-card page-card--index">
           <CardHeader className="gap-4">
             <div className="grid gap-2">
               <CardTitle>Role index</CardTitle>
@@ -175,8 +175,8 @@ export function RoleCatalogPage({
               aria-label="Search piece roles"
             />
           </CardHeader>
-          <CardContent className="pt-0">
-            <ScrollArea className="h-[560px] rounded-lg border">
+          <CardContent className="page-card__content pt-0">
+            <ScrollArea className="page-card__scroll-area rounded-lg border">
               <div className="grid gap-2 p-3">
                 {filteredRoles.map((role) => (
                   <button
@@ -214,7 +214,7 @@ export function RoleCatalogPage({
         </Card>
       }
       detail={
-        <Card>
+        <Card className="page-card page-card--detail">
           <CardHeader className="gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle>Role detail editor</CardTitle>
@@ -225,7 +225,7 @@ export function RoleCatalogPage({
               character prompts.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4">
+          <CardContent className="page-card__content page-card__content--scroll grid gap-4">
             {selectedRole ? (
               <>
                 <div className="flex flex-wrap gap-2">

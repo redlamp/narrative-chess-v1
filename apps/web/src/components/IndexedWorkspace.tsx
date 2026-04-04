@@ -8,11 +8,11 @@ type IndexedWorkspaceProps = {
 
 export function IndexedWorkspace({ intro, index, detail }: IndexedWorkspaceProps) {
   return (
-    <main className="mx-auto flex w-full max-w-[1700px] flex-col gap-6">
-      {intro}
-      <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        {index}
-        {detail}
+    <main className="indexed-workspace">
+      <div className="indexed-workspace__intro">{intro}</div>
+      <div className="indexed-workspace__columns">
+        <div className="indexed-workspace__index">{index}</div>
+        <div className="indexed-workspace__detail">{detail}</div>
       </div>
     </main>
   );

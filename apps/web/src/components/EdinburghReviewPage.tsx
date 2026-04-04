@@ -196,8 +196,8 @@ export function EdinburghReviewPage() {
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-[1700px] flex-col gap-6">
-      <Card>
+    <main className="indexed-workspace">
+      <Card className="page-card page-card--intro">
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">Edinburgh Review</Badge>
@@ -371,8 +371,8 @@ export function EdinburghReviewPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <Card className="min-h-[720px]">
+      <div className="indexed-workspace__columns">
+        <Card className="page-card page-card--index">
           <CardHeader className="gap-4">
             <div className="grid gap-2">
               <CardTitle>City records</CardTitle>
@@ -396,8 +396,8 @@ export function EdinburghReviewPage() {
               ))}
             </div>
           </CardHeader>
-          <CardContent className="pt-0">
-            <ScrollArea className="h-[560px] rounded-lg border">
+          <CardContent className="page-card__content pt-0">
+            <ScrollArea className="page-card__scroll-area rounded-lg border">
               <div className="grid gap-2 p-3">
                 <button
                   type="button"
@@ -449,16 +449,16 @@ export function EdinburghReviewPage() {
           </CardContent>
         </Card>
 
-        <div className="grid gap-6">
+        <div className="indexed-workspace__detail page-card-stack">
           {selectedRecordId === cityOverviewId ? (
-          <Card>
+          <Card className="page-card page-card--detail">
             <CardHeader className="gap-2">
               <CardTitle>City detail editor</CardTitle>
               <CardDescription>
                 Edit the city-level summary, provenance, and source details that frame the Edinburgh board.
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4">
+            <CardContent className="page-card__content page-card__content--scroll grid gap-4">
               <div className="grid gap-4 lg:grid-cols-2">
                 <label className="grid gap-2">
                   <span className="text-sm font-medium">City name</span>
@@ -578,7 +578,7 @@ export function EdinburghReviewPage() {
           ) : null}
 
           {selectedDistrict ? (
-          <Card>
+          <Card className="page-card page-card--detail">
             <CardHeader className="gap-3">
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle>District detail editor</CardTitle>
@@ -589,7 +589,7 @@ export function EdinburghReviewPage() {
                 Edit the district record and keep the draft grounded in readable, reviewable city context.
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4">
+            <CardContent className="page-card__content page-card__content--scroll grid gap-4">
               <>
                   <div className="grid gap-4 lg:grid-cols-2">
                     <label className="grid gap-2">

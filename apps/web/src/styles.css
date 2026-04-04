@@ -81,6 +81,8 @@ select {
   padding: 24px;
   display: grid;
   gap: 20px;
+  min-height: 100vh;
+  align-content: start;
 }
 
 .app-header,
@@ -97,6 +99,8 @@ select {
   display: grid;
   gap: 16px;
   padding: 20px;
+  min-height: 11.5rem;
+  align-content: start;
 }
 
 .app-header__brand,
@@ -138,10 +142,73 @@ select {
 
 .app-header__status {
   max-width: 52rem;
+  min-height: 5.75rem;
+  align-content: start;
 }
 
 .app-header__context {
   max-width: 42rem;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: flex-start;
+}
+
+.indexed-workspace {
+  max-width: 1700px;
+  margin: 0 auto;
+  display: grid;
+  gap: 24px;
+  width: 100%;
+  align-content: start;
+}
+
+.indexed-workspace__intro,
+.indexed-workspace__columns,
+.indexed-workspace__index,
+.indexed-workspace__detail,
+.page-card-stack {
+  min-width: 0;
+  min-height: 0;
+}
+
+.indexed-workspace__columns {
+  display: grid;
+  gap: 24px;
+  align-items: start;
+}
+
+.page-card {
+  min-width: 0;
+}
+
+.page-card--intro {
+  min-height: 12.5rem;
+}
+
+.page-card--index,
+.page-card--detail {
+  display: flex;
+  flex-direction: column;
+}
+
+.page-card__content {
+  min-height: 0;
+}
+
+.page-card__content--scroll {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding-right: 18px;
+  scrollbar-gutter: stable;
+}
+
+.page-card__scroll-area {
+  height: 560px;
+}
+
+.page-card-stack {
+  display: grid;
+  gap: 24px;
 }
 
 .hero__status {
@@ -467,6 +534,8 @@ select {
   gap: 16px;
   align-content: start;
   padding: 18px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .board-shell {
@@ -641,8 +710,13 @@ select {
   font-size: 0.9rem;
 }
 
+.board-panel__footer {
+  min-height: 2.75rem;
+}
+
 .hover-panel {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
 }
 
 .hover-card,
@@ -651,6 +725,13 @@ select {
 .saved-match,
 .study-panel__disclosure {
   padding: 14px;
+}
+
+.hover-card {
+  min-height: 15rem;
+  max-height: 15rem;
+  overflow: auto;
+  scrollbar-gutter: stable;
 }
 
 .detail-grid {
@@ -879,6 +960,25 @@ select {
   }
 }
 
+@media (min-width: 1280px) {
+  .indexed-workspace__columns {
+    grid-template-columns: 360px minmax(0, 1fr);
+    min-height: 46rem;
+  }
+
+  .indexed-workspace__index,
+  .indexed-workspace__detail,
+  .page-card-stack {
+    min-height: 46rem;
+  }
+
+  .page-card--index,
+  .page-card--detail {
+    min-height: 46rem;
+    max-height: 46rem;
+  }
+}
+
 @media (max-width: 1080px) {
   .workspace-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -934,6 +1034,12 @@ select {
   .board-grid,
   .board-grid--map {
     width: 100%;
+  }
+
+  .page-card__scroll-area,
+  .hover-card {
+    height: auto;
+    max-height: none;
   }
 
   .app-header__brand,

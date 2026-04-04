@@ -102,7 +102,7 @@ export function ClassicGamesLibraryPage({
   return (
     <IndexedWorkspace
       intro={
-        <Card>
+        <Card className="page-card page-card--intro">
           <CardHeader className="gap-4">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">Classic Games</Badge>
@@ -130,7 +130,7 @@ export function ClassicGamesLibraryPage({
         </Card>
       }
       index={
-        <Card className="min-h-[720px]">
+        <Card className="page-card page-card--index">
           <CardHeader className="gap-4">
             <div className="grid gap-2">
               <CardTitle>Game list</CardTitle>
@@ -147,8 +147,8 @@ export function ClassicGamesLibraryPage({
               aria-label="Search classic chess games"
             />
           </CardHeader>
-          <CardContent className="pt-0">
-            <ScrollArea className="h-[560px] rounded-lg border">
+          <CardContent className="page-card__content pt-0">
+            <ScrollArea className="page-card__scroll-area rounded-lg border">
               <div className="grid gap-2 p-3">
                 {filteredGames.map((game) => (
                   <button
@@ -187,7 +187,7 @@ export function ClassicGamesLibraryPage({
         </Card>
       }
       detail={
-        <Card>
+        <Card className="page-card page-card--detail">
           <CardHeader className="gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle>{selectedGame?.title ?? "Classic game detail"}</CardTitle>
@@ -200,7 +200,7 @@ export function ClassicGamesLibraryPage({
                 : "Select a classic game from the left to review its score and notes."}
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4">
+          <CardContent className="page-card__content page-card__content--scroll grid gap-4">
             {selectedGame ? (
               <>
                 <div className="grid gap-4 lg:grid-cols-2">
