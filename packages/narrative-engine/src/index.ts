@@ -193,3 +193,41 @@ export function createNarrativeEvent(input: {
     detail
   });
 }
+
+export function createNarrativeHistory(input: {
+  moves: MoveRecord[];
+  characters: Record<string, CharacterSummary>;
+}): NarrativeEvent[] {
+  return input.moves.map((move) => {
+    const actor =
+      input.characters[move.pieceId] ??
+      characterSummarySchema.parse({
+        id: move.pieceId,
+        pieceId: move.pieceId,
+        side: move.side,
+        pieceKind: move.pieceKind,
+        fullName: `${move.side} ${move.pieceKind}`,
+        role: move.pieceKind,
+        districtOfOrigin: "Unknown district",
+        faction: `${move.side} cohort`,
+        traits: ["steady", "practical", "watchful", "resolute"],
+        verbs: ["advance", "watch", "hold", "press"],
+        oneLineDescription: "Fallback roster entry for imported games.",
+        generationSource: "narrative-engine fallback",
+        generationModel: null,
+        contentStatus: "procedural",
+        reviewStatus: "needs review",
+        reviewNotes: null,
+        lastReviewedAt: null
+      });
+    const target = move.capturedPieceId
+      ? input.characters[move.capturedPieceId] ?? null
+      : null;
+
+    return createNarrativeEvent({
+      move,
+      actor,
+      target
+    });
+  });
+}

@@ -1,5 +1,8 @@
+import { useState } from "react";
+import { referenceGames } from "./referenceGames";
 import { Board } from "./components/Board";
 import { Panel } from "./components/Panel";
+import { StudyPanel } from "./components/StudyPanel";
 import { useChessMatch } from "./hooks/useChessMatch";
 
 function statusLabel(isCheck: boolean, isCheckmate: boolean, isStalemate: boolean) {
@@ -23,6 +26,8 @@ function turnLabel(turn: "white" | "black") {
 }
 
 export default function App() {
+  const [selectedReferenceGameId, setSelectedReferenceGameId] = useState(referenceGames[0]?.id ?? "");
+  const [pastedPgn, setPastedPgn] = useState("");
   const {
     snapshot,
     boardSquares,
@@ -31,15 +36,45 @@ export default function App() {
     selectedPiece,
     legalMoves,
     canUndo,
+    isStudyMode,
+    studySession,
+    canStepBackward,
+    canStepForward,
+    importError,
     lastMove,
     handleSquareClick,
-    handleUndo
+    handleUndo,
+    loadReferenceGame,
+    loadPgnStudy,
+    exitStudyMode,
+    jumpToStart,
+    stepBackward,
+    stepForward,
+    jumpToEnd
   } = useChessMatch();
 
   const status = snapshot.status;
   const lastEvent = snapshot.eventHistory.at(-1) ?? null;
   const moveHistory = [...snapshot.moveHistory].reverse();
   const narrativeHistory = [...snapshot.eventHistory].reverse();
+  const selectedReferenceGame =
+    referenceGames.find((game) => game.id === selectedReferenceGameId) ?? referenceGames[0] ?? null;
+
+  const handleLoadReferenceGame = () => {
+    if (!selectedReferenceGame) {
+      return;
+    }
+
+    loadReferenceGame(selectedReferenceGame);
+  };
+
+  const handleImportPgn = () => {
+    if (!pastedPgn.trim()) {
+      return;
+    }
+
+    loadPgnStudy(pastedPgn);
+  };
 
   return (
     <div className="app-shell">
@@ -51,8 +86,8 @@ export default function App() {
           <p className="hero__eyebrow">Narrative Chess</p>
           <h1>Play the board first. Let the story follow.</h1>
           <p className="hero__lede">
-            A clean local chess slice with a minimal narrative trail, move history, undo, and
-            a clear 2D board built for quick play.
+            A clean local chess slice with a minimal narrative trail, move history, undo,
+            and a built-in study mode for classic games and pasted PGN.
           </p>
         </div>
 
@@ -69,6 +104,10 @@ export default function App() {
             <span className="status-card__label">Moves</span>
             <span className="status-card__value">{snapshot.moveHistory.length}</span>
           </div>
+          <div className="status-card">
+            <span className="status-card__label">Mode</span>
+            <span className="status-card__value">{isStudyMode ? "Study replay" : "Local play"}</span>
+          </div>
         </div>
       </header>
 
@@ -77,11 +116,11 @@ export default function App() {
           <div className="board-panel__header">
             <div>
               <p className="section-eyebrow">Board</p>
-              <h2>2D local play surface</h2>
+              <h2>{isStudyMode ? "Study replay board" : "2D local play surface"}</h2>
             </div>
             <div className="board-panel__actions">
               <button type="button" className="button button--ghost" onClick={handleUndo} disabled={!canUndo}>
-                Undo
+                {isStudyMode ? "Undo disabled" : "Undo"}
               </button>
             </div>
           </div>
@@ -95,12 +134,38 @@ export default function App() {
           />
 
           <div className="board-panel__footer">
-            <p>{selectedSquare ? `Selected ${selectedSquare}` : "Select a piece, then choose a legal square."}</p>
+            <p>
+              {selectedSquare
+                ? `Selected ${selectedSquare}`
+                : isStudyMode
+                  ? "Study mode is read-only. Select a piece to inspect the position."
+                  : "Select a piece, then choose a legal square."}
+            </p>
             {lastMove ? <p>Last move: {lastMove.san}</p> : <p>No moves yet.</p>}
           </div>
         </section>
 
         <aside className="sidebar">
+          <StudyPanel
+            referenceGames={referenceGames}
+            selectedReferenceGameId={selectedReferenceGameId}
+            onSelectReferenceGame={setSelectedReferenceGameId}
+            onLoadReferenceGame={handleLoadReferenceGame}
+            pastedPgn={pastedPgn}
+            onPgnChange={setPastedPgn}
+            onImportPgn={handleImportPgn}
+            importError={importError}
+            isStudyMode={isStudyMode}
+            studySession={studySession}
+            canStepBackward={canStepBackward}
+            canStepForward={canStepForward}
+            onJumpToStart={jumpToStart}
+            onStepBackward={stepBackward}
+            onStepForward={stepForward}
+            onJumpToEnd={jumpToEnd}
+            onExitStudy={exitStudyMode}
+          />
+
           <Panel title="Selected Piece" eyebrow="Character">
             {selectedCharacter ? (
               <div className="detail-card">
@@ -203,6 +268,10 @@ export default function App() {
               <div className="state-list__row">
                 <span>Current turn</span>
                 <strong>{turnLabel(status.turn)}</strong>
+              </div>
+              <div className="state-list__row">
+                <span>Mode</span>
+                <strong>{isStudyMode ? "Study replay" : "Local play"}</strong>
               </div>
               <div className="state-list__row">
                 <span>Board state</span>

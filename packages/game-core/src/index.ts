@@ -32,6 +32,12 @@ export interface BoardCell {
   isLight: boolean;
 }
 
+export interface PgnReplay {
+  headers: Record<string, string>;
+  snapshots: GameSnapshot[];
+  pgn: string;
+}
+
 const defaultInitialFen = new Chess().fen();
 
 const pieceKindByChessCode: Record<string, PieceKind> = {
@@ -349,6 +355,10 @@ function pieceKindToChessPromotion(kind: PieceKind): "q" | "r" | "b" | "n" {
   }
 }
 
+function getInitialFenFromHeaders(headers: Record<string, string>) {
+  return headers.SetUp === "1" && headers.FEN ? headers.FEN : defaultInitialFen;
+}
+
 export function createInitialGameSnapshot(
   characters: Record<string, CharacterSummary>
 ): GameSnapshot {
@@ -380,6 +390,61 @@ export function createSnapshotFromFen(
   const roster = normalizeCharacters(characters, pieces);
 
   return createSnapshot(chess, pieces, roster, moveHistory, eventHistory);
+}
+
+export function createReplayFromPgn(
+  pgn: string,
+  characters: Record<string, CharacterSummary> = {}
+): PgnReplay {
+  const parser = new Chess();
+
+  try {
+    parser.loadPgn(pgn, { strict: false });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown PGN import error.";
+    throw new Error(`Unable to load PGN: ${message}`);
+  }
+
+  const headers = parser.getHeaders();
+  const initialFen = getInitialFenFromHeaders(headers);
+  const verboseHistory = parser.history({ verbose: true }) as ChessMove[];
+  let snapshot =
+    initialFen === defaultInitialFen
+      ? createInitialGameSnapshot(characters)
+      : createSnapshotFromFen(initialFen, characters);
+  const snapshots: GameSnapshot[] = [snapshot];
+
+  for (const move of verboseHistory) {
+    let promotion: MoveInput["promotion"];
+    switch (move.promotion) {
+      case "q":
+      case "r":
+      case "b":
+      case "n":
+        promotion = move.promotion;
+        break;
+      default:
+        promotion = undefined;
+    }
+    const applied = applyMove(snapshot, {
+      from: move.from as Square,
+      to: move.to as Square,
+      ...(promotion ? { promotion } : {})
+    });
+
+    if (!applied) {
+      throw new Error(`Unable to replay PGN move ${move.san}.`);
+    }
+
+    snapshot = applied.nextState;
+    snapshots.push(snapshot);
+  }
+
+  return {
+    headers,
+    snapshots,
+    pgn
+  };
 }
 
 export function listLegalMoves(snapshot: GameSnapshot, square: Square): Square[] {

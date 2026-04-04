@@ -173,6 +173,32 @@ export const gameSnapshotSchema = z.object({
 });
 export type GameSnapshot = z.infer<typeof gameSnapshotSchema>;
 
+export const referenceGameSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  white: z.string(),
+  black: z.string(),
+  event: z.string(),
+  site: z.string(),
+  year: z.number().int(),
+  opening: z.string(),
+  result: z.string(),
+  summary: z.string(),
+  teachingFocus: z.array(z.string()).min(1),
+  sourceUrl: z.string().url().nullable(),
+  pgn: z.string(),
+  generationSource: z.string(),
+  generationModel: z.string().nullable(),
+  contentStatus: contentStatusSchema,
+  reviewStatus: reviewStatusSchema,
+  reviewNotes: z.string().nullable(),
+  lastReviewedAt: z.string().nullable()
+});
+export type ReferenceGame = z.infer<typeof referenceGameSchema>;
+
+export const referenceGameLibrarySchema = z.array(referenceGameSchema);
+export type ReferenceGameLibrary = z.infer<typeof referenceGameLibrarySchema>;
+
 export interface MoveInput {
   from: Square;
   to: Square;

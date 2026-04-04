@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createInitialCharacterRoster,
+  createNarrativeHistory,
   createNarrativeEvent
 } from "./index";
 import type {
@@ -150,5 +151,33 @@ describe("createNarrativeEvent", () => {
     expect(checkmateEvent.eventType).toBe("checkmate");
     expect(stalemateEvent.eventType).toBe("stalemate");
     expect(checkEvent.eventType).toBe("check");
+  });
+
+  it("builds a narrative history for a move list", () => {
+    const roster = createInitialCharacterRoster();
+    const events = createNarrativeHistory({
+      characters: roster,
+      moves: [
+        makeMove({
+          id: "move-1",
+          moveNumber: 1,
+          pieceId: "white-pawn-e",
+          from: "e2",
+          to: "e4"
+        }),
+        makeMove({
+          id: "move-2",
+          moveNumber: 2,
+          side: "black",
+          pieceId: "black-pawn-e",
+          from: "e7",
+          to: "e5"
+        })
+      ]
+    });
+
+    expect(events).toHaveLength(2);
+    expect(events[0].moveId).toBe("move-1");
+    expect(events[1].moveNumber).toBe(2);
   });
 });

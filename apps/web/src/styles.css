@@ -132,7 +132,7 @@ button {
 
 .hero__status {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -350,6 +350,72 @@ button {
   margin-top: 14px;
 }
 
+.study-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.study-panel__block {
+  display: grid;
+  gap: 10px;
+}
+
+.study-panel__block--session {
+  padding-top: 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.study-panel__row,
+.study-panel__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.study-panel__session-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.study-panel__summary,
+.study-panel__source {
+  margin: 0;
+}
+
+.study-panel__source a {
+  color: #ffe5ad;
+}
+
+.field-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-soft);
+}
+
+.field-input,
+.field-textarea {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(7, 11, 22, 0.76);
+  color: var(--text);
+  padding: 0.85rem 0.95rem;
+}
+
+.field-textarea {
+  min-height: 10rem;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.field-error {
+  margin: 0;
+  color: var(--danger);
+}
+
 .muted {
   margin: 0;
   color: var(--text-soft);
@@ -522,7 +588,7 @@ button {
   }
 
   .hero__status {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .sidebar {
@@ -552,7 +618,8 @@ button {
   .board-panel__footer,
   .timeline__meta,
   .state-list__row,
-  .detail-card__title-row {
+  .detail-card__title-row,
+  .study-panel__session-header {
     flex-direction: column;
     align-items: flex-start;
   }

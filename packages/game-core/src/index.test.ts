@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyMove,
   createInitialGameSnapshot,
+  createReplayFromPgn,
   createSnapshotFromFen,
   getBoardSquares,
   getPieceAtSquare,
@@ -72,6 +73,25 @@ describe("game-core", () => {
     expect(snapshot.status.outcome).toBe("draw");
     expect(listLegalMoves(snapshot, "h8")).toEqual([]);
     expect(getBoardSquares(snapshot).filter((cell) => cell.occupant).length).toBe(3);
+  });
+
+  it("loads PGN text into a replay timeline", () => {
+    const replay = createReplayFromPgn(`
+[Event "Example"]
+[Site "Local"]
+[Date "2026.04.04"]
+[Round "1"]
+[White "White"]
+[Black "Black"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 1-0
+`);
+
+    expect(replay.headers.Event).toBe("Example");
+    expect(replay.snapshots).toHaveLength(7);
+    expect(replay.snapshots.at(-1)?.moveHistory.at(-1)?.san).toBe("a6");
+    expect(replay.snapshots.at(-1)?.status.turn).toBe("white");
   });
 
   it("undoes the last move and restores the exact prior snapshot", () => {
