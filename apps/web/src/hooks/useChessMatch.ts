@@ -28,7 +28,7 @@ import {
   saveMatch,
   type SavedMatchRecord
 } from "../savedMatches";
-import type { RoleCatalog } from "../roleCatalog";
+import { getRolePoolsOverride, type RoleCatalog } from "../roleCatalog";
 
 type UseChessMatchOptions = {
   roleCatalog: RoleCatalog;
@@ -54,7 +54,7 @@ function isPromotionMove(piece: PieceState | null, to: Square): boolean {
 function createCharacters(roleCatalog: RoleCatalog) {
   return createInitialCharacterRoster({
     cityBoard: edinburghBoard,
-    rolePoolsOverride: roleCatalog
+    rolePoolsOverride: getRolePoolsOverride(roleCatalog)
   });
 }
 

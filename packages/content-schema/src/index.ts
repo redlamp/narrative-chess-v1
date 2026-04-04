@@ -96,6 +96,28 @@ export const characterSummarySchema = z.object({
 });
 export type CharacterSummary = z.infer<typeof characterSummarySchema>;
 
+export const roleDefinitionSchema = z.object({
+  id: z.string(),
+  pieceKind: pieceKindSchema,
+  name: z.string(),
+  summary: z.string(),
+  traits: z.array(z.string()),
+  verbs: z.array(z.string()),
+  notes: z.string().nullable(),
+  generationSource: z.string(),
+  generationModel: z.string().nullable(),
+  contentStatus: contentStatusSchema,
+  reviewStatus: reviewStatusSchema,
+  reviewNotes: z.string().nullable(),
+  lastReviewedAt: z.string().nullable()
+});
+export type RoleDefinition = z.infer<typeof roleDefinitionSchema>;
+
+export const roleCatalogSchema = z.object({
+  roles: z.array(roleDefinitionSchema).min(1)
+});
+export type RoleCatalogRecord = z.infer<typeof roleCatalogSchema>;
+
 export const pieceStateSchema = z.object({
   pieceId: z.string(),
   side: pieceSideSchema,
@@ -184,6 +206,7 @@ export const referenceGameSchema = z.object({
   opening: z.string(),
   result: z.string(),
   summary: z.string(),
+  historicalSignificance: z.string(),
   teachingFocus: z.array(z.string()).min(1),
   sourceUrl: z.string().url().nullable(),
   pgn: z.string(),

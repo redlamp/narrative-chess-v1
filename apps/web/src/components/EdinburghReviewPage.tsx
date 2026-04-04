@@ -34,6 +34,7 @@ type SaveNotice = {
   text: string;
 };
 
+const cityOverviewId = "city-overview";
 const statusOptions = ["empty", "procedural", "authored"] as const;
 const reviewOptions = ["empty", "needs review", "reviewed", "approved"] as const;
 
@@ -105,7 +106,7 @@ function districtMatchesSearch(district: DistrictCell, query: string) {
 
 export function EdinburghReviewPage() {
   const [draft, setDraft] = useState<CityBoard>(() => listEdinburghBoardDraft());
-  const [selectedDistrictId, setSelectedDistrictId] = useState(() => edinburghBoard.districts[0]?.id ?? "");
+  const [selectedRecordId, setSelectedRecordId] = useState(cityOverviewId);
   const [searchQuery, setSearchQuery] = useState("");
   const [directoryName, setDirectoryName] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -136,20 +137,25 @@ export function EdinburghReviewPage() {
   }, [draft, validation.isValid]);
 
   useEffect(() => {
-    if (!draft.districts.some((district) => district.id === selectedDistrictId)) {
-      setSelectedDistrictId(draft.districts[0]?.id ?? "");
+    if (
+      selectedRecordId !== cityOverviewId &&
+      !draft.districts.some((district) => district.id === selectedRecordId)
+    ) {
+      setSelectedRecordId(cityOverviewId);
     }
-  }, [draft, selectedDistrictId]);
+  }, [draft, selectedRecordId]);
   const filteredDistricts = useMemo(
     () =>
       draft.districts.filter((district) => districtMatchesSearch(district, searchQuery)),
     [draft.districts, searchQuery]
   );
   const selectedDistrict =
-    draft.districts.find((district) => district.id === selectedDistrictId) ??
-    filteredDistricts[0] ??
-    draft.districts[0] ??
-    null;
+    selectedRecordId === cityOverviewId
+      ? null
+      : draft.districts.find((district) => district.id === selectedRecordId) ??
+        filteredDistricts[0] ??
+        draft.districts[0] ??
+        null;
   const localityCounts = useMemo(() => countByLocality(draft), [draft]);
   const reviewedDistrictCount = draft.districts.filter(
     (district) => district.reviewStatus === "reviewed" || district.reviewStatus === "approved"
@@ -201,12 +207,13 @@ export function EdinburghReviewPage() {
             </Badge>
             {directoryName ? <Badge variant="outline">Connected: {directoryName}</Badge> : null}
           </div>
-          <CardTitle className="text-3xl tracking-tight">Edinburgh and district review workspace</CardTitle>
+          <CardTitle className="text-3xl tracking-tight">Edinburgh city and district workspace</CardTitle>
           <CardDescription className="max-w-4xl text-sm leading-6">
-            Review the gathered Edinburgh mapping, edit district details, and write a repo-local
-            draft file when you want the changes available to future passes. Browser edits
-            autosave locally, and the directory save writes a separate draft file so the canonical
-            board mapping stays untouched until we intentionally promote it.
+            Review the gathered Edinburgh mapping, switch between city-level and district-level
+            records, and write a repo-local draft file when you want the changes available to
+            future passes. Browser edits autosave locally, and the directory save writes a separate
+            draft file so the canonical board mapping stays untouched until we intentionally
+            promote it.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6">
@@ -311,6 +318,7 @@ export function EdinburghReviewPage() {
               onClick={() => {
                 const nextDraft = resetEdinburghBoardDraft();
                 setDraft(nextDraft);
+                setSelectedRecordId(cityOverviewId);
                 setSaveNotice({
                   tone: "neutral",
                   text: "Reset the working draft back to the bundled Edinburgh board."
@@ -367,9 +375,9 @@ export function EdinburghReviewPage() {
         <Card className="min-h-[720px]">
           <CardHeader className="gap-4">
             <div className="grid gap-2">
-              <CardTitle>District index</CardTitle>
+              <CardTitle>City records</CardTitle>
               <CardDescription>
-                Search the 64 mapped squares and jump into a district record for review.
+                Search the 64 mapped squares and switch between the city overview and district records.
               </CardDescription>
             </div>
             <Input
@@ -391,11 +399,28 @@ export function EdinburghReviewPage() {
           <CardContent className="pt-0">
             <ScrollArea className="h-[560px] rounded-lg border">
               <div className="grid gap-2 p-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRecordId(cityOverviewId)}
+                  className={cn(
+                    "grid gap-2 rounded-lg border px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    selectedRecordId === cityOverviewId
+                      ? "border-foreground/15 bg-muted"
+                      : "bg-background hover:bg-muted/50"
+                  )}
+                  aria-pressed={selectedRecordId === cityOverviewId}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium">{draft.name}</span>
+                    <Badge variant="secondary">City overview</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{draft.summary}</p>
+                </button>
                 {filteredDistricts.map((district) => (
                   <button
                     key={district.id}
                     type="button"
-                    onClick={() => setSelectedDistrictId(district.id)}
+                    onClick={() => setSelectedRecordId(district.id)}
                     className={cn(
                       "grid gap-2 rounded-lg border px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       district.id === selectedDistrict?.id
@@ -425,12 +450,12 @@ export function EdinburghReviewPage() {
         </Card>
 
         <div className="grid gap-6">
+          {selectedRecordId === cityOverviewId ? (
           <Card>
             <CardHeader className="gap-2">
-              <CardTitle>City summary and provenance</CardTitle>
+              <CardTitle>City detail editor</CardTitle>
               <CardDescription>
-                This section captures the top-level story of the Edinburgh mapping and where the
-                current board came from.
+                Edit the city-level summary, provenance, and source details that frame the Edinburgh board.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
@@ -550,7 +575,9 @@ export function EdinburghReviewPage() {
               </div>
             </CardContent>
           </Card>
+          ) : null}
 
+          {selectedDistrict ? (
           <Card>
             <CardHeader className="gap-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -563,8 +590,7 @@ export function EdinburghReviewPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
-              {selectedDistrict ? (
-                <>
+              <>
                   <div className="grid gap-4 lg:grid-cols-2">
                     <label className="grid gap-2">
                       <span className="text-sm font-medium">District name</span>
@@ -760,13 +786,9 @@ export function EdinburghReviewPage() {
                     </label>
                   </div>
                 </>
-              ) : (
-                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                  Select a district from the left to review it in detail.
-                </div>
-              )}
             </CardContent>
           </Card>
+          ) : null}
         </div>
       </div>
     </main>

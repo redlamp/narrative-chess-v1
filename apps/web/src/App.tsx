@@ -42,6 +42,7 @@ import { referenceGames } from "./referenceGames";
 import { Board } from "./components/Board";
 import { Panel } from "./components/Panel";
 import { AppMenu } from "./components/AppMenu";
+import { ClassicGamesLibraryPage } from "./components/ClassicGamesLibraryPage";
 import { CompetitiveLandscapePage } from "./components/CompetitiveLandscapePage";
 import { EdinburghReviewPage } from "./components/EdinburghReviewPage";
 import { LayoutToolbar } from "./components/LayoutToolbar";
@@ -49,13 +50,16 @@ import { RoleCatalogPage } from "./components/RoleCatalogPage";
 import { StudyPanel } from "./components/StudyPanel";
 import { useChessMatch } from "./hooks/useChessMatch";
 import {
+  addRoleCatalogEntry,
+  duplicateRoleCatalogEntry,
   listRoleCatalog,
+  removeRoleCatalogEntry,
   resetRoleCatalog,
   saveRoleCatalog,
   updateRoleCatalogEntry
 } from "./roleCatalog";
 
-type AppPage = "match" | "edinburgh" | "roles" | "research";
+type AppPage = "match" | "classics" | "edinburgh" | "roles" | "research";
 type LayoutEditMode = "move" | "resize";
 
 type ActiveLayoutEdit = {
@@ -76,7 +80,13 @@ const panelTitles: Record<WorkspacePanelId, string> = {
 };
 
 function isAppPage(value: string | null): value is AppPage {
-  return value === "match" || value === "edinburgh" || value === "roles" || value === "research";
+  return (
+    value === "match" ||
+    value === "classics" ||
+    value === "edinburgh" ||
+    value === "roles" ||
+    value === "research"
+  );
 }
 
 function getInitialPage() {
@@ -384,6 +394,15 @@ export default function App() {
     loadReferenceGame(selectedReferenceGame);
   };
 
+  const handleLoadReferenceGameFromLibrary = () => {
+    if (!selectedReferenceGame) {
+      return;
+    }
+
+    loadReferenceGame(selectedReferenceGame);
+    setPage("match");
+  };
+
   const handleImportPgn = () => {
     if (!pastedPgn.trim()) {
       return;
@@ -392,13 +411,71 @@ export default function App() {
     loadPgnStudy(pastedPgn);
   };
 
-  const handleRoleCatalogChange = (pieceKind: PieceKind, value: string) => {
+  const handleRoleCatalogChange = (
+    roleId: string,
+    field:
+      | "pieceKind"
+      | "name"
+      | "summary"
+      | "traits"
+      | "verbs"
+      | "notes"
+      | "contentStatus"
+      | "reviewStatus"
+      | "reviewNotes"
+      | "lastReviewedAt",
+    value:
+      | PieceKind
+      | string
+      | string[]
+      | null
+      | "empty"
+      | "procedural"
+      | "authored"
+      | "needs review"
+      | "reviewed"
+      | "approved"
+  ) => {
     setRoleCatalog((current) =>
       saveRoleCatalog(
         updateRoleCatalogEntry({
           roleCatalog: current,
-          pieceKind,
+          roleId,
+          field,
           value
+        })
+      )
+    );
+  };
+
+  const handleRoleCatalogAdd = (pieceKind?: PieceKind) => {
+    setRoleCatalog((current) =>
+      saveRoleCatalog(
+        addRoleCatalogEntry({
+          roleCatalog: current,
+          pieceKind
+        })
+      )
+    );
+  };
+
+  const handleRoleCatalogDuplicate = (roleId: string) => {
+    setRoleCatalog((current) =>
+      saveRoleCatalog(
+        duplicateRoleCatalogEntry({
+          roleCatalog: current,
+          roleId
+        })
+      )
+    );
+  };
+
+  const handleRoleCatalogRemove = (roleId: string) => {
+    setRoleCatalog((current) =>
+      saveRoleCatalog(
+        removeRoleCatalogEntry({
+          roleCatalog: current,
+          roleId
         })
       )
     );
@@ -541,6 +618,7 @@ export default function App() {
             >
               <TabsList className="page-switcher">
                 <TabsTrigger value="match">Match</TabsTrigger>
+                <TabsTrigger value="classics">Classics</TabsTrigger>
                 <TabsTrigger value="edinburgh">Edinburgh</TabsTrigger>
                 <TabsTrigger value="roles">Role Catalog</TabsTrigger>
                 <TabsTrigger value="research">Research</TabsTrigger>
@@ -575,8 +653,10 @@ export default function App() {
             <p className="muted">
               {page === "edinburgh"
                 ? "Review the gathered Edinburgh board mapping, edit district notes, and save updates locally."
+                : page === "classics"
+                ? "Review classic games, historical notes, and the study score before loading a line onto the board."
                 : page === "roles"
-                ? "Edit piece-role pools and feed those changes back into the local roster."
+                ? "Edit individual piece-role records and feed those changes back into the local roster."
                 : "Review current chess product references, screenshots, and notes for competitive analysis."}
             </p>
           </div>
@@ -585,11 +665,21 @@ export default function App() {
 
       {page === "edinburgh" ? (
         <EdinburghReviewPage />
+      ) : page === "classics" ? (
+        <ClassicGamesLibraryPage
+          referenceGames={referenceGames}
+          selectedReferenceGameId={selectedReferenceGameId}
+          onSelectReferenceGame={setSelectedReferenceGameId}
+          onLoadReferenceGame={handleLoadReferenceGameFromLibrary}
+        />
       ) : page === "roles" ? (
         <RoleCatalogPage
           roleCatalog={roleCatalog}
           onRoleCatalogChange={handleRoleCatalogChange}
           onRoleCatalogReset={handleRoleCatalogReset}
+          onRoleCatalogAdd={handleRoleCatalogAdd}
+          onRoleCatalogDuplicate={handleRoleCatalogDuplicate}
+          onRoleCatalogRemove={handleRoleCatalogRemove}
         />
       ) : page === "research" ? (
         <CompetitiveLandscapePage />
