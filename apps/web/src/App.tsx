@@ -13,6 +13,7 @@ import { getPieceAtSquare } from "@narrative-chess/game-core";
 import { getCharacterEventHistory } from "@narrative-chess/narrative-engine";
 import type { PieceKind, Square } from "@narrative-chess/content-schema";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -1267,45 +1268,48 @@ export default function App() {
               </div>
             ) : null}
 
-            <section
+            <div
               className={[
                 "workspace-item",
                 "workspace-item--board",
-                "board-panel",
                 activeLayoutEdit?.panelId === "board" ? "is-editing" : ""
               ]
                 .filter(Boolean)
                 .join(" ")}
               style={getWorkspacePanelStyle(workspaceLayout, "board", isCompactViewport)}
             >
-              <div className="board-panel__header">
-                <div>
-                  <h2>{isStudyMode ? "Study replay board" : "Board"}</h2>
-                </div>
-                <div className="board-panel__meta">
-                  <span className="side-pill">Edinburgh</span>
-                </div>
-              </div>
+              <Card className="board-panel" size="sm">
+                <CardHeader className="board-panel__header">
+                  <div>
+                    <CardTitle>{isStudyMode ? "Study replay board" : "Board"}</CardTitle>
+                  </div>
+                  <div className="board-panel__meta">
+                    <span className="side-pill">Edinburgh</span>
+                  </div>
+                </CardHeader>
 
-              <Board
-                snapshot={snapshot}
-                cells={boardSquares}
-                selectedSquare={selectedSquare}
-                hoveredSquare={hoveredSquare}
-                inspectedSquare={inspectedSquare}
-                legalMoves={legalMoves}
-                viewMode="board"
-                districtsBySquare={edinburghDistrictsBySquare}
-                showCoordinates={settings.showBoardCoordinates}
-                showDistrictLabels={false}
-                onSquareClick={handleSquareClick}
-                onSquareHover={setHoveredSquare}
-                onSquareLeave={() => setHoveredSquare(null)}
-              />
+                <CardContent className="board-panel__content">
+                  <Board
+                    snapshot={snapshot}
+                    cells={boardSquares}
+                    selectedSquare={selectedSquare}
+                    hoveredSquare={hoveredSquare}
+                    inspectedSquare={inspectedSquare}
+                    legalMoves={legalMoves}
+                    viewMode="board"
+                    districtsBySquare={edinburghDistrictsBySquare}
+                    showCoordinates={settings.showBoardCoordinates}
+                    showDistrictLabels={false}
+                    onSquareClick={handleSquareClick}
+                    onSquareHover={setHoveredSquare}
+                    onSquareLeave={() => setHoveredSquare(null)}
+                  />
+                </CardContent>
+              </Card>
 
               {renderMoveSurface("board")}
               {renderResizeHandle("board")}
-            </section>
+            </div>
 
             <div
               className={[

@@ -93,7 +93,6 @@ select {
 }
 
 .app-header,
-.board-panel,
 .layout-toolbar,
 .role-page__intro {
   border: 1px solid var(--border);
@@ -782,7 +781,7 @@ select {
 }
 
 .workspace-item > .panel,
-.workspace-item.board-panel {
+.workspace-item > .board-panel {
   height: 100%;
   border-radius: inherit;
   overflow: hidden;
@@ -813,7 +812,7 @@ select {
 }
 
 .workspace-item.is-editing > .panel,
-.workspace-item.is-editing.board-panel {
+.workspace-item.is-editing > .board-panel {
   box-shadow:
     0 0 0 1px var(--ring),
     0 8px 24px rgb(15 23 42 / 0.08);
@@ -1007,13 +1006,30 @@ select {
 }
 
 .board-panel {
+  min-height: 100%;
+}
+
+.board-panel__content {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 16px;
-  padding: 18px;
   min-height: 0;
-  border-radius: inherit;
-  overflow: hidden;
+  flex: 1 1 auto;
+  padding-top: 0;
+}
+
+.board-panel__content[data-slot="card-content"] {
+  padding-top: 0;
+}
+
+.board-panel__content .board-shell {
+  flex: 1 1 auto;
+}
+
+.board-panel__content .board-grid {
+  margin-inline: auto;
+}
+
+.board-panel {
+  min-height: 0;
 }
 
 .board-shell {
