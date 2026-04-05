@@ -328,10 +328,9 @@ export default function App() {
   const eventByMoveId = new Map(historyEvents.map((event) => [event.moveId, event] as const));
   const selectedMove = selectedPly > 0 ? historyMoves[selectedPly - 1] ?? null : null;
   const selectedEvent = selectedMove ? eventByMoveId.get(selectedMove.id) ?? null : null;
-  const focusedSquare =
-    hoveredSquare ?? inspectedSquare ?? selectedSquare ?? (selectedMove?.to ?? lastMove?.to ?? null);
-  const focusedDistrict = getDistrictForSquare(focusedSquare);
-  const focusedPiece = focusedSquare ? getPieceAtSquare(snapshot, focusedSquare) : null;
+  const storyFocusedSquare = hoveredSquare ?? selectedMove?.to ?? lastMove?.to ?? selectedSquare ?? null;
+  const focusedDistrict = getDistrictForSquare(storyFocusedSquare);
+  const focusedPiece = storyFocusedSquare ? getPieceAtSquare(snapshot, storyFocusedSquare) : null;
   const focusedCharacter = focusedPiece ? snapshot.characters[focusedPiece.pieceId] ?? null : null;
   const focusedCharacterMoments = focusedCharacter
     ? getCharacterEventHistory({
@@ -355,9 +354,9 @@ export default function App() {
     () => getWorkspaceGridStyle(workspaceLayout, workspaceRowCount),
     [workspaceLayout, workspaceRowCount]
   );
-  const focusedSquareSummary = focusedSquare
+  const focusedSquareSummary = storyFocusedSquare
     ? (() => {
-        const squareParts = [`Inspecting ${focusedSquare}`];
+        const squareParts = [`Inspecting ${storyFocusedSquare}`];
         if (focusedPiece) {
           squareParts.push(getPieceDisplayName(focusedPiece));
         } else {
@@ -368,7 +367,7 @@ export default function App() {
         }
         return `${squareParts.join(", ")}.`;
       })()
-    : "Hover or focus a square to inspect it. The last inspected square stays pinned until you pick another square.";
+    : "Hover a square to inspect it. When hover ends, the Story panel returns to the current move.";
   const gridOverlayCells = useMemo(
     () => Array.from({ length: workspaceRowCount * workspaceLayout.columnCount }, (_, index) => index),
     [workspaceLayout.columnCount, workspaceRowCount]
@@ -1427,7 +1426,7 @@ export default function App() {
                 onToggleCollapse={() => handleTogglePanelCollapse("narrative")}
                 selectedMove={selectedMove}
                 selectedEvent={selectedEvent}
-                focusedSquare={focusedSquare}
+                focusedSquare={storyFocusedSquare}
                 focusedSquareSummary={focusedSquareSummary}
                 focusedDistrict={focusedDistrict}
                 focusedPiece={focusedPiece}
