@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight } from "lucide-react";
 import type { CharacterSummary, MoveRecord } from "@narrative-chess/content-schema";
 import { Button } from "@/components/ui/button";
-import { getPieceKindLabel } from "../chessPresentation";
 import { Panel } from "./Panel";
 import { PieceArt } from "./PieceArt";
 
@@ -59,13 +58,16 @@ function renderCapturedPiece(
   const capturedPieceSide = capturedPiece?.side ?? (move.side === "white" ? "black" : "white");
 
   return (
-    <span className="match-history__capture-kind">
+    <span
+      className="match-history__capture-kind"
+      aria-label={`Captured ${capturedPieceKind}`}
+      title={`Captured ${capturedPieceKind}`}
+    >
       <PieceArt
         side={capturedPieceSide}
         kind={capturedPieceKind}
         className="board-piece-art board-piece-art--history"
       />
-      <span>{getPieceKindLabel(capturedPieceKind)}</span>
     </span>
   );
 }
