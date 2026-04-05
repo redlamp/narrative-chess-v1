@@ -573,6 +573,16 @@ select {
   gap: 8px;
 }
 
+.layout-toolbar__component-list {
+  display: grid;
+  gap: 8px;
+}
+
+.layout-toolbar__component-button {
+  justify-content: space-between;
+  width: 100%;
+}
+
 .layout-toolbar__notice {
   border: 1px solid var(--border);
   border-radius: calc(var(--radius) + 0.1rem);

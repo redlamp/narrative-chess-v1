@@ -269,6 +269,35 @@ export function resetWorkspaceLayoutState(): WorkspaceLayoutState {
   return nextState;
 }
 
+export function restoreWorkspacePanel(input: {
+  layoutState: WorkspaceLayoutState;
+  panelId: WorkspacePanelId;
+}): WorkspaceLayoutState {
+  const restoredRect = scalePanelRect(
+    input.panelId,
+    defaultLayoutState.panels[input.panelId],
+    defaultLayoutState.columnCount,
+    input.layoutState.columnCount
+  );
+
+  const nextState: WorkspaceLayoutState = {
+    ...input.layoutState,
+    panels: {
+      ...input.layoutState.panels,
+      [input.panelId]: restoredRect
+    }
+  };
+
+  if (input.panelId !== "board") {
+    nextState.collapsed = {
+      ...nextState.collapsed,
+      [input.panelId]: false
+    };
+  }
+
+  return nextState;
+}
+
 export function getWorkspacePanelRenderHeight(
   layoutState: WorkspaceLayoutState,
   panelId: WorkspacePanelId

@@ -1,20 +1,28 @@
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RefreshCw, X } from "lucide-react";
 import { NumberStepperField } from "./NumberStepperField";
 
+type PageLayoutToolbarComponent = {
+  id: string;
+  label: string;
+};
+
 type PageLayoutToolbarProps = {
   columnCount: number;
   columnGap: number;
   rowHeight: number;
   showLayoutGrid: boolean;
+  components: PageLayoutToolbarComponent[];
   onToggleLayoutMode: () => void;
   onColumnCountChange: (value: number) => void;
   onColumnGapChange: (value: number) => void;
   onRowHeightChange: (value: number) => void;
   onToggleLayoutGrid: (checked: boolean) => void;
+  onRestoreComponent: (id: string) => void;
   onResetLayout: () => void;
 };
 
@@ -23,11 +31,13 @@ export function PageLayoutToolbar({
   columnGap,
   rowHeight,
   showLayoutGrid,
+  components,
   onToggleLayoutMode,
   onColumnCountChange,
   onColumnGapChange,
   onRowHeightChange,
   onToggleLayoutGrid,
+  onRestoreComponent,
   onResetLayout
 }: PageLayoutToolbarProps) {
   return (
@@ -88,6 +98,27 @@ export function PageLayoutToolbar({
                 <span className="menu-toggle__label">Show grid</span>
                 <Switch checked={showLayoutGrid} onCheckedChange={onToggleLayoutGrid} />
               </label>
+            </div>
+          </section>
+
+          <section className="layout-toolbar__section layout-toolbar__file-section">
+            <div className="layout-toolbar__section-header">
+              <h3 className="layout-toolbar__section-title">Components</h3>
+              <Badge variant="outline">{components.length}</Badge>
+            </div>
+            <div className="layout-toolbar__component-list">
+              {components.map((component) => (
+                <Button
+                  key={component.id}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="layout-toolbar__component-button"
+                  onClick={() => onRestoreComponent(component.id)}
+                >
+                  {component.label}
+                </Button>
+              ))}
             </div>
           </section>
 

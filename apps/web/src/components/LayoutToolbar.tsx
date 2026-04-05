@@ -13,6 +13,12 @@ type LayoutFileNotice = {
   text: string;
 };
 
+type LayoutToolbarComponent = {
+  id: string;
+  label: string;
+  collapsed?: boolean;
+};
+
 type LayoutToolbarProps = {
   columnCount: number;
   columnGap: number;
@@ -24,6 +30,7 @@ type LayoutToolbarProps = {
   isLayoutDirectorySupported: boolean;
   layoutFileBusyAction: string | null;
   knownLayoutFiles: WorkspaceLayoutFileReference[];
+  components: LayoutToolbarComponent[];
   onToggleLayoutMode: () => void;
   onColumnCountChange: (value: number) => void;
   onColumnGapChange: (value: number) => void;
@@ -35,6 +42,7 @@ type LayoutToolbarProps = {
   onSaveLayoutFile: () => void;
   onDeleteLayoutFile: () => void;
   onSelectKnownLayoutFile: (name: string) => void;
+  onRestoreComponent: (id: string) => void;
   onResetLayout: () => void;
 };
 
@@ -49,6 +57,7 @@ export function LayoutToolbar({
   isLayoutDirectorySupported,
   layoutFileBusyAction,
   knownLayoutFiles,
+  components,
   onToggleLayoutMode,
   onColumnCountChange,
   onColumnGapChange,
@@ -60,6 +69,7 @@ export function LayoutToolbar({
   onSaveLayoutFile,
   onDeleteLayoutFile,
   onSelectKnownLayoutFile,
+  onRestoreComponent,
   onResetLayout
 }: LayoutToolbarProps) {
   return (
@@ -120,6 +130,28 @@ export function LayoutToolbar({
                 <span className="menu-toggle__label">Show grid</span>
                 <Switch checked={showLayoutGrid} onCheckedChange={onToggleLayoutGrid} />
               </label>
+            </div>
+          </section>
+
+          <section className="layout-toolbar__section layout-toolbar__file-section">
+            <div className="layout-toolbar__section-header">
+              <h3 className="layout-toolbar__section-title">Components</h3>
+            </div>
+
+            <div className="layout-toolbar__component-list">
+              {components.map((component) => (
+                <Button
+                  key={component.id}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="layout-toolbar__component-button"
+                  onClick={() => onRestoreComponent(component.id)}
+                >
+                  <span>{component.label}</span>
+                  {component.collapsed ? <Badge variant="secondary">Collapsed</Badge> : null}
+                </Button>
+              ))}
             </div>
           </section>
 

@@ -43,6 +43,7 @@ import {
   getWorkspacePanelRenderHeight,
   listWorkspaceLayoutState,
   resetWorkspaceLayoutState,
+  restoreWorkspacePanel,
   saveWorkspaceLayoutState,
   setWorkspacePanelCollapsed,
   updateWorkspaceColumnCount,
@@ -387,6 +388,16 @@ export default function App() {
   const gridOverlayCells = useMemo(
     () => Array.from({ length: workspaceRowCount * workspaceLayout.columnCount }, (_, index) => index),
     [workspaceLayout.columnCount, workspaceRowCount]
+  );
+  const layoutToolbarComponents = useMemo(
+    () => [
+      { id: "board", label: panelTitles.board },
+      { id: "moves", label: panelTitles.moves, collapsed: workspaceLayout.collapsed.moves },
+      { id: "narrative", label: panelTitles.narrative, collapsed: workspaceLayout.collapsed.narrative },
+      { id: "saved", label: panelTitles.saved, collapsed: workspaceLayout.collapsed.saved },
+      { id: "study", label: panelTitles.study, collapsed: workspaceLayout.collapsed.study }
+    ],
+    [workspaceLayout.collapsed]
   );
 
   useEffect(() => {
@@ -881,6 +892,15 @@ export default function App() {
     setWorkspaceLayout(resetWorkspaceLayoutState());
   };
 
+  const handleRestoreWorkspaceComponent = (panelId: WorkspacePanelId) => {
+    setWorkspaceLayout((currentLayout) =>
+      restoreWorkspacePanel({
+        layoutState: currentLayout,
+        panelId
+      })
+    );
+  };
+
   const handleResetSettings = () => {
     const nextSettings = resetAppSettings();
     setSettings(nextSettings);
@@ -1322,6 +1342,7 @@ export default function App() {
                 isLayoutDirectorySupported={isLayoutDirectorySupported}
                 layoutFileBusyAction={layoutFileBusyAction}
                 knownLayoutFiles={knownLayoutFiles}
+                components={layoutToolbarComponents}
                 onToggleLayoutMode={() => setIsLayoutMode(false)}
                 onColumnCountChange={handleWorkspaceColumnCountChange}
                 onColumnGapChange={handleWorkspaceColumnGapChange}
@@ -1333,6 +1354,7 @@ export default function App() {
                 onSaveLayoutFile={handleSaveLayoutFile}
                 onDeleteLayoutFile={handleDeleteLayoutFile}
                 onSelectKnownLayoutFile={setLayoutFileName}
+                onRestoreComponent={(panelId) => handleRestoreWorkspaceComponent(panelId as WorkspacePanelId)}
                 onResetLayout={handleResetLayout}
               />
             </aside>

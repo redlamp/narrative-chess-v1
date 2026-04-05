@@ -274,6 +274,28 @@ export function resetPageLayoutState(input: {
   return nextState;
 }
 
+export function restorePageLayoutPanel(input: {
+  layoutState: PageLayoutState;
+  panelId: PageLayoutPanelId;
+  variant: PageLayoutVariant;
+}): PageLayoutState {
+  const restoredRect = scalePanelRect(
+    input.variant,
+    input.panelId,
+    defaultPanelsByVariant[input.variant][input.panelId],
+    pageLayoutDefaultColumnCount,
+    input.layoutState.columnCount
+  );
+
+  return {
+    ...input.layoutState,
+    panels: {
+      ...input.layoutState.panels,
+      [input.panelId]: restoredRect
+    }
+  };
+}
+
 export function canPlacePageLayoutPanel(input: {
   layoutState: PageLayoutState;
   panelIds: PageLayoutPanelId[];

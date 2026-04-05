@@ -17,6 +17,7 @@ import {
   getSnappedPageLayoutRow,
   listPageLayoutState,
   resetPageLayoutState,
+  restorePageLayoutPanel,
   savePageLayoutState,
   updatePageLayoutColumnCount,
   updatePageLayoutColumnGap,
@@ -136,6 +137,14 @@ export function IndexedWorkspace({
   const gridOverlayCells = useMemo(
     () => Array.from({ length: rowCount * layoutState.columnCount }, (_, index) => index),
     [layoutState.columnCount, rowCount]
+  );
+  const componentOptions = useMemo(
+    () =>
+      activePanelIds.map((panelId) => ({
+        id: panelId,
+        label: panelLabels[panelId]
+      })),
+    [activePanelIds]
   );
 
   useEffect(() => {
@@ -364,6 +373,16 @@ export function IndexedWorkspace({
     );
   };
 
+  const handleRestorePanel = (panelId: PageLayoutPanelId) => {
+    setLayoutState((currentLayout) =>
+      restorePageLayoutPanel({
+        layoutState: currentLayout,
+        panelId,
+        variant: resolvedLayoutVariant
+      })
+    );
+  };
+
   const renderMoveSurface = (panelId: PageLayoutPanelId) =>
     effectiveLayoutMode ? (
       <button
@@ -424,6 +443,7 @@ export function IndexedWorkspace({
             columnGap={layoutState.columnGap}
             rowHeight={layoutState.rowHeight}
             showLayoutGrid={showLayoutGrid}
+            components={componentOptions}
             onToggleLayoutMode={() => onToggleLayoutMode?.()}
             onColumnCountChange={(value) =>
               setLayoutState((currentLayout) =>
@@ -452,6 +472,7 @@ export function IndexedWorkspace({
               )
             }
             onToggleLayoutGrid={(checked) => onToggleLayoutGrid?.(checked)}
+            onRestoreComponent={(panelId) => handleRestorePanel(panelId as PageLayoutPanelId)}
             onResetLayout={handleResetLayout}
           />
         </aside>
