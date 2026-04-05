@@ -1,40 +1,6 @@
 const storageKey = "narrative-chess:piece-styles:v1";
 
-export const defaultPieceStyleSheet = `:root {
-  --narrative-piece-shadow: 0 1px 0 rgb(255 255 255 / 0.35), 0 10px 18px rgb(15 23 42 / 0.12);
-  --narrative-piece-white-outline: rgb(15 23 42 / 0.92);
-  --narrative-piece-black-outline: rgb(248 250 252 / 0.96);
-  --narrative-piece-hover-lift: translateY(-1px);
-}
-
-.board-square__piece,
-.piece-badge__icon {
-  text-shadow: var(--narrative-piece-shadow);
-}
-
-.board-square__piece.is-white,
-.piece-badge__icon--white {
-  -webkit-text-stroke: 1px var(--narrative-piece-white-outline);
-}
-
-.board-square__piece.is-black,
-.piece-badge__icon--black {
-  -webkit-text-stroke: 1px var(--narrative-piece-black-outline);
-}
-
-.board-square:hover .board-square__piece,
-.board-square:focus-visible .board-square__piece,
-.board-square--selected .board-square__piece,
-.board-square--inspected .board-square__piece {
-  transform: var(--narrative-piece-hover-lift);
-  filter: drop-shadow(0 10px 16px rgb(15 23 42 / 0.14));
-}
-
-.piece-badge__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
+export const defaultPieceStyleSheet = `/* Add optional piece styling overrides here. */
 `;
 
 function getStorage() {

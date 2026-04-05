@@ -1169,18 +1169,10 @@ select {
 
 .match-history__piece-icon--white {
   color: #ffffff;
-  text-shadow:
-    0 1px 0 rgb(17 24 39 / 0.9),
-    0 0 1px rgb(17 24 39 / 0.9);
-  -webkit-text-stroke: 0.7px var(--board-light-piece-stroke);
 }
 
 .match-history__piece-icon--black {
   color: #111827;
-  text-shadow:
-    0 1px 0 rgb(255 255 255 / 0.86),
-    0 0 1px rgb(255 255 255 / 0.9);
-  -webkit-text-stroke: 0.7px var(--board-dark-piece-stroke);
 }
 
 .board-panel {
@@ -1316,27 +1308,15 @@ select {
 
 .board-square__piece.is-white {
   color: #ffffff;
-  text-shadow:
-    0 1px 0 rgb(17 24 39 / 0.9),
-    0 0 1px rgb(17 24 39 / 0.9),
-    0 0 3px rgb(17 24 39 / 0.45);
-  -webkit-text-stroke: 0.95px var(--board-light-piece-stroke);
 }
 
 .board-square__piece.is-black {
   color: #111827;
-  text-shadow:
-    0 1px 0 rgb(255 255 255 / 0.86),
-    0 0 1px rgb(255 255 255 / 0.9),
-    0 0 3px rgb(255 255 255 / 0.55);
-  -webkit-text-stroke: 0.9px var(--board-dark-piece-stroke);
 }
 
 .board-square__piece.is-map.is-white,
 .board-square__piece.is-map.is-black {
-  text-shadow:
-    0 1px 1px rgb(255 255 255 / 0.65),
-    0 0 2px rgb(255 255 255 / 0.3);
+  color: inherit;
 }
 
 .board-square__piece.is-empty {
@@ -1448,19 +1428,11 @@ select {
 
 .piece-badge__icon--white {
   color: #ffffff;
-  text-shadow:
-    0 1px 0 rgb(17 24 39 / 0.9),
-    0 0 1px rgb(17 24 39 / 0.9);
-  -webkit-text-stroke: 0.95px rgb(17 24 39 / 0.92);
 }
 
 .piece-badge__icon--black,
 .role-card__icon {
   color: #111827;
-  text-shadow:
-    0 1px 0 rgb(255 255 255 / 0.86),
-    0 0 1px rgb(255 255 255 / 0.9);
-  -webkit-text-stroke: 0.9px rgb(255 255 255 / 0.96);
 }
 
 .field-select {
