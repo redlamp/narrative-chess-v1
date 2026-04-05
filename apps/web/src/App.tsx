@@ -70,6 +70,7 @@ import { Board } from "./components/Board";
 import { Panel } from "./components/Panel";
 import { AppMenu } from "./components/AppMenu";
 import { ClassicGamesLibraryPage } from "./components/ClassicGamesLibraryPage";
+import { DesignPage } from "./components/DesignPage";
 import { EdinburghReviewPage } from "./components/EdinburghReviewPage";
 import { LayoutToolbar } from "./components/LayoutToolbar";
 import { MatchHistoryPanel } from "./components/MatchHistoryPanel";
@@ -88,7 +89,7 @@ import {
   updateRoleCatalogEntry
 } from "./roleCatalog";
 
-type AppPage = "match" | "classics" | "cities" | "roles" | "research";
+type AppPage = "match" | "classics" | "cities" | "roles" | "design" | "research";
 type LayoutEditMode = "move" | "resize";
 
 type ActiveLayoutEdit = {
@@ -117,6 +118,7 @@ const pageOptions: Array<{ value: AppPage; label: string }> = [
   { value: "cities", label: "Cities" },
   { value: "roles", label: "Characters" },
   { value: "classics", label: "Classics" },
+  { value: "design", label: "Design" },
   { value: "research", label: "Research" }
 ];
 
@@ -126,6 +128,7 @@ function isAppPage(value: string | null): value is AppPage {
     value === "classics" ||
     value === "cities" ||
     value === "roles" ||
+    value === "design" ||
     value === "research"
   );
 }
@@ -185,8 +188,10 @@ function getPageCaption(page: AppPage) {
       return "Study classic games and their key lines.";
     case "roles":
       return "Edit piece roles and roster flavor.";
+    case "design":
+      return "Inspect piece assets and edit the shared style sheet.";
     case "research":
-      return "Review references, assets, and style notes.";
+      return "Review competitive chess products and references.";
     default:
       return "Keep the board central and inspect moves in context.";
   }
@@ -1223,8 +1228,8 @@ export default function App() {
           onToggleLayoutMode={() => setIsLayoutMode(false)}
           onToggleLayoutGrid={(checked) => handleBooleanSettingChange("showLayoutGrid", checked)}
         />
-      ) : page === "research" ? (
-        <ResearchPage
+      ) : page === "design" ? (
+        <DesignPage
           layoutMode={effectiveLayoutMode}
           showLayoutGrid={settings.showLayoutGrid}
           pieceStyleSheet={pieceStyleSheet}
@@ -1237,6 +1242,13 @@ export default function App() {
           onLoadPieceStyleSheetFromDirectory={handleLoadPieceStyleSheetFromDirectory}
           onSavePieceStyleSheetToDirectory={handleSavePieceStyleSheetToDirectory}
           onResetPieceStyleSheet={handleResetPieceStyleSheet}
+          onToggleLayoutMode={() => setIsLayoutMode(false)}
+          onToggleLayoutGrid={(checked) => handleBooleanSettingChange("showLayoutGrid", checked)}
+        />
+      ) : page === "research" ? (
+        <ResearchPage
+          layoutMode={effectiveLayoutMode}
+          showLayoutGrid={settings.showLayoutGrid}
           onToggleLayoutMode={() => setIsLayoutMode(false)}
           onToggleLayoutGrid={(checked) => handleBooleanSettingChange("showLayoutGrid", checked)}
         />
