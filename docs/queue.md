@@ -4,6 +4,8 @@ This queue rebuilds the current work around the live repo state on `codex/milest
 
 It is meant to be durable and resumable: each slice should land as a bounded branch, pass `lint`, `typecheck`, `test`, and `build`, and leave the next slice obvious.
 
+Recovered missed prompts and the newer recovery queue live in [recovery-queue.md](./recovery-queue.md).
+
 ## Current State
 
 Shipped:
