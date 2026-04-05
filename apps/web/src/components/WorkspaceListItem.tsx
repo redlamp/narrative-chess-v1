@@ -26,7 +26,7 @@ export function WorkspaceListItem({
       {...buttonProps}
       aria-pressed={selected}
       className={cn(
-        "workspace-list-item grid gap-2 rounded-lg border px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "workspace-list-item grid gap-2 border px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         selected ? "border-foreground/15 bg-muted" : "bg-background hover:bg-muted/50",
         className
       )}

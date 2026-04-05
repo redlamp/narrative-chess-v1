@@ -364,27 +364,29 @@ export function IndexedWorkspace({
     );
   };
 
-  const renderMoveSurface = (panelId: PageLayoutPanelId) => (
-    <button
-      type="button"
-      className="workspace-item__move-surface"
-      onPointerDown={beginPanelEdit(panelId, "move")}
-      onKeyDown={handlePanelEditKeyDown(panelId, "move")}
-      aria-label={`Move ${panelLabels[panelId]} section with pointer or arrow keys`}
-    />
-  );
+  const renderMoveSurface = (panelId: PageLayoutPanelId) =>
+    effectiveLayoutMode ? (
+      <button
+        type="button"
+        className="workspace-item__move-surface"
+        onPointerDown={beginPanelEdit(panelId, "move")}
+        onKeyDown={handlePanelEditKeyDown(panelId, "move")}
+        aria-label={`Move ${panelLabels[panelId]} section with pointer or arrow keys`}
+      />
+    ) : null;
 
-  const renderResizeHandle = (panelId: PageLayoutPanelId) => (
-    <button
-      type="button"
-      className="workspace-item__resize-handle"
-      onPointerDown={beginPanelEdit(panelId, "resize")}
-      onKeyDown={handlePanelEditKeyDown(panelId, "resize")}
-      aria-label={`Resize ${panelLabels[panelId]} section with pointer or arrow keys`}
-    >
-      <span />
-    </button>
-  );
+  const renderResizeHandle = (panelId: PageLayoutPanelId) =>
+    effectiveLayoutMode ? (
+      <button
+        type="button"
+        className="workspace-item__resize-handle"
+        onPointerDown={beginPanelEdit(panelId, "resize")}
+        onKeyDown={handlePanelEditKeyDown(panelId, "resize")}
+        aria-label={`Resize ${panelLabels[panelId]} section with pointer or arrow keys`}
+      >
+        <span />
+      </button>
+    ) : null;
 
   if (isCompactViewport) {
     return (

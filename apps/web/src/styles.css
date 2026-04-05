@@ -37,6 +37,7 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
+  --workspace-card-radius: calc(var(--radius) - 0.1rem);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -99,6 +100,11 @@ select {
   background: var(--card);
   border-radius: calc(var(--radius) + 0.35rem);
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+}
+
+.layout-toolbar,
+.role-page__intro {
+  border-radius: var(--workspace-card-radius);
 }
 
 .app-header {
@@ -232,6 +238,9 @@ select {
 
 .page-card {
   min-width: 0;
+  height: 100%;
+  border-radius: var(--workspace-card-radius);
+  overflow: hidden;
 }
 
 .page-card--intro {
@@ -290,7 +299,7 @@ select {
 .study-panel__disclosure {
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--muted) 72%, white 28%);
-  border-radius: calc(var(--radius) + 0.2rem);
+  border-radius: var(--workspace-card-radius);
 }
 
 .status-card {
@@ -533,7 +542,7 @@ select {
 
 .workspace-notice-card {
   border: 1px solid var(--border);
-  border-radius: calc(var(--radius) + 0.1rem);
+  border-radius: var(--workspace-card-radius);
   padding: 12px 14px;
   display: grid;
   gap: 8px;
@@ -566,6 +575,7 @@ select {
 
 .workspace-list-item {
   min-height: 5rem;
+  border-radius: var(--workspace-card-radius);
 }
 
 .workspace-list-item--overview {
@@ -730,7 +740,7 @@ select {
   grid-auto-rows: var(--workspace-row-height);
   gap: var(--workspace-column-gap);
   align-items: start;
-  --workspace-cell-radius: calc(var(--radius) - 0.1rem);
+  --workspace-cell-radius: var(--workspace-card-radius);
 }
 
 .workspace-grid--freeform {
@@ -809,15 +819,20 @@ select {
 
 .page-layout-panel {
   min-height: 0;
+  border-radius: var(--workspace-cell-radius);
 }
 
 .page-layout-panel__content {
   min-height: 100%;
   height: 100%;
+  border-radius: inherit;
 }
 
 .page-layout-panel__content > * {
   min-height: 100%;
+  height: 100%;
+  border-radius: inherit;
+  overflow: hidden;
 }
 
 .indexed-workspace--layout-mode .page-card,
@@ -884,6 +899,8 @@ select {
   min-height: 100%;
   display: flex;
   flex-direction: column;
+  border-radius: var(--workspace-card-radius);
+  overflow: hidden;
 }
 
 .panel--collapsed {
@@ -1168,6 +1185,8 @@ select {
 
 .board-panel {
   min-height: 100%;
+  border-radius: var(--workspace-card-radius);
+  overflow: hidden;
 }
 
 .board-panel__content {
