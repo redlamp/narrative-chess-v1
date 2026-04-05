@@ -492,7 +492,7 @@ export function EdinburghReviewPage({
               </CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="page-card__content pt-0">
+          <CardContent className="page-card__content page-card__content--scroll pt-0">
             <div className="cities-page__list">
               {trackedCities.map((city) => (
                 <WorkspaceListItem
@@ -576,7 +576,7 @@ export function EdinburghReviewPage({
               ))}
             </div>
           </CardHeader>
-          <CardContent className="page-card__content pt-0">
+          <CardContent className="page-card__content page-card__content--scroll pt-0">
             <div className="cities-page__list rounded-lg border p-3">
               <WorkspaceListItem
                 type="button"

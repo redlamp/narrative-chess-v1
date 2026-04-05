@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IndexedWorkspace } from "./IndexedWorkspace";
 import { PieceAssetsPage } from "./PieceAssetsPage";
 import { PieceStyleReferencePage } from "./PieceStyleReferencePage";
 import { WorkspaceIntroCard } from "./WorkspaceIntroCard";
+import { WorkspaceListItem } from "./WorkspaceListItem";
 
 type FileNotice = {
   tone: "neutral" | "success" | "error";
@@ -45,7 +45,7 @@ export function DesignPage({
   onToggleLayoutMode,
   onToggleLayoutGrid
 }: DesignPageProps) {
-  const [activeTab, setActiveTab] = useState("art-assets");
+  const [activeSection, setActiveSection] = useState<"art-assets" | "style-reference">("art-assets");
 
   return (
     <IndexedWorkspace
@@ -75,21 +75,33 @@ export function DesignPage({
           <CardHeader className="gap-4">
             <div className="grid gap-2">
               <CardTitle>Design sections</CardTitle>
-              <CardDescription>Switch between art asset references and the live piece stylesheet.</CardDescription>
+              <CardDescription>Choose a section, then review or edit it in the detail pane.</CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="page-card__content pt-0">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="research-tabs">
-              <TabsList aria-label="Design sections" className="research-tabs__list">
-                <TabsTrigger value="art-assets">Art assets</TabsTrigger>
-                <TabsTrigger value="style-reference">Style reference</TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <CardContent className="page-card__content page-card__content--scroll pt-0">
+            <div className="grid gap-2">
+              <WorkspaceListItem
+                type="button"
+                onClick={() => setActiveSection("art-assets")}
+                selected={activeSection === "art-assets"}
+                title="Art assets"
+                description="Review the live piece glyphs, markup hooks, and current asset presentation."
+                meta={<Badge variant="outline">Reference</Badge>}
+              />
+              <WorkspaceListItem
+                type="button"
+                onClick={() => setActiveSection("style-reference")}
+                selected={activeSection === "style-reference"}
+                title="Style reference"
+                description="Edit the shared piece stylesheet and save it back to the project folder."
+                meta={<Badge variant="outline">Editable</Badge>}
+              />
+            </div>
           </CardContent>
         </Card>
       }
       detail={
-        activeTab === "art-assets" ? (
+        activeSection === "art-assets" ? (
           <PieceAssetsPage />
         ) : (
           <PieceStyleReferencePage

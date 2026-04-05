@@ -561,7 +561,7 @@ export function ClassicGamesLibraryPage({
         <Card className="page-card page-card--index classic-games-page__index">
           <CardHeader className="gap-4">
             <div className="grid gap-2">
-              <CardTitle>Game list</CardTitle>
+              <CardTitle>Games</CardTitle>
               <CardDescription>Search by player, opening, title, or teaching focus.</CardDescription>
             </div>
             <ClearableSearchField
@@ -573,7 +573,7 @@ export function ClassicGamesLibraryPage({
               ariaLabel="Search classic chess games"
             />
           </CardHeader>
-          <CardContent className="page-card__content pt-0">
+          <CardContent className="page-card__content page-card__content--scroll pt-0">
             <div className="grid gap-2">
               {filteredGames.map((game) => (
                 <WorkspaceListItem

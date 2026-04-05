@@ -118,8 +118,8 @@ const pageOptions: Array<{ value: AppPage; label: string }> = [
   { value: "cities", label: "Cities" },
   { value: "roles", label: "Characters" },
   { value: "classics", label: "Classics" },
-  { value: "design", label: "Design" },
-  { value: "research", label: "Research" }
+  { value: "research", label: "Research" },
+  { value: "design", label: "Design" }
 ];
 
 function isAppPage(value: string | null): value is AppPage {

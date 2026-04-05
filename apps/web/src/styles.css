@@ -407,13 +407,6 @@ select {
   min-width: 7.5rem;
 }
 
-.page-switcher__trigger[data-state="active"] {
-  background: var(--background);
-  color: var(--foreground);
-  border-color: color-mix(in srgb, var(--ring) 24%, var(--border) 76%);
-  box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
-}
-
 .app-menu {
   position: relative;
   display: inline-flex;

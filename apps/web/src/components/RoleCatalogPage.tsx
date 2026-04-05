@@ -307,7 +307,7 @@ export function RoleCatalogPage({
           <CardHeader className="gap-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="grid gap-2">
-                <CardTitle>Piece groups</CardTitle>
+                <CardTitle>Pieces</CardTitle>
                 <CardDescription>
                   Choose the chess piece family first, then pick a role from the next column.
                 </CardDescription>
@@ -317,7 +317,7 @@ export function RoleCatalogPage({
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="page-card__content pt-0">
+          <CardContent className="page-card__content page-card__content--scroll pt-0">
             <div className="grid gap-2">
               {pieceKinds.map((pieceKind) => {
                 const totalCount = groupedRoles[pieceKind].length;
@@ -348,7 +348,8 @@ export function RoleCatalogPage({
           <CardHeader className="gap-4">
             <div className="grid gap-3">
               <div className="flex flex-wrap items-center gap-2">
-                <CardTitle>{getPieceKindLabel(selectedPieceKind)} roles</CardTitle>
+                <CardTitle>Roles</CardTitle>
+                <Badge variant="outline">{getPieceKindLabel(selectedPieceKind)}</Badge>
                 <Badge variant="outline">{selectedPieceRoles.length} visible</Badge>
               </div>
               <CardDescription>
@@ -381,7 +382,7 @@ export function RoleCatalogPage({
               </div>
             </div>
           </CardHeader>
-          <CardContent className="page-card__content pt-0">
+          <CardContent className="page-card__content page-card__content--scroll pt-0">
             <div className="grid gap-2">
               {selectedPieceRoles.map((role) => (
                 <WorkspaceListItem
