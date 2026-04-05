@@ -418,12 +418,13 @@ select {
 }
 
 .layout-toolbar {
-  padding: 0;
+  padding-block: 10px;
   width: min(21rem, calc(100vw - 2rem));
 }
 
 .layout-toolbar__header {
-  padding-bottom: 0;
+  padding-top: 2px;
+  padding-bottom: 4px;
 }
 
 .layout-toolbar__header-row,
@@ -481,7 +482,8 @@ select {
 }
 
 .layout-toolbar__body {
-  padding-top: 0;
+  padding-top: 6px;
+  padding-bottom: 6px;
   gap: 16px;
 }
 
@@ -599,15 +601,21 @@ select {
 }
 
 .stepper-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6.25rem;
+  align-items: center;
+  gap: 14px;
   width: 100%;
 }
 
-.stepper-field__input {
-  text-align: right;
+.stepper-field__label {
+  min-width: 0;
 }
 
-.stepper-field__buttons {
-  gap: 4px;
+.stepper-field__input {
+  width: 100%;
+  min-width: 0;
+  text-align: right;
 }
 
 .menu-toggle {

@@ -66,21 +66,19 @@ export function PageLayoutToolbar({
                 onChange={onColumnCountChange}
               />
               <NumberStepperField
-                label="Column gap"
+                label="Column gap (px)"
                 value={columnGap}
                 min={8}
                 max={32}
                 step={2}
-                unit="px"
                 onChange={onColumnGapChange}
               />
               <NumberStepperField
-                label="Row height"
+                label="Row height (px)"
                 value={rowHeight}
                 min={30}
                 max={80}
                 step={2}
-                unit="px"
                 onChange={onRowHeightChange}
               />
             </div>
