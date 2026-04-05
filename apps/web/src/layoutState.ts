@@ -200,10 +200,19 @@ function scalePanelRect(
 function reflowWorkspacePanels(
   panels: Record<WorkspacePanelId, WorkspacePanelRect>,
   fromColumnCount: number,
-  toColumnCount: number
+  toColumnCount: number,
+  pinnedPanelId?: WorkspacePanelId
 ) {
   const nextPanels = {} as Record<WorkspacePanelId, WorkspacePanelRect>;
-  const orderedPanelIds = [...workspacePanelIds].sort((leftId, rightId) => {
+  const sortedPanelIds = [...workspacePanelIds].sort((leftId, rightId) => {
+    if (leftId === pinnedPanelId) {
+      return -1;
+    }
+
+    if (rightId === pinnedPanelId) {
+      return 1;
+    }
+
     const left = panels[leftId];
     const right = panels[rightId];
 
@@ -214,7 +223,7 @@ function reflowWorkspacePanels(
     return left.x - right.x;
   });
 
-  for (const panelId of orderedPanelIds) {
+  for (const panelId of sortedPanelIds) {
     const baseRect = scalePanelRect(panelId, panels[panelId], fromColumnCount, toColumnCount);
     let candidateRect = baseRect;
 
@@ -224,9 +233,17 @@ function reflowWorkspacePanels(
         rectanglesOverlap(getPanelPlacementRect(candidateRect), getPanelPlacementRect(otherRect))
       )
     ) {
+      const overlappingPanels = Object.entries(nextPanels).filter(([otherPanelId, otherRect]) =>
+        otherPanelId !== panelId &&
+        rectanglesOverlap(getPanelPlacementRect(candidateRect), getPanelPlacementRect(otherRect))
+      );
+      const nextRow = overlappingPanels.reduce((highestRow, [, otherRect]) => {
+        return Math.max(highestRow, otherRect.y + otherRect.h);
+      }, candidateRect.y + 1);
+
       candidateRect = {
         ...candidateRect,
-        y: candidateRect.y + 1
+        y: nextRow
       };
     }
 
@@ -379,7 +396,18 @@ export function updateWorkspacePanelRect(input: {
   );
 
   if (!canPlaceWorkspacePanel(input.layoutState, input.panelId, normalizedRect)) {
-    return input.layoutState;
+    return {
+      ...input.layoutState,
+      panels: reflowWorkspacePanels(
+        {
+          ...input.layoutState.panels,
+          [input.panelId]: normalizedRect
+        },
+        input.layoutState.columnCount,
+        input.layoutState.columnCount,
+        input.panelId
+      )
+    };
   }
 
   return {

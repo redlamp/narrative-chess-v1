@@ -31,27 +31,28 @@ describe("layoutState", () => {
     expect(layoutState.panels.moves.h).toBeGreaterThanOrEqual(1);
   });
 
-  it("blocks overlapping panel placements and keeps the prior rect", () => {
+  it("reflows overlapping panel placements by moving lower panels down", () => {
     const layoutState = getDefaultWorkspaceLayoutState();
     const canPlaceMovesOnBoard = canPlaceWorkspacePanel(layoutState, "moves", {
-      x: 1,
+      x: 7,
       y: 1,
       w: 3,
-      h: 5
+      h: 12
     });
     const nextLayoutState = updateWorkspacePanelRect({
       layoutState,
       panelId: "moves",
       nextRect: {
-        x: 1,
+        x: 7,
         y: 1,
         w: 3,
-        h: 5
+        h: 12
       }
     });
 
     expect(canPlaceMovesOnBoard).toBe(false);
-    expect(nextLayoutState.panels.moves).toEqual(layoutState.panels.moves);
+    expect(nextLayoutState.panels.moves.h).toBe(12);
+    expect(nextLayoutState.panels.saved.y).toBeGreaterThan(layoutState.panels.saved.y);
   });
 
   it("keeps layouts valid when the column count changes", () => {

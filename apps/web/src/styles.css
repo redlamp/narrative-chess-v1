@@ -921,6 +921,10 @@ select {
   overflow: hidden;
 }
 
+.panel__body > * {
+  min-height: 0;
+}
+
 .classic-games-page__links {
   display: flex;
   flex-wrap: wrap;
@@ -1013,9 +1017,11 @@ select {
 }
 
 .match-history {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 0;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .match-history__nav,
@@ -1052,8 +1058,8 @@ select {
 }
 
 .match-history__score {
+  flex: 1 1 0;
   min-height: 0;
-  height: 100%;
   overflow: auto;
   padding-right: 4px;
   align-content: start;
