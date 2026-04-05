@@ -244,7 +244,42 @@ select {
 }
 
 .page-card--intro {
-  min-height: 12.5rem;
+  min-height: 0;
+}
+
+.workspace-intro-card__header {
+  gap: 0;
+}
+
+.workspace-intro-card__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 18px;
+  align-items: start;
+}
+
+.workspace-intro-card__main {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workspace-intro-card__title {
+  font-size: 1.45rem;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.workspace-intro-card__badges,
+.workspace-intro-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workspace-intro-card__actions {
+  justify-content: flex-end;
+  align-content: start;
 }
 
 .page-card--index,

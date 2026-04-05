@@ -61,13 +61,11 @@ export function DesignPage({
         <WorkspaceIntroCard
           badgeRow={
             <>
-              <Badge variant="secondary">Design</Badge>
               <Badge variant="outline">Art assets</Badge>
               <Badge variant="outline">Style reference</Badge>
             </>
           }
-          title="Design references and piece styling"
-          description="Review the live piece assets, inspect their markup hooks, and edit the shared CSS sheet that styles them across the app."
+          title="Design"
         />
       }
       index={

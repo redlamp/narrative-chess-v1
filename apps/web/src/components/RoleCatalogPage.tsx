@@ -248,60 +248,44 @@ export function RoleCatalogPage({
         <WorkspaceIntroCard
           badgeRow={
             <>
-              <Badge variant="secondary">Characters</Badge>
               <Badge variant="outline">{roleCatalog.length} editable roles</Badge>
-              {pieceKinds.map((pieceKind) => (
-                <Badge key={pieceKind} variant="outline">
-                  {getPieceKindLabel(pieceKind)}: {groupedRoles[pieceKind].length}
-                </Badge>
-              ))}
+              {roleCatalogDirectoryName ? <Badge variant="outline">{roleCatalogDirectoryName}</Badge> : null}
             </>
           }
-          title="Piece roles and job definitions"
-          description="Start from the chess piece family, drill into a named role, and then edit the record in detail. Changes save locally and feed back into new match rosters immediately."
-          actions={<Button type="button" variant="outline" onClick={onRoleCatalogReset}>Reset defaults</Button>}
+          title="Characters"
+          actions={
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onConnectRoleCatalogDirectory}
+                disabled={!isRoleCatalogDirectorySupported || roleCatalogFileBusyAction !== null}
+              >
+                Connect folder
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onLoadRoleCatalogFromDirectory}
+                disabled={!roleCatalogDirectoryName || roleCatalogFileBusyAction !== null}
+              >
+                Load from disk
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onSaveRoleCatalogToDirectory}
+                disabled={!roleCatalogDirectoryName || roleCatalogFileBusyAction !== null}
+              >
+                Save to disk
+              </Button>
+              <Button type="button" variant="outline" onClick={onRoleCatalogReset}>
+                Reset defaults
+              </Button>
+            </>
+          }
           status={roleCatalogFileNotice}
-        >
-          <div className="grid gap-3 rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-              <p>
-                {roleCatalogDirectoryName
-                  ? `Connected to ${roleCatalogDirectoryName}.`
-                  : "Local browser storage remains the fallback until you connect a folder."}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onConnectRoleCatalogDirectory}
-                  disabled={!isRoleCatalogDirectorySupported || roleCatalogFileBusyAction !== null}
-                >
-                  Connect folder
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onLoadRoleCatalogFromDirectory}
-                  disabled={!roleCatalogDirectoryName || roleCatalogFileBusyAction !== null}
-                >
-                  Load from disk
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onSaveRoleCatalogToDirectory}
-                  disabled={!roleCatalogDirectoryName || roleCatalogFileBusyAction !== null}
-                >
-                  Save to disk
-                </Button>
-              </div>
-            </div>
-            <p>
-              The repo-local file is saved as `content/roles/role-catalog.local.json` when you
-              connect a repo root or content folder.
-            </p>
-          </div>
-        </WorkspaceIntroCard>
+        />
       }
       index={
         <Card className="page-card page-card--index">

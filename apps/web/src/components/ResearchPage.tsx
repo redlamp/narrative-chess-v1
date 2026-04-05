@@ -31,12 +31,10 @@ export function ResearchPage({
         <WorkspaceIntroCard
           badgeRow={
             <>
-              <Badge variant="secondary">Research</Badge>
               <Badge variant="outline">Competition</Badge>
             </>
           }
-          title="Competitive research"
-          description="Review competing chess products and note the patterns worth borrowing, avoiding, or pressure-testing in Narrative Chess."
+          title="Research"
         />
       }
       index={

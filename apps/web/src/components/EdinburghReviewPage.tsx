@@ -272,9 +272,6 @@ export function EdinburghReviewPage({
   const reviewedDistrictCount = draft.districts.filter(
     (district) => district.reviewStatus === "reviewed" || district.reviewStatus === "approved"
   ).length;
-  const uniqueLandmarkCount = new Set(
-    draft.districts.flatMap((district) => district.landmarks.map((landmark) => landmark.toLowerCase()))
-  ).size;
 
   const setCityField = <Field extends keyof CityBoard>(field: Field, value: CityBoard[Field]) => {
     setDraft((current) => ({
@@ -321,17 +318,16 @@ export function EdinburghReviewPage({
         <WorkspaceIntroCard
         badgeRow={
           <>
-            <Badge variant="secondary">Cities</Badge>
             <Badge variant="outline">{trackedCities.length} tracked cities</Badge>
-            <Badge variant="outline">64 mapped districts</Badge>
+            <Badge variant="outline">{draft.districts.length} mapped districts</Badge>
+            <Badge variant="outline">{reviewedDistrictCount} reviewed</Badge>
             <Badge variant={validation.isValid ? "outline" : "destructive"}>
               {validation.isValid ? "Schema valid" : `${validation.issues.length} validation issues`}
             </Badge>
             {directoryName ? <Badge variant="outline">Connected: {directoryName}</Badge> : null}
           </>
         }
-        title="City and district workspace"
-        description="Review gathered city boards, move from city selection into district detail, and write a repo-local draft file when you want the changes available to future passes. The current workspace is seeded with Edinburgh and London and structured so more cities can slot into the same pattern over time."
+        title="Cities"
         actions={
           <>
             <Button
@@ -405,39 +401,6 @@ export function EdinburghReviewPage({
             >
               Download JSON
             </Button>
-          </>
-        }
-        status={saveNotice}
-      >
-        <div className="grid gap-4 rounded-lg border bg-muted/20 p-4">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-lg border bg-muted/30 p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                Tracked cities
-              </p>
-              <p className="mt-2 text-2xl font-semibold">{trackedCities.length}</p>
-            </div>
-            <div className="rounded-lg border bg-muted/30 p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                Reviewed
-              </p>
-              <p className="mt-2 text-2xl font-semibold">{reviewedDistrictCount}</p>
-            </div>
-            <div className="rounded-lg border bg-muted/30 p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                Landmarks
-              </p>
-              <p className="mt-2 text-2xl font-semibold">{uniqueLandmarkCount}</p>
-            </div>
-            <div className="rounded-lg border bg-muted/30 p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                Review status
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">{draft.reviewStatus}</p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               onClick={() => {
@@ -452,7 +415,7 @@ export function EdinburghReviewPage({
                 });
               }}
             >
-              Reset current city draft
+              Reset draft
             </Button>
             <Button
               variant="outline"
@@ -464,22 +427,23 @@ export function EdinburghReviewPage({
                 });
               }}
             >
-              Re-save browser draft
+              Re-save draft
             </Button>
-          </div>
-
-          {!validation.isValid ? (
-            <WorkspaceNoticeCard tone="error" title="Validation notes">
-              <ul className="grid gap-2 text-sm text-muted-foreground">
-                {validation.issues.slice(0, 8).map((issue) => (
-                  <li key={issue} className="rounded-md border bg-background px-3 py-2">
-                    {issue}
-                  </li>
-                ))}
-              </ul>
-            </WorkspaceNoticeCard>
-          ) : null}
-        </div>
+          </>
+        }
+        status={saveNotice}
+      >
+        {!validation.isValid ? (
+          <WorkspaceNoticeCard tone="error" title="Validation notes">
+            <ul className="grid gap-2 text-sm text-muted-foreground">
+              {validation.issues.slice(0, 8).map((issue) => (
+                <li key={issue} className="rounded-md border bg-background px-3 py-2">
+                  {issue}
+                </li>
+              ))}
+            </ul>
+          </WorkspaceNoticeCard>
+        ) : null}
       </WorkspaceIntroCard>
       }
       index={

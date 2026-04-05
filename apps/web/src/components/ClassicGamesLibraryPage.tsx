@@ -462,7 +462,6 @@ export function ClassicGamesLibraryPage({
         <WorkspaceIntroCard
           badgeRow={
             <>
-              <Badge variant="secondary">Classic Games</Badge>
               <Badge variant="outline">{games.length} editable games</Badge>
               <Badge variant="outline">Browser saved</Badge>
               <Badge variant="outline">
@@ -470,10 +469,47 @@ export function ClassicGamesLibraryPage({
               </Badge>
             </>
           }
-          title="Historic reference game library"
-          description="Review, edit, and extend a growing set of classic and modern reference games. The browser copy saves automatically, and you can connect a repo folder when you want a named file on disk."
+          title="Classics"
           actions={
             <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleConnectFolder}
+                disabled={!isDirectorySupported || busyAction === "connect-folder"}
+              >
+                <FolderOpen className="mr-2 h-4 w-4" />
+                Connect folder
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleLoadFromFolder}
+                disabled={!isDirectorySupported || busyAction === "load-folder"}
+              >
+                Load from folder
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSaveToFolder}
+                disabled={!isDirectorySupported || busyAction === "save-folder"}
+              >
+                <Save className="mr-2 h-4 w-4" />
+                Save to folder
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (selectedGame) {
+                    onLoadReferenceGame(selectedGame);
+                  }
+                }}
+                disabled={!selectedGame}
+              >
+                Load on study board
+              </Button>
               <Button type="button" variant="outline" onClick={handleAddGame}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add game
@@ -495,66 +531,17 @@ export function ClassicGamesLibraryPage({
           }
           status={fileNotice}
         >
-          <div className="grid gap-4 rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-              <p>
-                {directoryName
-                  ? `Connected to ${directoryName}. Use the folder buttons to load or save a repo-local classic-games.local.json file.`
-                  : "Connect a repo folder when you want a named file on disk instead of browser-only storage."}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleConnectFolder}
-                  disabled={!isDirectorySupported || busyAction === "connect-folder"}
-                >
-                  <FolderOpen className="mr-2 h-4 w-4" />
-                  Connect folder
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleLoadFromFolder}
-                  disabled={!isDirectorySupported || busyAction === "load-folder"}
-                >
-                  Load from folder
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSaveToFolder}
-                  disabled={!isDirectorySupported || busyAction === "save-folder"}
-                >
-                  <Save className="mr-2 h-4 w-4" />
-                  Save to folder
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    if (selectedGame) {
-                      onLoadReferenceGame(selectedGame);
-                    }
-                  }}
-                  disabled={!selectedGame}
-                >
-                  Load on study board
-                </Button>
-              </div>
-            </div>
-            {!validation.isValid ? (
-              <WorkspaceNoticeCard tone="error" title="Library validation">
-                <p>{validation.issues[0]}</p>
-                {validation.issues.length > 1 ? (
-                  <p className="text-sm text-muted-foreground">
-                    {validation.issues.length - 1} more issue
-                    {validation.issues.length - 1 === 1 ? "" : "s"} need attention.
-                  </p>
-                ) : null}
-              </WorkspaceNoticeCard>
-            ) : null}
-          </div>
+          {!validation.isValid ? (
+            <WorkspaceNoticeCard tone="error" title="Library validation">
+              <p>{validation.issues[0]}</p>
+              {validation.issues.length > 1 ? (
+                <p className="text-sm text-muted-foreground">
+                  {validation.issues.length - 1} more issue
+                  {validation.issues.length - 1 === 1 ? "" : "s"} need attention.
+                </p>
+              ) : null}
+            </WorkspaceNoticeCard>
+          ) : null}
         </WorkspaceIntroCard>
       }
       index={
