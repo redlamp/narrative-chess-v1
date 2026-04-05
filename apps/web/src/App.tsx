@@ -264,7 +264,6 @@ export default function App() {
     savedMatches,
     legalMoves,
     canSave,
-    canUndo,
     isStudyMode,
     tonePreset,
     studySession,
@@ -273,7 +272,6 @@ export default function App() {
     importError,
     lastMove,
     handleSquareClick,
-    handleUndo,
     goToPly,
     loadReferenceGame,
     loadPgnStudy,
@@ -1331,7 +1329,6 @@ export default function App() {
                 moves={moveHistory}
                 selectedPly={selectedPly}
                 totalPlies={totalPlies}
-                canUndo={canUndo}
                 collapsed={workspaceLayout.collapsed.moves}
                 onToggleCollapse={() => handleTogglePanelCollapse("moves")}
                 onJumpToStart={jumpToStart}
@@ -1339,7 +1336,6 @@ export default function App() {
                 onStepForward={stepForward}
                 onJumpToEnd={jumpToEnd}
                 onSelectPly={goToPly}
-                onUndo={handleUndo}
               />
               {renderMoveSurface("moves")}
               {renderResizeHandle("moves")}

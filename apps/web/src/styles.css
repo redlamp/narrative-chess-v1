@@ -1053,6 +1053,7 @@ select {
 
 .match-history__score {
   min-height: 0;
+  height: 100%;
   overflow: auto;
   padding-right: 4px;
   align-content: start;
@@ -1082,7 +1083,9 @@ select {
 
 .match-history__move-button {
   display: grid;
-  align-content: start;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
   background: var(--background);
   text-align: left;
   font-size: 0.9rem;
@@ -1111,6 +1114,30 @@ select {
   place-items: center;
   color: var(--muted-foreground);
   background: color-mix(in srgb, var(--muted) 48%, var(--background) 52%);
+}
+
+.match-history__piece-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.match-history__piece-icon--white {
+  color: #ffffff;
+  text-shadow:
+    0 1px 0 rgb(17 24 39 / 0.9),
+    0 0 1px rgb(17 24 39 / 0.9);
+  -webkit-text-stroke: 0.7px var(--board-light-piece-stroke);
+}
+
+.match-history__piece-icon--black {
+  color: #111827;
+  text-shadow:
+    0 1px 0 rgb(255 255 255 / 0.86),
+    0 0 1px rgb(255 255 255 / 0.9);
+  -webkit-text-stroke: 0.7px var(--board-dark-piece-stroke);
 }
 
 .board-panel {

@@ -2,13 +2,13 @@ import type { ReactNode } from "react";
 import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight } from "lucide-react";
 import type { MoveRecord } from "@narrative-chess/content-schema";
 import { Button } from "@/components/ui/button";
+import { getPieceGlyph } from "../chessPresentation";
 import { Panel } from "./Panel";
 
 type MatchHistoryPanelProps = {
   moves: MoveRecord[];
   selectedPly: number;
   totalPlies: number;
-  canUndo: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
   onJumpToStart: () => void;
@@ -16,7 +16,6 @@ type MatchHistoryPanelProps = {
   onStepForward: () => void;
   onJumpToEnd: () => void;
   onSelectPly: (ply: number) => void;
-  onUndo: () => void;
   headerAction?: ReactNode;
 };
 
@@ -49,7 +48,6 @@ export function MatchHistoryPanel({
   moves,
   selectedPly,
   totalPlies,
-  canUndo,
   collapsed,
   onToggleCollapse,
   onJumpToStart,
@@ -57,25 +55,16 @@ export function MatchHistoryPanel({
   onStepForward,
   onJumpToEnd,
   onSelectPly,
-  onUndo,
   headerAction
 }: MatchHistoryPanelProps) {
   const movePairs = buildMovePairs(moves);
-  const selectedMove = selectedPly > 0 ? moves[selectedPly - 1] ?? null : null;
 
   return (
     <Panel
-      title="Match History (PGN)"
+      title="History (PGN)"
       collapsed={collapsed}
       onToggleCollapse={onToggleCollapse}
-      action={
-        <div className="panel-toolbar">
-          <Button type="button" variant="outline" size="sm" onClick={onUndo} disabled={!canUndo}>
-            Undo
-          </Button>
-          {headerAction}
-        </div>
-      }
+      action={headerAction}
     >
       <div className="match-history">
         <div className="match-history__playhead">
@@ -126,9 +115,7 @@ export function MatchHistoryPanel({
         {movePairs.length ? (
           <>
             <div className="match-history__header-row" aria-hidden="true">
-              <span className="match-history__header-cell match-history__header-cell--number">
-                Move
-              </span>
+              <span className="match-history__header-cell match-history__header-cell--number" />
               <span className="match-history__header-cell">White</span>
               <span className="match-history__header-cell">Black</span>
             </div>
@@ -141,13 +128,19 @@ export function MatchHistoryPanel({
                     type="button"
                     className={[
                       "match-history__move-button",
-                      selectedMove?.id === movePair.white.id ? "match-history__move-button--active" : ""
+                      selectedPly === movePair.white.moveNumber ? "match-history__move-button--active" : ""
                     ]
                       .filter(Boolean)
                       .join(" ")}
-                    aria-current={selectedMove?.id === movePair.white.id ? "step" : undefined}
+                    aria-current={selectedPly === movePair.white.moveNumber ? "step" : undefined}
                     onClick={() => onSelectPly(movePair.white.moveNumber)}
                   >
+                    <span
+                      className={`match-history__piece-icon match-history__piece-icon--${movePair.white.side}`}
+                      aria-hidden="true"
+                    >
+                      {getPieceGlyph({ side: movePair.white.side, kind: movePair.white.pieceKind })}
+                    </span>
                     <span>{movePair.white.san}</span>
                   </button>
                   {movePair.black ? (
@@ -155,17 +148,23 @@ export function MatchHistoryPanel({
                       type="button"
                       className={[
                         "match-history__move-button",
-                        selectedMove?.id === movePair.black?.id ? "match-history__move-button--active" : ""
+                        selectedPly === movePair.black?.moveNumber ? "match-history__move-button--active" : ""
                       ]
                         .filter(Boolean)
                         .join(" ")}
-                      aria-current={selectedMove?.id === movePair.black?.id ? "step" : undefined}
+                      aria-current={selectedPly === movePair.black?.moveNumber ? "step" : undefined}
                       onClick={() => {
                         if (movePair.black) {
                           onSelectPly(movePair.black.moveNumber);
                         }
                       }}
                     >
+                      <span
+                        className={`match-history__piece-icon match-history__piece-icon--${movePair.black.side}`}
+                        aria-hidden="true"
+                      >
+                        {getPieceGlyph({ side: movePair.black.side, kind: movePair.black.pieceKind })}
+                      </span>
                       <span>{movePair.black.san}</span>
                     </button>
                   ) : (
