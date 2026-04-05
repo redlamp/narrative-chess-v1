@@ -875,6 +875,13 @@ export default function App() {
     }));
   };
 
+  const handleStoryPanelLayoutChange = (storyPanelLayout: "vertical" | "horizontal") => {
+    setSettings((current) => ({
+      ...current,
+      storyPanelLayout
+    }));
+  };
+
   const handleBooleanSettingChange = (
     key:
       | "showBoardCoordinates"
@@ -1417,6 +1424,8 @@ export default function App() {
                 focusedCharacter={focusedCharacter}
                 focusedCharacterMoments={focusedCharacterMoments}
                 showRecentCharacterActions={settings.showRecentCharacterActions}
+                panelLayout={settings.storyPanelLayout}
+                onPanelLayoutChange={handleStoryPanelLayoutChange}
                 tonePreset={tonePreset}
                 onToneChange={updateTonePreset}
               />

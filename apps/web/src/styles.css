@@ -919,6 +919,12 @@ select {
   flex: 0 0 auto;
 }
 
+.panel__leading-action {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
 .panel__header,
 .board-panel__header,
 .saved-match,
@@ -1580,9 +1586,27 @@ select {
 
 .story-panel {
   min-height: 0;
+  align-content: start;
+}
+
+.story-panel--vertical {
   overflow: auto;
   padding-right: 4px;
+}
+
+.story-panel--horizontal {
+  height: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.story-panel--horizontal .detail-card {
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
   align-content: start;
+  scrollbar-gutter: stable;
 }
 
 .saved-match-list,

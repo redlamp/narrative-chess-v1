@@ -13,6 +13,7 @@ import {
 type PanelProps = {
   title: string;
   eyebrow?: string;
+  leadingAction?: ReactNode;
   action?: ReactNode;
   className?: string;
   collapsed?: boolean;
@@ -23,6 +24,7 @@ type PanelProps = {
 export function Panel({
   title,
   eyebrow,
+  leadingAction,
   action,
   className,
   collapsed = false,
@@ -50,6 +52,7 @@ export function Panel({
               {collapsed ? <ChevronRight /> : <ChevronDown />}
             </Button>
           ) : null}
+          {leadingAction ? <div className="panel__leading-action">{leadingAction}</div> : null}
           <div className="grid gap-1">
             {eyebrow ? <p className="panel__eyebrow">{eyebrow}</p> : null}
             <CardTitle className="panel__title" id={panelTitleId}>

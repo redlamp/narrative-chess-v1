@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Columns2, Rows3 } from "lucide-react";
 import type {
   CharacterSummary,
   DistrictCell,
@@ -23,6 +24,8 @@ type StoryPanelProps = {
   focusedCharacter: CharacterSummary | null;
   focusedCharacterMoments: NarrativeEvent[];
   showRecentCharacterActions: boolean;
+  panelLayout: "vertical" | "horizontal";
+  onPanelLayoutChange: (layout: "vertical" | "horizontal") => void;
   tonePreset: "grounded" | "civic-noir" | "dark-comedy";
   onToneChange: (tone: "grounded" | "civic-noir" | "dark-comedy") => void;
   headerAction?: ReactNode;
@@ -40,6 +43,8 @@ export function StoryPanel({
   focusedCharacter,
   focusedCharacterMoments,
   showRecentCharacterActions,
+  panelLayout,
+  onPanelLayoutChange,
   tonePreset,
   onToneChange,
   headerAction
@@ -48,10 +53,36 @@ export function StoryPanel({
     <Panel
       title="Story"
       collapsed={collapsed}
+      leadingAction={
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          onClick={() =>
+            onPanelLayoutChange(panelLayout === "vertical" ? "horizontal" : "vertical")
+          }
+          aria-label={
+            panelLayout === "vertical"
+              ? "Switch story panel to horizontal layout"
+              : "Switch story panel to vertical layout"
+          }
+          title={
+            panelLayout === "vertical"
+              ? "Switch story panel to horizontal layout"
+              : "Switch story panel to vertical layout"
+          }
+        >
+          {panelLayout === "vertical" ? <Columns2 /> : <Rows3 />}
+        </Button>
+      }
       action={headerAction}
       onToggleCollapse={onToggleCollapse}
     >
-      <div className="story-panel">
+      <div
+        className={`story-panel ${
+          panelLayout === "horizontal" ? "story-panel--horizontal" : "story-panel--vertical"
+        }`}
+      >
         <div className="detail-card">
           <p className="field-label">Selected beat</p>
           {selectedMove ? (
