@@ -27,7 +27,7 @@ const competitors = competitorData as CompetitiveEntry[];
 
 export function CompetitiveLandscapePage() {
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+    <section className="grid w-full gap-6">
       <Card>
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -123,6 +123,6 @@ export function CompetitiveLandscapePage() {
           </Card>
         ))}
       </div>
-    </main>
+    </section>
   );
 }

@@ -2,16 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   canPlaceWorkspacePanel,
   getDefaultWorkspaceLayoutState,
-  getWorkspaceGridUnitFractions,
   getWorkspaceLayoutRowCount,
   normalizeWorkspaceLayoutState,
+  updateWorkspaceColumnCount,
   updateWorkspacePanelRect
 } from "./layoutState";
 
 describe("layoutState", () => {
   it("normalizes incomplete layout payloads to safe defaults", () => {
     const layoutState = normalizeWorkspaceLayoutState({
-      columnFractions: [2, "bad", 0.1],
+      columnCount: 20,
+      columnGap: 4,
       rowHeight: 200,
       panels: {
         moves: {
@@ -23,9 +24,10 @@ describe("layoutState", () => {
       }
     });
 
-    expect(layoutState.columnFractions).toEqual([2, 1, 0.5]);
+    expect(layoutState.columnCount).toBe(16);
+    expect(layoutState.columnGap).toBe(8);
     expect(layoutState.rowHeight).toBe(80);
-    expect(layoutState.panels.moves.x).toBeLessThanOrEqual(11);
+    expect(layoutState.panels.moves.x).toBeLessThanOrEqual(15);
     expect(layoutState.panels.moves.h).toBeGreaterThanOrEqual(5);
   });
 
@@ -52,11 +54,16 @@ describe("layoutState", () => {
     expect(nextLayoutState.panels.moves).toEqual(layoutState.panels.moves);
   });
 
-  it("derives column unit fractions and row counts for the editor grid", () => {
-    const unitFractions = getWorkspaceGridUnitFractions([1.5, 1, 1]);
+  it("keeps layouts valid when the column count changes", () => {
+    const resizedLayout = updateWorkspaceColumnCount({
+      layoutState: getDefaultWorkspaceLayoutState(),
+      value: 8
+    });
     const rowCount = getWorkspaceLayoutRowCount(getDefaultWorkspaceLayoutState());
 
-    expect(unitFractions).toEqual([0.25, 1 / 3, 1 / 3]);
+    expect(resizedLayout.columnCount).toBe(8);
+    expect(resizedLayout.panels.board.w).toBeLessThanOrEqual(8);
+    expect(resizedLayout.panels.moves.x + resizedLayout.panels.moves.w - 1).toBeLessThanOrEqual(8);
     expect(rowCount).toBeGreaterThanOrEqual(18);
   });
 });

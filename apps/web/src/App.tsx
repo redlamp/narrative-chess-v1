@@ -8,13 +8,13 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode
 } from "react";
-import { Moon, Sun } from "lucide-react";
+import { LayoutDashboard, Moon, Sun } from "lucide-react";
 import { getPieceAtSquare } from "@narrative-chess/game-core";
 import { getCharacterEventHistory } from "@narrative-chess/narrative-engine";
 import type { PieceKind, Square } from "@narrative-chess/content-schema";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   applyAppTheme,
   listAppSettings,
@@ -25,17 +25,16 @@ import {
 import { edinburghDistrictsBySquare, getDistrictForSquare } from "./edinburghBoard";
 import { getPieceDisplayName, getPieceGlyph, getPieceKindLabel } from "./chessPresentation";
 import {
-  expandAllWorkspacePanels,
   getSnappedWorkspaceColumn,
   getSnappedWorkspaceRow,
-  getWorkspaceGridUnitFractions,
   getWorkspaceLayoutRowCount,
   getWorkspacePanelRenderHeight,
   listWorkspaceLayoutState,
   resetWorkspaceLayoutState,
   saveWorkspaceLayoutState,
   setWorkspacePanelCollapsed,
-  updateWorkspaceColumnFraction,
+  updateWorkspaceColumnCount,
+  updateWorkspaceColumnGap,
   updateWorkspacePanelRect,
   updateWorkspaceRowHeight,
   type CollapsibleWorkspacePanelId,
@@ -112,10 +111,10 @@ const panelTitles: Record<WorkspacePanelId, string> = {
 };
 
 const pageOptions: Array<{ value: AppPage; label: string }> = [
-  { value: "match", label: "Match" },
-  { value: "classics", label: "Classics" },
+  { value: "match", label: "Play" },
   { value: "cities", label: "Cities" },
-  { value: "roles", label: "Role Catalog" },
+  { value: "roles", label: "Characters" },
+  { value: "classics", label: "Classics" },
   { value: "research", label: "Research" }
 ];
 
@@ -176,15 +175,25 @@ function formatSavedAt(savedAt: string) {
   return new Date(savedAt).toLocaleString();
 }
 
-function getWorkspaceGridStyle(layoutState: WorkspaceLayoutState): CSSProperties {
-  const [columnOneUnit, columnTwoUnit, columnThreeUnit] = getWorkspaceGridUnitFractions(
-    layoutState.columnFractions
-  );
+function getPageCaption(page: AppPage) {
+  switch (page) {
+    case "cities":
+      return "Review city boards and district drafts.";
+    case "classics":
+      return "Study classic games and their key lines.";
+    case "roles":
+      return "Edit piece roles and roster flavor.";
+    case "research":
+      return "Review references, assets, and style notes.";
+    default:
+      return "Keep the board central and inspect moves in context.";
+  }
+}
 
+function getWorkspaceGridStyle(layoutState: WorkspaceLayoutState): CSSProperties {
   return {
-    "--workspace-col-1-unit": `${columnOneUnit}fr`,
-    "--workspace-col-2-unit": `${columnTwoUnit}fr`,
-    "--workspace-col-3-unit": `${columnThreeUnit}fr`,
+    "--workspace-column-count": String(layoutState.columnCount),
+    "--workspace-column-gap": `${layoutState.columnGap}px`,
     "--workspace-row-height": `${layoutState.rowHeight}px`
   } as CSSProperties;
 }
@@ -296,7 +305,8 @@ export default function App() {
     referenceGamesLibrary.find((game) => game.id === selectedReferenceGameId) ??
     referenceGamesLibrary[0] ??
     null;
-  const effectiveLayoutMode = isLayoutMode && !isCompactViewport && page === "match";
+  const hasActiveGame = isStudyMode || snapshot.moveHistory.length > 0;
+  const effectiveLayoutMode = isLayoutMode && !isCompactViewport;
   const workspaceRowCount = useMemo(
     () => getWorkspaceLayoutRowCount(workspaceLayout),
     [workspaceLayout]
@@ -320,8 +330,8 @@ export default function App() {
       })()
     : "Hover or focus a square to inspect it. The last inspected square stays pinned until you pick another square.";
   const gridOverlayCells = useMemo(
-    () => Array.from({ length: workspaceRowCount * 12 }, (_, index) => index),
-    [workspaceRowCount]
+    () => Array.from({ length: workspaceRowCount * workspaceLayout.columnCount }, (_, index) => index),
+    [workspaceLayout.columnCount, workspaceRowCount]
   );
 
   useEffect(() => {
@@ -430,7 +440,7 @@ export default function App() {
       const nextColumn = getSnappedWorkspaceColumn({
         offsetX: event.clientX - rect.left,
         width: rect.width,
-        columnFractions: workspaceLayout.columnFractions
+        columnCount: workspaceLayout.columnCount
       });
       const nextRow = getSnappedWorkspaceRow({
         offsetY: event.clientY - rect.top,
@@ -476,7 +486,7 @@ export default function App() {
   }, [
     activeLayoutEdit,
     isCompactViewport,
-    workspaceLayout.columnFractions,
+    workspaceLayout.columnCount,
     workspaceLayout.rowHeight
   ]);
 
@@ -526,7 +536,7 @@ export default function App() {
       const originColumn = getSnappedWorkspaceColumn({
         offsetX: event.clientX - rect.left,
         width: rect.width,
-        columnFractions: workspaceLayout.columnFractions
+        columnCount: workspaceLayout.columnCount
       });
       const originRow = getSnappedWorkspaceRow({
         offsetY: event.clientY - rect.top,
@@ -779,11 +789,19 @@ export default function App() {
     );
   };
 
-  const handleWorkspaceColumnFractionChange = (index: 0 | 1 | 2, value: number) => {
+  const handleWorkspaceColumnCountChange = (value: number) => {
     setWorkspaceLayout((currentLayout) =>
-      updateWorkspaceColumnFraction({
+      updateWorkspaceColumnCount({
         layoutState: currentLayout,
-        index,
+        value
+      })
+    );
+  };
+
+  const handleWorkspaceColumnGapChange = (value: number) => {
+    setWorkspaceLayout((currentLayout) =>
+      updateWorkspaceColumnGap({
+        layoutState: currentLayout,
         value
       })
     );
@@ -800,10 +818,6 @@ export default function App() {
 
   const handleResetLayout = () => {
     setWorkspaceLayout(resetWorkspaceLayoutState());
-  };
-
-  const handleExpandPanels = () => {
-    setWorkspaceLayout((currentLayout) => expandAllWorkspacePanels(currentLayout));
   };
 
   const handleResetSettings = () => {
@@ -992,10 +1006,7 @@ export default function App() {
     setPieceStyleSheet(savePieceStyleSheet(value));
   };
 
-  const renderPanelTools = (
-    panelId: CollapsibleWorkspacePanelId,
-    extraActions?: ReactNode
-  ) => {
+  const renderPanelTools = (extraActions?: ReactNode) => {
     if (!effectiveLayoutMode && !extraActions) {
       return undefined;
     }
@@ -1003,20 +1014,20 @@ export default function App() {
     return (
       <div className="panel-toolbar">
         {extraActions}
-        {effectiveLayoutMode ? (
-          <button
-            type="button"
-            className="button button--ghost button--icon"
-            onPointerDown={beginPanelEdit(panelId, "move")}
-            onKeyDown={handlePanelEditKeyDown(panelId, "move")}
-            aria-label={`Move ${panelTitles[panelId]} panel with pointer or arrow keys`}
-          >
-            Move
-          </button>
-        ) : null}
       </div>
     );
   };
+
+  const renderMoveSurface = (panelId: WorkspacePanelId) =>
+    effectiveLayoutMode ? (
+      <button
+        type="button"
+        className="workspace-item__move-surface"
+        onPointerDown={beginPanelEdit(panelId, "move")}
+        onKeyDown={handlePanelEditKeyDown(panelId, "move")}
+        aria-label={`Move ${panelTitles[panelId]} panel with pointer or arrow keys`}
+      />
+    ) : null;
 
   const renderResizeHandle = (panelId: WorkspacePanelId) =>
     effectiveLayoutMode ? (
@@ -1034,20 +1045,53 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="app-header__brand">
-          <div>
-            <h1>Narrative Chess</h1>
+        <div className="app-header__main">
+          <div className="app-header__title-row">
+            <div>
+              <h1>Narrative Chess</h1>
+            </div>
           </div>
 
+          <TooltipProvider>
+            <Tabs
+              value={page}
+              onValueChange={(nextPage) => {
+                if (isAppPage(nextPage)) {
+                  setPage(nextPage);
+                }
+              }}
+              className="page-switcher-tabs"
+            >
+              <TabsList aria-label="Workspace sections">
+                {pageOptions.map(({ value, label }) => (
+                  <Tooltip key={value}>
+                    <TooltipTrigger asChild>
+                      <TabsTrigger value={value} className="page-switcher__trigger">
+                        {label}
+                      </TabsTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={8}>
+                      {getPageCaption(value)}
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
+              </TabsList>
+            </Tabs>
+          </TooltipProvider>
+        </div>
+
+        <div className="app-header__aside">
           <div className="app-header__actions">
             <Button
               type="button"
               variant={effectiveLayoutMode ? "secondary" : "outline"}
-              size="sm"
+              size="icon-sm"
               onClick={() => setIsLayoutMode((current) => !current)}
-              disabled={page !== "match" || isCompactViewport}
+              disabled={isCompactViewport}
+              aria-label={effectiveLayoutMode ? "Exit layout mode" : "Edit layout"}
+              title={effectiveLayoutMode ? "Exit layout mode" : "Edit layout"}
             >
-              {effectiveLayoutMode ? "Exit layout" : "Edit layout"}
+              <LayoutDashboard />
             </Button>
 
             <Button
@@ -1074,75 +1118,67 @@ export default function App() {
               onDefaultViewModeChange={handleDefaultViewModeChange}
               onBooleanSettingChange={handleBooleanSettingChange}
             />
+          </div>
 
-            <Tabs
-              value={page}
-              onValueChange={(nextPage) => {
-                if (isAppPage(nextPage)) {
-                  setPage(nextPage);
-                }
-              }}
-              className="page-switcher-tabs"
-            >
-              <TabsList variant="line" aria-label="Workspace sections">
-                {pageOptions.map(({ value, label }) => (
-                  <TabsTrigger key={value} value={value} className="page-switcher__trigger">
-                    {label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+          <div className="app-header__status">
+            {page === "match" || hasActiveGame ? (
+              <div className="app-header__status-grid">
+                <div className="app-header__status-card">
+                  <span className="app-header__status-label">Turn</span>
+                  <strong className="app-header__status-value">{turnLabel(status.turn)}</strong>
+                </div>
+                <div className="app-header__status-card">
+                  <span className="app-header__status-label">State</span>
+                  <strong className="app-header__status-value">
+                    {statusLabel(status.isCheck, status.isCheckmate, status.isStalemate)}
+                  </strong>
+                </div>
+                <div className="app-header__status-card">
+                  <span className="app-header__status-label">Moves</span>
+                  <strong className="app-header__status-value">
+                    {snapshot.moveHistory.length}
+                  </strong>
+                </div>
+                <div className="app-header__status-card">
+                  <span className="app-header__status-label">Mode</span>
+                  <strong className="app-header__status-value">
+                    {isStudyMode ? "Study replay" : "Local play"}
+                  </strong>
+                </div>
+                <div className="app-header__status-card">
+                  <span className="app-header__status-label">Tone</span>
+                  <strong className="app-header__status-value">{toneLabel(tonePreset)}</strong>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
-
-        {page === "match" ? (
-          <div className="app-header__status">
-            <div className="app-header__status-strip">
-              <Badge variant="secondary">{turnLabel(status.turn)}</Badge>
-              <Badge variant="outline">
-                {statusLabel(status.isCheck, status.isCheckmate, status.isStalemate)}
-              </Badge>
-              <Badge variant="outline">
-                {snapshot.moveHistory.length} {snapshot.moveHistory.length === 1 ? "move" : "moves"}
-              </Badge>
-              <Badge variant="outline">{toneLabel(tonePreset)}</Badge>
-              <Badge variant={isStudyMode ? "secondary" : "outline"}>
-                {isStudyMode ? "Study replay" : "Local play"}
-              </Badge>
-            </div>
-            <p className="muted app-header__match-copy">
-              Keep the board central, use the ledger to connect moves and narrative beats, and pin a
-              square to inspect its district and character context.
-            </p>
-          </div>
-        ) : (
-          <div className="app-header__context">
-            <p className="muted">
-              {page === "cities"
-                ? "Review gathered city boards, switch between cities and districts, and save updates locally."
-              : page === "classics"
-                ? "Review classic games, historical notes, and the study score before loading a line onto the board."
-                : page === "roles"
-                ? "Edit individual piece-role records and feed those changes back into the local roster."
-                : "Review competition references, piece art assets, and editable style sheets in one research workspace."}
-            </p>
-          </div>
-        )}
       </header>
 
       {page === "cities" ? (
-        <EdinburghReviewPage />
+        <EdinburghReviewPage
+          layoutMode={effectiveLayoutMode}
+          showLayoutGrid={settings.showLayoutGrid}
+          onToggleLayoutMode={() => setIsLayoutMode(false)}
+          onToggleLayoutGrid={(checked) => handleBooleanSettingChange("showLayoutGrid", checked)}
+        />
       ) : page === "classics" ? (
         <ClassicGamesLibraryPage
           referenceGames={referenceGamesLibrary}
           selectedReferenceGameId={selectedReferenceGameId}
+          layoutMode={effectiveLayoutMode}
+          showLayoutGrid={settings.showLayoutGrid}
           onSelectReferenceGame={setSelectedReferenceGameId}
           onLoadReferenceGame={(game) => handleLoadReferenceGameFromLibrary(game.id)}
           onReferenceGamesChange={setReferenceGamesLibrary}
+          onToggleLayoutMode={() => setIsLayoutMode(false)}
+          onToggleLayoutGrid={(checked) => handleBooleanSettingChange("showLayoutGrid", checked)}
         />
       ) : page === "roles" ? (
         <RoleCatalogPage
           roleCatalog={roleCatalog}
+          layoutMode={effectiveLayoutMode}
+          showLayoutGrid={settings.showLayoutGrid}
           roleCatalogDirectoryName={roleCatalogDirectoryName}
           isRoleCatalogDirectorySupported={isRoleCatalogDirectorySupported}
           roleCatalogFileBusyAction={roleCatalogFileBusyAction}
@@ -1155,9 +1191,13 @@ export default function App() {
           onConnectRoleCatalogDirectory={handleConnectRoleCatalogDirectory}
           onLoadRoleCatalogFromDirectory={handleLoadRoleCatalogFile}
           onSaveRoleCatalogToDirectory={handleSaveRoleCatalogFile}
+          onToggleLayoutMode={() => setIsLayoutMode(false)}
+          onToggleLayoutGrid={(checked) => handleBooleanSettingChange("showLayoutGrid", checked)}
         />
       ) : page === "research" ? (
         <ResearchPage
+          layoutMode={effectiveLayoutMode}
+          showLayoutGrid={settings.showLayoutGrid}
           pieceStyleSheet={pieceStyleSheet}
           pieceStyleDirectoryName={pieceStyleDirectoryName}
           isPieceStyleDirectorySupported={isPieceStyleDirectorySupported}
@@ -1168,13 +1208,16 @@ export default function App() {
           onLoadPieceStyleSheetFromDirectory={handleLoadPieceStyleSheetFromDirectory}
           onSavePieceStyleSheetToDirectory={handleSavePieceStyleSheetToDirectory}
           onResetPieceStyleSheet={handleResetPieceStyleSheet}
+          onToggleLayoutMode={() => setIsLayoutMode(false)}
+          onToggleLayoutGrid={(checked) => handleBooleanSettingChange("showLayoutGrid", checked)}
         />
       ) : (
         <div className={`workspace-layout-shell ${effectiveLayoutMode ? "workspace-layout-shell--editing" : ""}`}>
-          {effectiveLayoutMode ? (
+          {effectiveLayoutMode && page === "match" ? (
             <aside className="workspace-layout-shell__sidebar">
               <LayoutToolbar
-                columnFractions={workspaceLayout.columnFractions}
+                columnCount={workspaceLayout.columnCount}
+                columnGap={workspaceLayout.columnGap}
                 rowHeight={workspaceLayout.rowHeight}
                 showLayoutGrid={settings.showLayoutGrid}
                 layoutFileName={layoutFileName}
@@ -1184,8 +1227,8 @@ export default function App() {
                 layoutFileBusyAction={layoutFileBusyAction}
                 knownLayoutFiles={knownLayoutFiles}
                 onToggleLayoutMode={() => setIsLayoutMode(false)}
-                onExpandPanels={handleExpandPanels}
-                onColumnFractionChange={handleWorkspaceColumnFractionChange}
+                onColumnCountChange={handleWorkspaceColumnCountChange}
+                onColumnGapChange={handleWorkspaceColumnGapChange}
                 onRowHeightChange={handleWorkspaceRowHeightChange}
                 onToggleLayoutGrid={(checked) => handleBooleanSettingChange("showLayoutGrid", checked)}
                 onLayoutFileNameChange={setLayoutFileName}
@@ -1266,17 +1309,6 @@ export default function App() {
                   >
                     {isStudyMode ? "Undo disabled" : "Undo"}
                   </button>
-                  {effectiveLayoutMode ? (
-                    <button
-                      type="button"
-                      className="button button--ghost button--icon"
-                      onPointerDown={beginPanelEdit("board", "move")}
-                      onKeyDown={handlePanelEditKeyDown("board", "move")}
-                      aria-label="Move board panel with pointer or arrow keys"
-                    >
-                      Move
-                    </button>
-                  ) : null}
                 </div>
               </div>
 
@@ -1301,6 +1333,7 @@ export default function App() {
                 {lastMove ? <p>Last move: {lastMove.san}</p> : <p>No moves yet.</p>}
               </div>
 
+              {renderMoveSurface("board")}
               {renderResizeHandle("board")}
             </section>
 
@@ -1318,7 +1351,7 @@ export default function App() {
                 title="Match Ledger"
                 eyebrow="Board + story"
                 collapsed={workspaceLayout.collapsed.moves}
-                action={renderPanelTools("moves")}
+                action={renderPanelTools()}
                 onToggleCollapse={() => handleTogglePanelCollapse("moves")}
               >
                 <div className="timeline timeline--match-ledger">
@@ -1356,6 +1389,7 @@ export default function App() {
                   )}
                 </div>
               </Panel>
+              {renderMoveSurface("moves")}
               {renderResizeHandle("moves")}
             </div>
 
@@ -1373,7 +1407,7 @@ export default function App() {
                 title="Board Inspector"
                 eyebrow="Context"
                 collapsed={workspaceLayout.collapsed.narrative}
-                action={renderPanelTools("narrative")}
+                action={renderPanelTools()}
                 onToggleCollapse={() => handleTogglePanelCollapse("narrative")}
               >
                 <div className="board-inspector">
@@ -1496,6 +1530,7 @@ export default function App() {
                   </div>
                 </div>
               </Panel>
+              {renderMoveSurface("narrative")}
               {renderResizeHandle("narrative")}
             </div>
 
@@ -1514,7 +1549,6 @@ export default function App() {
                 eyebrow="Local"
                 collapsed={workspaceLayout.collapsed.saved}
                 action={renderPanelTools(
-                  "saved",
                   <button
                     type="button"
                     className="button button--ghost"
@@ -1563,6 +1597,7 @@ export default function App() {
                   </p>
                 )}
               </Panel>
+              {renderMoveSurface("saved")}
               {renderResizeHandle("saved")}
             </div>
 
@@ -1580,7 +1615,7 @@ export default function App() {
                 title="Study Games"
                 eyebrow="Reference"
                 collapsed={workspaceLayout.collapsed.study}
-                action={renderPanelTools("study")}
+                action={renderPanelTools()}
                 onToggleCollapse={() => handleTogglePanelCollapse("study")}
                 >
                   <StudyPanel
@@ -1603,6 +1638,7 @@ export default function App() {
                   embedded
                 />
               </Panel>
+              {renderMoveSurface("study")}
               {renderResizeHandle("study")}
             </div>
 
@@ -1620,7 +1656,7 @@ export default function App() {
                 title="Match State"
                 eyebrow="Status"
                 collapsed={workspaceLayout.collapsed.status}
-                action={renderPanelTools("status")}
+                action={renderPanelTools()}
                 onToggleCollapse={() => handleTogglePanelCollapse("status")}
               >
                 <div className="state-panel">
@@ -1679,6 +1715,7 @@ export default function App() {
                   </div>
                 </div>
               </Panel>
+              {renderMoveSurface("status")}
               {renderResizeHandle("status")}
             </div>
           </main>

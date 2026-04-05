@@ -26,6 +26,7 @@ import {
   saveCityDraftToDirectory,
   supportsLocalContentDirectory
 } from "../fileSystemAccess";
+import { IndexedWorkspace } from "./IndexedWorkspace";
 import { WorkspaceIntroCard } from "./WorkspaceIntroCard";
 import { WorkspaceListItem } from "./WorkspaceListItem";
 import { WorkspaceNoticeCard } from "./WorkspaceNoticeCard";
@@ -170,7 +171,19 @@ function compareDistricts(left: DistrictCell, right: DistrictCell, sortMode: Dis
   return left.name.localeCompare(right.name);
 }
 
-export function EdinburghReviewPage() {
+type EdinburghReviewPageProps = {
+  layoutMode: boolean;
+  showLayoutGrid: boolean;
+  onToggleLayoutMode: () => void;
+  onToggleLayoutGrid: (checked: boolean) => void;
+};
+
+export function EdinburghReviewPage({
+  layoutMode,
+  showLayoutGrid,
+  onToggleLayoutMode,
+  onToggleLayoutGrid
+}: EdinburghReviewPageProps) {
   const [selectedCityId, setSelectedCityId] = useState(initialCityId);
   const [draft, setDraft] = useState<CityBoard>(() => createInitialCityDraft());
   const [selectedRecordId, setSelectedRecordId] = useState(cityOverviewId);
@@ -295,8 +308,17 @@ export function EdinburghReviewPage() {
   };
 
   return (
-    <main className="indexed-workspace indexed-workspace--page-scroll cities-workspace">
-      <WorkspaceIntroCard
+    <IndexedWorkspace
+      className="cities-workspace"
+      scrollMode="page"
+      layoutMode={layoutMode}
+      layoutKey="cities-page"
+      layoutVariant="three-pane"
+      showLayoutGrid={showLayoutGrid}
+      onToggleLayoutMode={onToggleLayoutMode}
+      onToggleLayoutGrid={onToggleLayoutGrid}
+      intro={
+        <WorkspaceIntroCard
         badgeRow={
           <>
             <Badge variant="secondary">Cities</Badge>
@@ -459,8 +481,8 @@ export function EdinburghReviewPage() {
           ) : null}
         </div>
       </WorkspaceIntroCard>
-
-      <div className="indexed-workspace__columns indexed-workspace__columns--three-pane">
+      }
+      index={
         <Card className="page-card page-card--index page-card--secondary-index">
           <CardHeader className="gap-4">
             <div className="grid gap-2">
@@ -508,7 +530,8 @@ export function EdinburghReviewPage() {
             </div>
           </CardContent>
         </Card>
-
+      }
+      secondaryIndex={
         <Card className="page-card page-card--index page-card--secondary-index">
           <CardHeader className="gap-4">
             <div className="grid gap-2">
@@ -588,8 +611,9 @@ export function EdinburghReviewPage() {
             </div>
           </CardContent>
         </Card>
-
-        <div className="indexed-workspace__detail page-card-stack">
+      }
+      detail={
+        <div className="page-card-stack">
           {selectedRecordId === cityOverviewId ? (
           <Card className="page-card page-card--detail">
             <CardHeader className="gap-2">
@@ -936,7 +960,7 @@ export function EdinburghReviewPage() {
           </div>
           ) : null}
         </div>
-      </div>
-    </main>
+      }
+    />
   );
 }

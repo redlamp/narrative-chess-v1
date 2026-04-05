@@ -1,10 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Folder, FolderOpen, RefreshCw, Save, Trash2, X } from "lucide-react";
 import type { WorkspaceLayoutFileReference } from "../layoutFiles";
+import { NumberStepperField } from "./NumberStepperField";
 
 type LayoutFileNotice = {
   tone: "neutral" | "success" | "error";
@@ -12,7 +14,8 @@ type LayoutFileNotice = {
 };
 
 type LayoutToolbarProps = {
-  columnFractions: [number, number, number];
+  columnCount: number;
+  columnGap: number;
   rowHeight: number;
   showLayoutGrid: boolean;
   layoutFileName: string;
@@ -22,8 +25,8 @@ type LayoutToolbarProps = {
   layoutFileBusyAction: string | null;
   knownLayoutFiles: WorkspaceLayoutFileReference[];
   onToggleLayoutMode: () => void;
-  onExpandPanels: () => void;
-  onColumnFractionChange: (index: 0 | 1 | 2, value: number) => void;
+  onColumnCountChange: (value: number) => void;
+  onColumnGapChange: (value: number) => void;
   onRowHeightChange: (value: number) => void;
   onToggleLayoutGrid: (checked: boolean) => void;
   onLayoutFileNameChange: (value: string) => void;
@@ -36,7 +39,8 @@ type LayoutToolbarProps = {
 };
 
 export function LayoutToolbar({
-  columnFractions,
+  columnCount,
+  columnGap,
   rowHeight,
   showLayoutGrid,
   layoutFileName,
@@ -46,8 +50,8 @@ export function LayoutToolbar({
   layoutFileBusyAction,
   knownLayoutFiles,
   onToggleLayoutMode,
-  onExpandPanels,
-  onColumnFractionChange,
+  onColumnCountChange,
+  onColumnGapChange,
   onRowHeightChange,
   onToggleLayoutGrid,
   onLayoutFileNameChange,
@@ -59,209 +63,204 @@ export function LayoutToolbar({
   onResetLayout
 }: LayoutToolbarProps) {
   return (
-    <Card className="layout-toolbar">
-      <CardHeader className="layout-toolbar__copy">
-        <div className="grid gap-2">
-          <p className="panel__eyebrow">Layout Mode</p>
-          <CardTitle>Drag panel headers, resize from the lower-right corner, and snap to the guide grid.</CardTitle>
-        </div>
-        <div className="layout-toolbar__mode-actions">
-          <Button type="button" variant="secondary" size="sm" onClick={onToggleLayoutMode}>
-            Exit layout mode
-          </Button>
-          <Button type="button" variant="outline" size="sm" onClick={onExpandPanels}>
-            Expand panels
-          </Button>
-          <Button type="button" variant="outline" size="sm" onClick={onResetLayout}>
-            Reset layout
-          </Button>
-        </div>
-        <p className="muted layout-toolbar__keyboard-note" role="note">
-          Keyboard fallback: focus a Move or Resize control and use the arrow keys to nudge the panel. Hold
-          Shift for a larger step.
-        </p>
-      </CardHeader>
-
-      <CardContent className="layout-toolbar__body">
-        <div className="layout-toolbar__controls">
-          <label className="slider-field">
-            <div className="slider-field__header">
-              <span>Column 1</span>
-              <strong>{columnFractions[0].toFixed(2)}fr</strong>
-            </div>
-            <Slider
-              min={0.5}
-              max={4}
-              step={0.25}
-              value={[columnFractions[0]]}
-              onValueChange={([nextValue]) => {
-                if (typeof nextValue === "number") {
-                  onColumnFractionChange(0, nextValue);
-                }
-              }}
-            />
-          </label>
-          <label className="slider-field">
-            <div className="slider-field__header">
-              <span>Column 2</span>
-              <strong>{columnFractions[1].toFixed(2)}fr</strong>
-            </div>
-            <Slider
-              min={0.5}
-              max={4}
-              step={0.25}
-              value={[columnFractions[1]]}
-              onValueChange={([nextValue]) => {
-                if (typeof nextValue === "number") {
-                  onColumnFractionChange(1, nextValue);
-                }
-              }}
-            />
-          </label>
-          <label className="slider-field">
-            <div className="slider-field__header">
-              <span>Column 3</span>
-              <strong>{columnFractions[2].toFixed(2)}fr</strong>
-            </div>
-            <Slider
-              min={0.5}
-              max={4}
-              step={0.25}
-              value={[columnFractions[2]]}
-              onValueChange={([nextValue]) => {
-                if (typeof nextValue === "number") {
-                  onColumnFractionChange(2, nextValue);
-                }
-              }}
-            />
-          </label>
-          <label className="slider-field">
-            <div className="slider-field__header">
-              <span>Row height</span>
-              <strong>{rowHeight}px</strong>
-            </div>
-            <Slider
-              min={30}
-              max={80}
-              step={2}
-              value={[rowHeight]}
-              onValueChange={([nextValue]) => {
-                if (typeof nextValue === "number") {
-                  onRowHeightChange(nextValue);
-                }
-              }}
-            />
-          </label>
-        </div>
-
-        <div className="layout-toolbar__actions">
-          <label className="menu-toggle menu-toggle--inline">
-            <div>
-              <span className="menu-toggle__label">Show snap grid</span>
-              <span className="menu-toggle__description">Helps line up placements while editing.</span>
-            </div>
-            <Switch checked={showLayoutGrid} onCheckedChange={onToggleLayoutGrid} />
-          </label>
-        </div>
-
-        <div className="layout-toolbar__file-section">
-          <div className="layout-toolbar__file-header">
-            <div className="grid gap-1">
-              <span className="panel__eyebrow">Named Layout Files</span>
-              <p className="muted">
-                Save the current panel arrangement to a JSON file in the repo so it can be loaded again later.
-              </p>
-            </div>
-            {layoutDirectoryName ? <Badge variant="outline">Connected: {layoutDirectoryName}</Badge> : null}
-          </div>
-
-          <div className="layout-toolbar__file-controls">
-            <label className="slider-field">
-              <div className="slider-field__header">
-                <span>Layout file name</span>
-                <strong>{layoutFileName.trim() || "match-workspace"}</strong>
-              </div>
-              <Input
-                name="layout-file-name"
-                autoComplete="off"
-                placeholder="match-workspace"
-                value={layoutFileName}
-                onChange={(event) => onLayoutFileNameChange(event.currentTarget.value)}
-              />
-            </label>
-            <div className="layout-toolbar__file-actions">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onConnectLayoutDirectory}
-                disabled={!isLayoutDirectorySupported || layoutFileBusyAction !== null}
-              >
-                Connect folder
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onLoadLayoutFile}
-                disabled={!layoutDirectoryName || layoutFileBusyAction !== null}
-              >
-                Load named file
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onSaveLayoutFile}
-                disabled={!layoutDirectoryName || layoutFileBusyAction !== null}
-              >
-                Save named file
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={onDeleteLayoutFile}
-                disabled={!layoutDirectoryName || layoutFileBusyAction !== null}
-              >
-                Remove named file
-              </Button>
-            </div>
-          </div>
-
-          {knownLayoutFiles.length ? (
-            <div className="layout-toolbar__saved-files">
-              {knownLayoutFiles.map((file) => (
+    <TooltipProvider delayDuration={150}>
+      <Card className="layout-toolbar">
+        <CardHeader className="layout-toolbar__header">
+          <div className="layout-toolbar__header-row">
+            <h2 className="layout-toolbar__title">Layout mode</h2>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Button
-                  key={file.fileName}
                   type="button"
-                  variant={file.name === layoutFileName ? "secondary" : "outline"}
-                  size="sm"
-                  onClick={() => onSelectKnownLayoutFile(file.name)}
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={onToggleLayoutMode}
+                  aria-label="Close layout mode"
                 >
-                  {file.name}
+                  <X />
                 </Button>
-              ))}
-            </div>
-          ) : null}
+              </TooltipTrigger>
+              <TooltipContent>Close layout mode</TooltipContent>
+            </Tooltip>
+          </div>
+        </CardHeader>
 
-          {layoutFileNotice ? (
-            <div
-              className={`layout-toolbar__notice layout-toolbar__notice--${layoutFileNotice.tone}`}
-              role="status"
-              aria-live="polite"
-            >
-              {layoutFileNotice.text}
+        <CardContent className="layout-toolbar__body">
+          <section className="layout-toolbar__section">
+            <h3 className="layout-toolbar__section-title">Grid</h3>
+            <div className="layout-toolbar__controls">
+              <NumberStepperField
+                label="Column count"
+                value={columnCount}
+                min={6}
+                max={16}
+                step={1}
+                onChange={onColumnCountChange}
+              />
+              <NumberStepperField
+                label="Column gap"
+                value={columnGap}
+                min={8}
+                max={32}
+                step={2}
+                unit="px"
+                onChange={onColumnGapChange}
+              />
+              <NumberStepperField
+                label="Row height"
+                value={rowHeight}
+                min={30}
+                max={80}
+                step={2}
+                unit="px"
+                onChange={onRowHeightChange}
+              />
             </div>
-          ) : null}
 
-          {!isLayoutDirectorySupported ? (
-            <p className="muted">
-              Folder save requires the File System Access API on localhost or HTTPS.
-            </p>
-          ) : null}
-        </div>
-      </CardContent>
-    </Card>
+            <div className="layout-toolbar__actions">
+              <label className="menu-toggle menu-toggle--inline">
+                <span className="menu-toggle__label">Show grid</span>
+                <Switch checked={showLayoutGrid} onCheckedChange={onToggleLayoutGrid} />
+              </label>
+            </div>
+          </section>
+
+          <section className="layout-toolbar__section layout-toolbar__file-section">
+            <div className="layout-toolbar__section-header">
+              <h3 className="layout-toolbar__section-title">Layouts</h3>
+              {layoutDirectoryName ? <Badge variant="outline">Connected: {layoutDirectoryName}</Badge> : null}
+            </div>
+
+            <div className="layout-toolbar__file-controls">
+              <label className="slider-field">
+                <div className="slider-field__header">
+                  <span>File name</span>
+                  <strong>{layoutFileName.trim() || "match-workspace"}</strong>
+                </div>
+                <Input
+                  name="layout-file-name"
+                  autoComplete="off"
+                  placeholder="match-workspace"
+                  value={layoutFileName}
+                  onChange={(event) => onLayoutFileNameChange(event.currentTarget.value)}
+                />
+              </label>
+
+              <div className="layout-toolbar__icon-actions">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={onConnectLayoutDirectory}
+                      disabled={!isLayoutDirectorySupported || layoutFileBusyAction !== null}
+                      aria-label="Connect layout folder"
+                    >
+                      <Folder />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Connect folder</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={onLoadLayoutFile}
+                      disabled={!layoutDirectoryName || layoutFileBusyAction !== null}
+                      aria-label="Load layout file"
+                    >
+                      <FolderOpen />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Load named file</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={onSaveLayoutFile}
+                      disabled={!layoutDirectoryName || layoutFileBusyAction !== null}
+                      aria-label="Save layout file"
+                    >
+                      <Save />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Save named file</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={onResetLayout}
+                      disabled={layoutFileBusyAction !== null}
+                      aria-label="Reset layout"
+                    >
+                      <RefreshCw />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Reset layout</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon-sm"
+                      onClick={onDeleteLayoutFile}
+                      disabled={!layoutDirectoryName || layoutFileBusyAction !== null}
+                      aria-label="Remove layout file"
+                    >
+                      <Trash2 />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Remove named file</TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+
+            {knownLayoutFiles.length ? (
+              <div className="layout-toolbar__saved-files">
+                {knownLayoutFiles.map((file) => (
+                  <Button
+                    key={file.fileName}
+                    type="button"
+                    variant={file.name === layoutFileName ? "secondary" : "outline"}
+                    size="sm"
+                    onClick={() => onSelectKnownLayoutFile(file.name)}
+                  >
+                    {file.name}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+
+            {layoutFileNotice ? (
+              <div
+                className={`layout-toolbar__notice layout-toolbar__notice--${layoutFileNotice.tone}`}
+                role="status"
+                aria-live="polite"
+              >
+                {layoutFileNotice.text}
+              </div>
+            ) : null}
+
+            {!isLayoutDirectorySupported ? (
+              <p className="muted">Folder save requires the File System Access API on localhost or HTTPS.</p>
+            ) : null}
+          </section>
+        </CardContent>
+      </Card>
+    </TooltipProvider>
   );
 }

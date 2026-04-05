@@ -7,7 +7,7 @@ const pieceKinds = Object.keys(pieceKindLabels) as Array<keyof typeof pieceKindL
 
 export function PieceAssetsPage() {
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+    <section className="grid w-full gap-6">
       <Card>
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -94,6 +94,6 @@ export function PieceAssetsPage() {
           </div>
         </CardContent>
       </Card>
-    </main>
+    </section>
   );
 }

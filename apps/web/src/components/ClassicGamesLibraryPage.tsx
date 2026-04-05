@@ -40,9 +40,13 @@ import {
 type ClassicGamesLibraryPageProps = {
   referenceGames: ReferenceGame[];
   selectedReferenceGameId: string;
+  layoutMode: boolean;
+  showLayoutGrid: boolean;
   onSelectReferenceGame: (value: string) => void;
   onLoadReferenceGame: (game: ReferenceGame) => void;
   onReferenceGamesChange: (games: ReferenceGame[]) => void;
+  onToggleLayoutMode: () => void;
+  onToggleLayoutGrid: (checked: boolean) => void;
 };
 
 type MovePair = {
@@ -156,9 +160,13 @@ function createEditableGames(seedGames: ReferenceGame[]) {
 export function ClassicGamesLibraryPage({
   referenceGames,
   selectedReferenceGameId,
+  layoutMode,
+  showLayoutGrid,
   onSelectReferenceGame,
   onLoadReferenceGame,
-  onReferenceGamesChange
+  onReferenceGamesChange,
+  onToggleLayoutMode,
+  onToggleLayoutGrid
 }: ClassicGamesLibraryPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [games, setGames] = useState<ReferenceGame[]>(() => createEditableGames(listReferenceGames()));
@@ -444,6 +452,12 @@ export function ClassicGamesLibraryPage({
     <IndexedWorkspace
       className="classic-games-workspace"
       scrollMode="page"
+      layoutMode={layoutMode}
+      layoutKey="classics-page"
+      layoutVariant="two-pane"
+      showLayoutGrid={showLayoutGrid}
+      onToggleLayoutMode={onToggleLayoutMode}
+      onToggleLayoutGrid={onToggleLayoutGrid}
       intro={
         <WorkspaceIntroCard
           badgeRow={

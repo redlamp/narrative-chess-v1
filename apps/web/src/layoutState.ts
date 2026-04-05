@@ -26,8 +26,9 @@ export type WorkspacePanelRect = {
 };
 
 export type WorkspaceLayoutState = {
-  version: 1;
-  columnFractions: [number, number, number];
+  version: 2;
+  columnCount: number;
+  columnGap: number;
   rowHeight: number;
   panels: Record<WorkspacePanelId, WorkspacePanelRect>;
   collapsed: Record<CollapsibleWorkspacePanelId, boolean>;
@@ -41,8 +42,12 @@ type PanelPlacementRect = {
 };
 
 const storageKey = "narrative-chess:workspace-layout:v1";
-const workspaceGroupUnits = [6, 3, 3] as const;
-const workspaceColumnCount = 12;
+const workspaceDefaultColumnCount = 12;
+const workspaceMinimumColumns = 6;
+const workspaceMaximumColumns = 16;
+const workspaceDefaultColumnGap = 16;
+const workspaceMinimumColumnGap = 8;
+const workspaceMaximumColumnGap = 32;
 const workspaceMinimumRows = 18;
 const collapsedPanelHeight = 2;
 
@@ -56,7 +61,7 @@ const minimumPanelWidth: Record<WorkspacePanelId, number> = {
 };
 
 const minimumPanelHeight: Record<WorkspacePanelId, number> = {
-  board: 12,
+  board: 8,
   moves: 5,
   narrative: 5,
   saved: 4,
@@ -65,8 +70,9 @@ const minimumPanelHeight: Record<WorkspacePanelId, number> = {
 };
 
 const defaultLayoutState: WorkspaceLayoutState = {
-  version: 1,
-  columnFractions: [1.5, 1, 1],
+  version: 2,
+  columnCount: workspaceDefaultColumnCount,
+  columnGap: workspaceDefaultColumnGap,
   rowHeight: 44,
   panels: {
     board: { x: 1, y: 1, w: 6, h: 16 },
@@ -105,31 +111,35 @@ function numberOrFallback(value: unknown, fallback: number) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
-function normalizeColumnFractions(value: unknown): [number, number, number] {
-  if (!Array.isArray(value) || value.length !== 3) {
-    return [...defaultLayoutState.columnFractions];
-  }
-
-  const normalized = value.map((entry, index) =>
-    clamp(numberOrFallback(entry, defaultLayoutState.columnFractions[index] ?? 1), 0.5, 4)
-  ) as [number, number, number];
-
-  return normalized;
+function normalizeColumnCount(value: unknown) {
+  return clamp(
+    roundOrFallback(value, workspaceDefaultColumnCount),
+    workspaceMinimumColumns,
+    workspaceMaximumColumns
+  );
 }
 
-function normalizePanelRect(panelId: WorkspacePanelId, value: unknown): WorkspacePanelRect {
+function normalizeColumnGap(value: unknown) {
+  return clamp(
+    roundOrFallback(value, workspaceDefaultColumnGap),
+    workspaceMinimumColumnGap,
+    workspaceMaximumColumnGap
+  );
+}
+
+function normalizePanelRect(
+  panelId: WorkspacePanelId,
+  value: unknown,
+  columnCount: number
+): WorkspacePanelRect {
   const fallback = defaultLayoutState.panels[panelId];
   const candidate = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   const width = clamp(
     roundOrFallback(candidate.w, fallback.w),
     minimumPanelWidth[panelId],
-    workspaceColumnCount
+    columnCount
   );
-  const x = clamp(
-    roundOrFallback(candidate.x, fallback.x),
-    1,
-    workspaceColumnCount - width + 1
-  );
+  const x = clamp(roundOrFallback(candidate.x, fallback.x), 1, columnCount - width + 1);
   const height = clamp(roundOrFallback(candidate.h, fallback.h), minimumPanelHeight[panelId], 32);
   const y = clamp(roundOrFallback(candidate.y, fallback.y), 1, 64);
 
@@ -141,10 +151,100 @@ function normalizePanelRect(panelId: WorkspacePanelId, value: unknown): Workspac
   };
 }
 
+function getPanelPlacementRect(panel: WorkspacePanelRect): PanelPlacementRect {
+  return {
+    x: panel.x,
+    y: panel.y,
+    w: panel.w,
+    h: panel.h
+  };
+}
+
+function rectanglesOverlap(left: PanelPlacementRect, right: PanelPlacementRect) {
+  const leftX2 = left.x + left.w - 1;
+  const rightX2 = right.x + right.w - 1;
+  const leftY2 = left.y + left.h - 1;
+  const rightY2 = right.y + right.h - 1;
+
+  return !(leftX2 < right.x || rightX2 < left.x || leftY2 < right.y || rightY2 < left.y);
+}
+
+function scalePanelRect(
+  panelId: WorkspacePanelId,
+  panel: WorkspacePanelRect,
+  fromColumnCount: number,
+  toColumnCount: number
+) {
+  if (fromColumnCount === toColumnCount) {
+    return normalizePanelRect(panelId, panel, toColumnCount);
+  }
+
+  const scaledWidth = clamp(
+    Math.round((panel.w / fromColumnCount) * toColumnCount),
+    minimumPanelWidth[panelId],
+    toColumnCount
+  );
+  const scaledX = clamp(
+    Math.round(((panel.x - 1) / fromColumnCount) * toColumnCount) + 1,
+    1,
+    toColumnCount - scaledWidth + 1
+  );
+
+  return normalizePanelRect(
+    panelId,
+    {
+      ...panel,
+      x: scaledX,
+      w: scaledWidth
+    },
+    toColumnCount
+  );
+}
+
+function reflowWorkspacePanels(
+  panels: Record<WorkspacePanelId, WorkspacePanelRect>,
+  fromColumnCount: number,
+  toColumnCount: number
+) {
+  const nextPanels = {} as Record<WorkspacePanelId, WorkspacePanelRect>;
+  const orderedPanelIds = [...workspacePanelIds].sort((leftId, rightId) => {
+    const left = panels[leftId];
+    const right = panels[rightId];
+
+    if (left.y !== right.y) {
+      return left.y - right.y;
+    }
+
+    return left.x - right.x;
+  });
+
+  for (const panelId of orderedPanelIds) {
+    const baseRect = scalePanelRect(panelId, panels[panelId], fromColumnCount, toColumnCount);
+    let candidateRect = baseRect;
+
+    while (
+      Object.entries(nextPanels).some(([otherPanelId, otherRect]) =>
+        otherPanelId !== panelId &&
+        rectanglesOverlap(getPanelPlacementRect(candidateRect), getPanelPlacementRect(otherRect))
+      )
+    ) {
+      candidateRect = {
+        ...candidateRect,
+        y: candidateRect.y + 1
+      };
+    }
+
+    nextPanels[panelId] = candidateRect;
+  }
+
+  return nextPanels;
+}
+
 export function getDefaultWorkspaceLayoutState(): WorkspaceLayoutState {
   return {
-    version: 1,
-    columnFractions: [...defaultLayoutState.columnFractions],
+    version: 2,
+    columnCount: defaultLayoutState.columnCount,
+    columnGap: defaultLayoutState.columnGap,
     rowHeight: defaultLayoutState.rowHeight,
     panels: workspacePanelIds.reduce((nextPanels, panelId) => {
       nextPanels[panelId] = { ...defaultLayoutState.panels[panelId] };
@@ -171,15 +271,18 @@ export function normalizeWorkspaceLayoutState(value: unknown): WorkspaceLayoutSt
     candidate.collapsed && typeof candidate.collapsed === "object"
       ? (candidate.collapsed as Record<string, unknown>)
       : {};
+  const columnCount = normalizeColumnCount(candidate.columnCount);
+  const normalizedPanels = workspacePanelIds.reduce((nextPanels, panelId) => {
+    nextPanels[panelId] = normalizePanelRect(panelId, candidatePanels[panelId], columnCount);
+    return nextPanels;
+  }, {} as Record<WorkspacePanelId, WorkspacePanelRect>);
 
   return {
-    version: 1,
-    columnFractions: normalizeColumnFractions(candidate.columnFractions),
+    version: 2,
+    columnCount,
+    columnGap: normalizeColumnGap(candidate.columnGap),
     rowHeight: clamp(numberOrFallback(candidate.rowHeight, defaultLayoutState.rowHeight), 30, 80),
-    panels: workspacePanelIds.reduce((nextPanels, panelId) => {
-      nextPanels[panelId] = normalizePanelRect(panelId, candidatePanels[panelId]);
-      return nextPanels;
-    }, {} as Record<WorkspacePanelId, WorkspacePanelRect>),
+    panels: reflowWorkspacePanels(normalizedPanels, columnCount, columnCount),
     collapsed: collapsibleWorkspacePanelIds.reduce((nextCollapsed, panelId) => {
       nextCollapsed[panelId] =
         typeof candidateCollapsed[panelId] === "boolean"
@@ -241,41 +344,13 @@ export function getWorkspacePanelRenderHeight(
   return layoutState.collapsed[panelId] ? collapsedPanelHeight : layoutState.panels[panelId].h;
 }
 
-function getWorkspacePanelPlacementRect(
-  layoutState: WorkspaceLayoutState,
-  panelId: WorkspacePanelId
-): PanelPlacementRect {
-  const panel = layoutState.panels[panelId];
-
-  return {
-    x: panel.x,
-    y: panel.y,
-    w: panel.w,
-    h: panel.h
-  };
-}
-
-function rectanglesOverlap(left: PanelPlacementRect, right: PanelPlacementRect) {
-  const leftX2 = left.x + left.w - 1;
-  const rightX2 = right.x + right.w - 1;
-  const leftY2 = left.y + left.h - 1;
-  const rightY2 = right.y + right.h - 1;
-
-  return !(leftX2 < right.x || rightX2 < left.x || leftY2 < right.y || rightY2 < left.y);
-}
-
 export function canPlaceWorkspacePanel(
   layoutState: WorkspaceLayoutState,
   panelId: WorkspacePanelId,
   nextRect: WorkspacePanelRect
 ) {
-  const normalizedRect = normalizePanelRect(panelId, nextRect);
-  const nextPlacementRect: PanelPlacementRect = {
-    x: normalizedRect.x,
-    y: normalizedRect.y,
-    w: normalizedRect.w,
-    h: normalizedRect.h
-  };
+  const normalizedRect = normalizePanelRect(panelId, nextRect, layoutState.columnCount);
+  const nextPlacementRect = getPanelPlacementRect(normalizedRect);
 
   for (const otherPanelId of workspacePanelIds) {
     if (otherPanelId === panelId) {
@@ -283,7 +358,7 @@ export function canPlaceWorkspacePanel(
     }
 
     if (
-      rectanglesOverlap(nextPlacementRect, getWorkspacePanelPlacementRect(layoutState, otherPanelId))
+      rectanglesOverlap(nextPlacementRect, getPanelPlacementRect(layoutState.panels[otherPanelId]))
     ) {
       return false;
     }
@@ -297,7 +372,11 @@ export function updateWorkspacePanelRect(input: {
   panelId: WorkspacePanelId;
   nextRect: WorkspacePanelRect;
 }) {
-  const normalizedRect = normalizePanelRect(input.panelId, input.nextRect);
+  const normalizedRect = normalizePanelRect(
+    input.panelId,
+    input.nextRect,
+    input.layoutState.columnCount
+  );
 
   if (!canPlaceWorkspacePanel(input.layoutState, input.panelId, normalizedRect)) {
     return input.layoutState;
@@ -336,17 +415,34 @@ export function expandAllWorkspacePanels(layoutState: WorkspaceLayoutState) {
   };
 }
 
-export function updateWorkspaceColumnFraction(input: {
+export function updateWorkspaceColumnCount(input: {
   layoutState: WorkspaceLayoutState;
-  index: 0 | 1 | 2;
   value: number;
 }) {
-  const nextFractions = [...input.layoutState.columnFractions] as [number, number, number];
-  nextFractions[input.index] = clamp(input.value, 0.5, 4);
+  const nextColumnCount = normalizeColumnCount(input.value);
+
+  if (nextColumnCount === input.layoutState.columnCount) {
+    return input.layoutState;
+  }
 
   return {
     ...input.layoutState,
-    columnFractions: nextFractions
+    columnCount: nextColumnCount,
+    panels: reflowWorkspacePanels(
+      input.layoutState.panels,
+      input.layoutState.columnCount,
+      nextColumnCount
+    )
+  };
+}
+
+export function updateWorkspaceColumnGap(input: {
+  layoutState: WorkspaceLayoutState;
+  value: number;
+}) {
+  return {
+    ...input.layoutState,
+    columnGap: normalizeColumnGap(input.value)
   };
 }
 
@@ -360,44 +456,16 @@ export function updateWorkspaceRowHeight(input: {
   };
 }
 
-export function getWorkspaceGridUnitFractions(columnFractions: [number, number, number]) {
-  return workspaceGroupUnits.map((unitCount, index) => columnFractions[index] / unitCount) as [
-    number,
-    number,
-    number
-  ];
-}
-
 export function getSnappedWorkspaceColumn(input: {
   offsetX: number;
   width: number;
-  columnFractions: [number, number, number];
+  columnCount: number;
 }) {
   const safeWidth = Math.max(input.width, 1);
   const clampedOffset = clamp(input.offsetX, 0, safeWidth);
-  const totalFractions = input.columnFractions.reduce((sum, value) => sum + value, 0);
-  const groupWidths = workspaceGroupUnits.map(
-    (unitCount, index) => (safeWidth * input.columnFractions[index]) / totalFractions / unitCount
-  );
+  const ratio = clampedOffset / safeWidth;
 
-  let runningWidth = 0;
-  let currentColumn = 1;
-
-  for (let groupIndex = 0; groupIndex < workspaceGroupUnits.length; groupIndex += 1) {
-    const unitCount = workspaceGroupUnits[groupIndex];
-    const unitWidth = groupWidths[groupIndex];
-
-    for (let unitIndex = 0; unitIndex < unitCount; unitIndex += 1) {
-      runningWidth += unitWidth;
-      if (clampedOffset <= runningWidth || currentColumn === workspaceColumnCount) {
-        return currentColumn;
-      }
-
-      currentColumn += 1;
-    }
-  }
-
-  return workspaceColumnCount;
+  return clamp(Math.floor(ratio * input.columnCount) + 1, 1, input.columnCount);
 }
 
 export function getSnappedWorkspaceRow(input: {

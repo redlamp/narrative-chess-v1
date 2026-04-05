@@ -32,6 +32,8 @@ import { WorkspaceListItem } from "./WorkspaceListItem";
 
 type RoleCatalogPageProps = {
   roleCatalog: RoleCatalog;
+  layoutMode: boolean;
+  showLayoutGrid: boolean;
   roleCatalogDirectoryName: string | null;
   isRoleCatalogDirectorySupported: boolean;
   roleCatalogFileBusyAction: string | null;
@@ -67,6 +69,8 @@ type RoleCatalogPageProps = {
   onConnectRoleCatalogDirectory: () => void;
   onLoadRoleCatalogFromDirectory: () => void;
   onSaveRoleCatalogToDirectory: () => void;
+  onToggleLayoutMode: () => void;
+  onToggleLayoutGrid: (checked: boolean) => void;
 };
 
 const contentStatusOptions = ["empty", "procedural", "authored"] as const;
@@ -125,6 +129,8 @@ function compareRoleEntries(
 
 export function RoleCatalogPage({
   roleCatalog,
+  layoutMode,
+  showLayoutGrid,
   roleCatalogDirectoryName,
   isRoleCatalogDirectorySupported,
   roleCatalogFileBusyAction,
@@ -136,7 +142,9 @@ export function RoleCatalogPage({
   onRoleCatalogRemove,
   onConnectRoleCatalogDirectory,
   onLoadRoleCatalogFromDirectory,
-  onSaveRoleCatalogToDirectory
+  onSaveRoleCatalogToDirectory,
+  onToggleLayoutMode,
+  onToggleLayoutGrid
 }: RoleCatalogPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortMode, setSortMode] = useState<RoleSortMode>("name");
@@ -229,11 +237,17 @@ export function RoleCatalogPage({
     <IndexedWorkspace
       className="role-catalog-workspace"
       scrollMode="page"
+      layoutMode={layoutMode}
+      layoutKey="roles-page"
+      layoutVariant="three-pane"
+      showLayoutGrid={showLayoutGrid}
+      onToggleLayoutMode={onToggleLayoutMode}
+      onToggleLayoutGrid={onToggleLayoutGrid}
       intro={
         <WorkspaceIntroCard
           badgeRow={
             <>
-              <Badge variant="secondary">Role Catalog</Badge>
+              <Badge variant="secondary">Characters</Badge>
               <Badge variant="outline">{roleCatalog.length} editable roles</Badge>
               {pieceKinds.map((pieceKind) => (
                 <Badge key={pieceKind} variant="outline">

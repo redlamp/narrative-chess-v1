@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef } from "react";
-import { Settings2, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -103,10 +103,11 @@ export function AppMenu({
         aria-expanded={isOpen}
         aria-controls={panelId}
         aria-haspopup="dialog"
-        aria-label="Open settings"
+        aria-label="Open menu"
+        title="Open menu"
         onClick={() => onOpenChange(!isOpen)}
       >
-        <Settings2 />
+        <Menu />
       </Button>
 
       {isOpen ? (
