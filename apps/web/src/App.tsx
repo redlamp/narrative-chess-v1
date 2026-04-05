@@ -118,7 +118,7 @@ const panelTitles: Record<WorkspacePanelId, string> = {
   moves: "Match History (PGN)",
   narrative: "Story",
   saved: "Saved Matches",
-  study: "Historic Matches"
+  study: "Historic Games"
 };
 
 const pageOptions: Array<{ value: AppPage; label: string }> = [
@@ -1539,7 +1539,7 @@ export default function App() {
               )}
             >
               <Panel
-                title="Study Games"
+                title="Historic Games"
                 collapsed={workspaceLayout.collapsed.study}
                 action={renderPanelTools()}
                 onToggleCollapse={() => handleTogglePanelCollapse("study")}
