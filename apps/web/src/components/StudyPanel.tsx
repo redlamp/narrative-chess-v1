@@ -116,7 +116,7 @@ export function StudyPanel({
   }
 
   return (
-    <Panel title="Study Games">
+    <Panel title="Historic Matches">
       {content}
     </Panel>
   );

@@ -469,7 +469,7 @@ export function ClassicGamesLibraryPage({
               </Badge>
             </>
           }
-          title="Classics"
+          title="Historic"
           actions={
             <>
               <Button

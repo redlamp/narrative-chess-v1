@@ -118,14 +118,14 @@ const panelTitles: Record<WorkspacePanelId, string> = {
   moves: "Match History (PGN)",
   narrative: "Story",
   saved: "Saved Matches",
-  study: "Study Games"
+  study: "Historic Matches"
 };
 
 const pageOptions: Array<{ value: AppPage; label: string }> = [
   { value: "match", label: "Play" },
   { value: "cities", label: "Cities" },
   { value: "roles", label: "Characters" },
-  { value: "classics", label: "Classics" },
+  { value: "classics", label: "Historic" },
   { value: "research", label: "Research" },
   { value: "design", label: "Design" }
 ];
@@ -193,7 +193,7 @@ function getPageCaption(page: AppPage) {
     case "cities":
       return "Review city boards and district drafts.";
     case "classics":
-      return "Study classic games and their key lines.";
+      return "Study historic games and their key lines.";
     case "roles":
       return "Edit piece roles and roster flavor.";
     case "design":
