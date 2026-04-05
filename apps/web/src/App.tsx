@@ -1280,7 +1280,6 @@ export default function App() {
             >
               <div className="board-panel__header">
                 <div>
-                  <p className="section-eyebrow">Board</p>
                   <h2>{isStudyMode ? "Study replay board" : "Board"}</h2>
                 </div>
                 <div className="board-panel__meta">

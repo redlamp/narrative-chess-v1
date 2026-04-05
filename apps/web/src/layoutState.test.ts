@@ -28,7 +28,7 @@ describe("layoutState", () => {
     expect(layoutState.columnGap).toBe(4);
     expect(layoutState.rowHeight).toBe(256);
     expect(layoutState.panels.moves.x).toBeLessThanOrEqual(23);
-    expect(layoutState.panels.moves.h).toBeGreaterThanOrEqual(5);
+    expect(layoutState.panels.moves.h).toBeGreaterThanOrEqual(1);
   });
 
   it("blocks overlapping panel placements and keeps the prior rect", () => {

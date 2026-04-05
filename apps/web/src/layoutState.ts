@@ -63,12 +63,12 @@ const minimumPanelWidth: Record<WorkspacePanelId, number> = {
 };
 
 const minimumPanelHeight: Record<WorkspacePanelId, number> = {
-  board: 8,
-  moves: 5,
-  narrative: 5,
-  saved: 4,
-  study: 5,
-  status: 4
+  board: 2,
+  moves: 1,
+  narrative: 1,
+  saved: 1,
+  study: 1,
+  status: 1
 };
 
 const defaultLayoutState: WorkspaceLayoutState = {

@@ -44,10 +44,10 @@ const minimumPanelWidth: Record<PageLayoutPanelId, number> = {
 };
 
 const minimumPanelHeight: Record<PageLayoutPanelId, number> = {
-  intro: 3,
-  index: 5,
-  secondary: 5,
-  detail: 8
+  intro: 1,
+  index: 1,
+  secondary: 1,
+  detail: 1
 };
 
 const defaultPanelsByVariant: Record<PageLayoutVariant, Record<PageLayoutPanelId, PageLayoutRect>> = {
