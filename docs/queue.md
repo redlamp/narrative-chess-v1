@@ -1,10 +1,10 @@
 # Narrative Chess Queue
 
-This queue rebuilds the current work around the live repo state on `codex/milestone-1-vertical-slice`.
+This queue rebuilds the current work around the live repo state on `main`.
 
 It is meant to be durable and resumable: each slice should land as a bounded branch, pass `lint`, `typecheck`, `test`, and `build`, and leave the next slice obvious.
 
-Recovered missed prompts and the newer recovery queue live in [recovery-queue.md](./recovery-queue.md).
+This queue now includes the recovered prompts that were previously tracked in `recovery-queue.md`, so `queue.md` is the single source of truth.
 
 ## Current State
 
@@ -15,7 +15,7 @@ Shipped:
 - layout editing, theme toggle, local match saves, and named workspace layout files
 
 Gaps that still matter:
-- the editor shell is much more consistent now, but multi-city authoring still needs a second real sample city
+- the editor shell is much more consistent now, but multi-city authoring will need a broader review and expansion path as more cities are added
 - board keyboard support is underway, but layout editing and editor-page semantics still need an accessibility pass
 - the match shell still feels busier than a chess-first tool should
 
@@ -89,6 +89,55 @@ Deliverables:
 - reduce shell noise around navigation and utilities
 - tighten typography and spacing across editor pages
 
+## Recovery Items Merged Into The Main Queue
+
+### 6. Multi-City Sample Data
+Status: completed
+
+Goal:
+- add a second sample city so the Cities workflow can prove it supports more than one city
+
+Deliverables:
+- add London as a second seeded city
+- keep the new city clearly marked as seeded/procedural rather than fully reviewed
+- validate the city selector and district editor with more than one city in the list
+
+Result:
+- London now sits alongside Edinburgh in the Cities workflow, and the left column can be used to switch between seeded city drafts instead of acting like a single-entry stub.
+
+### 7. Match Style And Assets
+Status: completed
+
+Goal:
+- give the app a clean way to review piece styling, piece art, and CSS references
+
+Result:
+- the light/dark toggle is icon-only and shows the target mode
+- Research includes `competition`, `Art assets`, and `style reference` tabs
+- the app includes piece asset and styling reference pages
+- piece CSS can be edited live, shared with the app, and saved to a repo-local file
+
+### 8. Layout And Settings Recovery
+Status: completed
+
+Goal:
+- make local layout behavior easier to reset and more predictable
+
+Result:
+- named layout files can now be removed
+- deleting a named layout returns the workspace to the default layout state
+
+### 9. Docs Follow-Up
+Status: completed
+
+Goal:
+- keep the PRD and usage guidance in sync with the product direction
+
+Result:
+- PRD gap review is documented
+- a revised PRD draft is in place
+- user suggestions for agent roles and prompt efficiency are documented
+
 ## Deferred For Now
 
 - multiplayer
@@ -96,12 +145,6 @@ Deliverables:
 - backend persistence
 - ambitious city simulation systems
 - broad architecture changes outside the current package boundaries
-
-## Current Recovery Follow-Up
-
-1. Add London as a second sample city and validate the multi-city Cities workflow.
-2. Run a focused Match-page design cleanup so the chess surface reads as primary.
-3. Continue the accessibility pass after the latest recovery controls settle.
 
 ## Working Rules
 
