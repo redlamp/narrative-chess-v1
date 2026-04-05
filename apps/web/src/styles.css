@@ -1012,6 +1012,7 @@ select {
   gap: 16px;
   padding: 18px;
   min-height: 0;
+  border-radius: inherit;
   overflow: hidden;
 }
 
@@ -1031,6 +1032,7 @@ select {
   inline-size: 100%;
   aspect-ratio: 1;
   border: 1px solid var(--border);
+  border-radius: 0;
   box-shadow: 0 2px 10px rgb(15 23 42 / 0.08);
   overflow: hidden;
 }
