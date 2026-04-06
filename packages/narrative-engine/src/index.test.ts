@@ -311,3 +311,384 @@ describe("createNarrativeEvent", () => {
     expect(recentEvents[1]?.moveNumber).toBe(1);
   });
 });
+
+describe("Narrative Integration Tests", () => {
+  it("generates consistent narratives for a complete opening sequence", () => {
+    const roster = createInitialCharacterRoster({
+      cityBoard: edinburghBoard
+    });
+
+    const moves: MoveRecord[] = [
+      {
+        id: "move-1",
+        moveNumber: 1,
+        side: "white",
+        from: "e2",
+        to: "e4",
+        san: "e4",
+        pieceId: "white-pawn-e",
+        pieceKind: "pawn",
+        capturedPieceId: null,
+        promotion: null,
+        isCheck: false,
+        isCheckmate: false,
+        isStalemate: false,
+        fenAfter: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+      },
+      {
+        id: "move-2",
+        moveNumber: 2,
+        side: "black",
+        from: "e7",
+        to: "e5",
+        san: "e5",
+        pieceId: "black-pawn-e",
+        pieceKind: "pawn",
+        capturedPieceId: null,
+        promotion: null,
+        isCheck: false,
+        isCheckmate: false,
+        isStalemate: false,
+        fenAfter: "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2"
+      },
+      {
+        id: "move-3",
+        moveNumber: 3,
+        side: "white",
+        from: "g1",
+        to: "f3",
+        san: "Nf3",
+        pieceId: "white-knight-g",
+        pieceKind: "knight",
+        capturedPieceId: null,
+        promotion: null,
+        isCheck: false,
+        isCheckmate: false,
+        isStalemate: false,
+        fenAfter: "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"
+      }
+    ];
+
+    const events = createNarrativeHistory({
+      characters: roster,
+      moves,
+      tonePreset: "grounded"
+    });
+
+    expect(events).toHaveLength(3);
+    expect(events[0]?.eventType).toBe("move");
+    expect(events[0]?.actorPieceId).toBe("white-pawn-e");
+    expect(events[1]?.eventType).toBe("move");
+    expect(events[1]?.actorPieceId).toBe("black-pawn-e");
+    expect(events[2]?.eventType).toBe("move");
+    expect(events[2]?.actorPieceId).toBe("white-knight-g");
+
+    for (const event of events) {
+      expect(event.headline).toBeTruthy();
+      expect(event.detail).toBeTruthy();
+      expect(event.moveId).toBeTruthy();
+      expect(event.moveNumber).toBeGreaterThan(0);
+    }
+  });
+
+  it("varies event narratives correctly across all three tone presets", () => {
+    const roster = createInitialCharacterRoster();
+    const moves: MoveRecord[] = [
+      {
+        id: "move-1",
+        moveNumber: 1,
+        side: "white",
+        from: "e2",
+        to: "e4",
+        san: "e4",
+        pieceId: "white-pawn-e",
+        pieceKind: "pawn",
+        capturedPieceId: null,
+        promotion: null,
+        isCheck: false,
+        isCheckmate: false,
+        isStalemate: false,
+        fenAfter: "stub"
+      }
+    ];
+
+    const groundedEvents = createNarrativeHistory({
+      characters: roster,
+      moves,
+      tonePreset: "grounded"
+    });
+
+    const noirEvents = createNarrativeHistory({
+      characters: roster,
+      moves,
+      tonePreset: "civic-noir"
+    });
+
+    const comedyEvents = createNarrativeHistory({
+      characters: roster,
+      moves,
+      tonePreset: "dark-comedy"
+    });
+
+    expect(groundedEvents[0]?.detail).not.toBe(noirEvents[0]?.detail);
+    expect(noirEvents[0]?.detail).not.toBe(comedyEvents[0]?.detail);
+    expect(groundedEvents[0]?.detail).toBeTruthy();
+    expect(noirEvents[0]?.detail).toBeTruthy();
+    expect(comedyEvents[0]?.detail).toBeTruthy();
+  });
+
+  it("correctly handles capture scenarios and updates context for subsequent events", () => {
+    const roster = createInitialCharacterRoster();
+    const moves: MoveRecord[] = [
+      {
+        id: "move-1",
+        moveNumber: 1,
+        side: "white",
+        from: "e2",
+        to: "e4",
+        san: "e4",
+        pieceId: "white-pawn-e",
+        pieceKind: "pawn",
+        capturedPieceId: null,
+        promotion: null,
+        isCheck: false,
+        isCheckmate: false,
+        isStalemate: false,
+        fenAfter: "stub"
+      },
+      {
+        id: "move-2",
+        moveNumber: 2,
+        side: "black",
+        from: "d7",
+        to: "d5",
+        san: "d5",
+        pieceId: "black-pawn-d",
+        pieceKind: "pawn",
+        capturedPieceId: null,
+        promotion: null,
+        isCheck: false,
+        isCheckmate: false,
+        isStalemate: false,
+        fenAfter: "stub"
+      },
+      {
+        id: "move-3",
+        moveNumber: 3,
+        side: "white",
+        from: "e4",
+        to: "d5",
+        san: "exd5",
+        pieceId: "white-pawn-e",
+        pieceKind: "pawn",
+        capturedPieceId: "black-pawn-d",
+        promotion: null,
+        isCheck: false,
+        isCheckmate: false,
+        isStalemate: false,
+        fenAfter: "stub"
+      }
+    ];
+
+    const groundedEvents = createNarrativeHistory({
+      characters: roster,
+      moves,
+      tonePreset: "grounded"
+    });
+
+    const captureEvent = groundedEvents[2];
+    expect(captureEvent?.eventType).toBe("capture");
+    expect(captureEvent?.targetPieceId).toBe("black-pawn-d");
+    expect(captureEvent?.detail).toContain(roster["black-pawn-d"]?.fullName);
+    expect(captureEvent?.detail).toContain("d5");
+  });
+
+  it("tracks promotion events with correct promotion piece labels", () => {
+    const roster = createInitialCharacterRoster();
+    const moves: MoveRecord[] = [
+      {
+        id: "move-1",
+        moveNumber: 1,
+        side: "white",
+        from: "a7",
+        to: "a8",
+        san: "a8=Q",
+        pieceId: "white-pawn-a",
+        pieceKind: "pawn",
+        capturedPieceId: null,
+        promotion: "queen",
+        isCheck: false,
+        isCheckmate: false,
+        isStalemate: false,
+        fenAfter: "stub"
+      }
+    ];
+
+    const events = createNarrativeHistory({
+      characters: roster,
+      moves
+    });
+
+    const promotionEvent = events[0];
+    expect(promotionEvent?.eventType).toBe("promotion");
+    expect(promotionEvent?.detail).toContain("queen");
+  });
+
+  it("handles fallback character creation for imported games without full rosters", () => {
+    // Only provide partial roster, missing the actor
+    const partialRoster = {
+      "white-queen": makeActor({
+        id: "white-queen",
+        pieceId: "white-queen",
+        fullName: "Destiny Queen"
+      })
+    };
+
+    const moves: MoveRecord[] = [
+      {
+        id: "move-1",
+        moveNumber: 1,
+        side: "white",
+        from: "e2",
+        to: "e4",
+        san: "e4",
+        pieceId: "white-pawn-e",
+        pieceKind: "pawn",
+        capturedPieceId: null,
+        promotion: null,
+        isCheck: false,
+        isCheckmate: false,
+        isStalemate: false,
+        fenAfter: "stub"
+      }
+    ];
+
+    const events = createNarrativeHistory({
+      characters: partialRoster,
+      moves
+    });
+
+    const event = events[0];
+    expect(event?.eventType).toBe("move");
+    expect(event?.headline).toBeTruthy();
+    expect(event?.detail).toContain("white pawn");
+    expect(event?.detail).toContain("e2");
+    expect(event?.detail).toContain("e4");
+  });
+
+  it("generates only relevant events for piece history queries", () => {
+    const roster = createInitialCharacterRoster();
+    const moves: MoveRecord[] = [
+      {
+        id: "move-1",
+        moveNumber: 1,
+        side: "white",
+        from: "e2",
+        to: "e4",
+        san: "e4",
+        pieceId: "white-pawn-e",
+        pieceKind: "pawn",
+        capturedPieceId: null,
+        promotion: null,
+        isCheck: false,
+        isCheckmate: false,
+        isStalemate: false,
+        fenAfter: "stub"
+      },
+      {
+        id: "move-2",
+        moveNumber: 2,
+        side: "black",
+        from: "e7",
+        to: "e5",
+        san: "e5",
+        pieceId: "black-pawn-e",
+        pieceKind: "pawn",
+        capturedPieceId: null,
+        promotion: null,
+        isCheck: false,
+        isCheckmate: false,
+        isStalemate: false,
+        fenAfter: "stub"
+      },
+      {
+        id: "move-3",
+        moveNumber: 3,
+        side: "white",
+        from: "e4",
+        to: "e5",
+        san: "exe5",
+        pieceId: "white-pawn-e",
+        pieceKind: "pawn",
+        capturedPieceId: "black-pawn-e",
+        promotion: null,
+        isCheck: false,
+        isCheckmate: false,
+        isStalemate: false,
+        fenAfter: "stub"
+      }
+    ];
+
+    const allEvents = createNarrativeHistory({
+      characters: roster,
+      moves
+    });
+
+    const whitePawnHistory = getCharacterEventHistory({
+      events: allEvents,
+      pieceId: "white-pawn-e",
+      limit: 10
+    });
+
+    const blackPawnHistory = getCharacterEventHistory({
+      events: allEvents,
+      pieceId: "black-pawn-e",
+      limit: 10
+    });
+
+    // white-pawn-e is actor in moves 1 and 3
+    expect(whitePawnHistory).toHaveLength(2);
+    expect(whitePawnHistory[0]?.moveNumber).toBe(3);
+
+    // black-pawn-e is actor in move 2 and target in move 3
+    expect(blackPawnHistory).toHaveLength(2);
+    expect(blackPawnHistory[0]?.moveNumber).toBe(3);
+  });
+
+  it("respects event limit in character history queries", () => {
+    const roster = createInitialCharacterRoster();
+    const moves: MoveRecord[] = Array.from({ length: 10 }, (_, i) => ({
+      id: `move-${i + 1}`,
+      moveNumber: i + 1,
+      side: i % 2 === 0 ? "white" : "black",
+      from: "e2",
+      to: "e3",
+      san: "e3",
+      pieceId: "white-pawn-e",
+      pieceKind: "pawn",
+      capturedPieceId: null,
+      promotion: null,
+      isCheck: false,
+      isCheckmate: false,
+      isStalemate: false,
+      fenAfter: "stub"
+    }));
+
+    const events = createNarrativeHistory({
+      characters: roster,
+      moves
+    });
+
+    const limited = getCharacterEventHistory({
+      events,
+      pieceId: "white-pawn-e",
+      limit: 3
+    });
+
+    expect(limited).toHaveLength(3);
+    // getCharacterEventHistory returns last N events reversed, so most recent first
+    expect(limited[0]?.moveNumber).toBe(10);
+    expect(limited[1]?.moveNumber).toBe(9);
+    expect(limited[2]?.moveNumber).toBe(8);
+  });
+});
