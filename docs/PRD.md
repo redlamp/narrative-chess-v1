@@ -540,3 +540,85 @@ The repository should include an `AGENTS.md` file at the root so tools like Code
 
 **Next Action:** Focus on Milestone 2: City Board Prototype. This requires integrating the structured data from `content/cities/` into the state management of `game-core` and then feeding that enriched state into `narrative-engine`.
 
+---
+
+## 20. Implementation Status & Alignment Notes
+
+**Current State (2026-04-06):**
+- ✅ Milestone 0: Repo structure, TypeScript setup, linting complete
+- ✅ Milestone 1: Legal local chess, move history, undo, clear board UI implemented
+- 🟡 Milestone 2: Edinburgh board mapped, district labels wired, keyboard shortcuts added; full integration in progress
+- 🟡 Milestone 3: Character generation schema defined; character display enhanced
+- 🟡 Milestone 4: Narrative event generation working; ready for richer context integration
+
+**Important Deviations to Correct:**
+
+1. **Chess-First Principle:** The app currently reads more like a tool dashboard than a chess-first experience. Utility pages and editor surfaces should support the game, not compete with it. Reduce persistent chrome where non-essential.
+
+2. **Content Editor Unification:** Cities, Roles, Classics, and Research pages have useful content but inconsistent editing patterns. Establish one reusable editor shell across all content pages.
+
+3. **Workspace Tooling Scope:** Layout editor, layout files, and named file saves are practical but beyond MVP scope. Keep them as support features, not product center.
+
+4. **Accessibility as Acceptance Criteria:** Keyboard behavior and semantics should be built-in requirements for all interactive flows, not added as polish later.
+
+5. **Style & Assets Framing:** Piece styles, CSS references, and asset management are valuable but should be framed as content/reference tooling, not core gameplay.
+
+---
+
+## 21. Supporting Authoring Tools
+
+Beyond the core match experience, the app supports structured content creation and review:
+
+### Content Categories
+
+- **City Boards**: Structured 8x8 district mappings with neighborhood data, landmarks, tone cues, and day/night profiles
+- **Character Roles**: Templates for piece-type behavior across traits, verbs, and summary generation
+- **Narrative Templates**: Event headlines, details, and tone-specific codas for move-to-story translation
+- **Reference Games**: Classic chess games for study and narrative comparison
+- **Piece Styles**: CSS and visual asset references for piece rendering
+
+### Editor Patterns
+
+All content editors should follow these principles:
+
+- **List/Detail Pattern**: Searchable list on left, detail editor on right
+- **Full-Page Scroll**: Prefer vertical scrolling over nested scroll regions
+- **Structured Tags**: Use consistent tag input patterns (autocomplete, clear, add/remove)
+- **Review Metadata**: Include `contentStatus`, `reviewStatus`, `reviewNotes`, `lastReviewedAt` fields
+- **Direct File Persistence**: Save back to `.json` or source files without hidden application state
+
+### Acceptance Criteria for Editor UX
+
+- Search field clears with button or shorthand (Escape key in focused field)
+- Keyboard navigation works within list (arrow keys, Home/End)
+- Tab order is logical and accessible
+- Selected/hovered states are visually distinct
+- No deeply nested modals; prefer inline editing or persistent panels
+- Save/load operations provide clear feedback
+
+---
+
+## 22. Next Features & Deferred Work
+
+**Priority 1: Editor UX Consistency**
+- Simplify Cities column display to name + count
+- Add sort options for Cities and Roles pages
+- Unified tag editor pattern across content pages
+
+**Priority 2: Style & Asset Reference**
+- Create page for piece art, CSS styling, and asset review
+- Support configurable style options for pieces and states
+- Allow CSS styles to be saved and reused
+
+**Priority 3: Layout & Settings Recovery**
+- Add option to reset local layout files to defaults
+- Improve error handling for corrupted persistence
+
+**Priority 4: Research Organization**
+- Tab-based organization: Competition, Art Assets, Style Reference
+
+**Priority 5: Docs & Onboarding**
+- Keep PRD and recovery queue current
+- Document authoring workflows explicitly
+- Maintain user-facing notes for agent efficiency
+
