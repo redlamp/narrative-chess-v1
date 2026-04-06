@@ -39,13 +39,13 @@
 
 ## Medium Priority (Features & Polish)
 
-### ✅ / 🔄 / ⏳ Task 3: Character Component "Recent Actions" Tab
-- [ ] Add 2 tabs: "Details" and "Recent Actions"
-- [ ] Recent Actions shows: PGN notation + narrative element for each move
-- [ ] Test and iterate on UX
-- **Status:** Not Started
-- **Effort:** 1.5-2 hrs
-- **Files Affected:** `StoryCharacterSection.tsx` or new Character component
+### ✅ Task 3: Character Component "Recent Actions" Tab
+- [✅] Add 2 tabs: "Details" and "Recent Actions"
+- [✅] Recent Actions shows: PGN notation + narrative element for each move
+- [✅] Test and iterate on UX
+- **Status:** ✅ COMPLETED (commit 3eb84c4)
+- **Effort:** 1.5 hrs
+- **Files Affected:** Created CharacterDetailPanel.tsx, updated StoryPanel.tsx, App.tsx, added CSS
 
 ### ✅ / 🔄 / ⏳ Task 4: Narrative Tone Component Info Button
 - [ ] Add "ⓘ" info button with tooltip
@@ -135,7 +135,7 @@
 |--------|-------|--------|--------|----------|
 | 1 | Saved + Historic Merge | ✅ | 2h | ⭐ High |
 | 2 | Story Decomposition | ⏳ | 4-5h | ⭐ High |
-| 3 | Character Recent Actions | ⏳ | 1.5-2h | 🟡 Med |
+| 3 | Character Recent Actions | ✅ | 1.5h | 🟡 Med |
 | 4 | Narrative Tone Info | ⏳ | 1h | 🟡 Med |
 | 5 | Game State Header | ⏳ | 1-1.5h | 🟡 Med |
 | 6 | City Selector Dropdown | ⏳ | 1h | 🟡 Med |
