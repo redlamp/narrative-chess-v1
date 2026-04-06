@@ -809,21 +809,21 @@ select {
 .editable-tag-list__chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  min-height: 4rem;
+  min-height: 3.5rem;
 }
 
 .editable-tag-list__chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--background);
   color: var(--foreground);
-  padding: 0.35rem 0.7rem;
-  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
   line-height: 1;
   cursor: pointer;
   transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
@@ -861,21 +861,21 @@ select {
 .autocomplete-tag-list__chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  min-height: 4rem;
+  min-height: 3.5rem;
 }
 
 .autocomplete-tag-list__chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--background);
   color: var(--foreground);
-  padding: 0.35rem 0.7rem;
-  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
   line-height: 1;
   cursor: pointer;
   transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
