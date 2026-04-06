@@ -1193,7 +1193,7 @@ export default function App() {
               }}
               className="page-switcher-tabs"
             >
-              <TabsList aria-label="Workspace sections" variant="line">
+              <TabsList aria-label="Workspace sections">
                 {pageOptions.map(({ value, label }) => (
                   <TabsTrigger key={value} value={value}>
                     {label}
