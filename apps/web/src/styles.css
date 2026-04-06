@@ -416,7 +416,6 @@ select {
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
-  gap: 4px;
 }
 
 .page-switcher-tabs [data-slot="tabs-list"] {
@@ -424,8 +423,6 @@ select {
   max-width: 100%;
   flex-wrap: wrap;
   justify-content: flex-start;
-  overflow: visible;
-  padding-bottom: 8px;
 }
 
 .page-switcher {
@@ -448,25 +445,6 @@ select {
 
 .page-switcher__trigger {
   min-width: 7.5rem;
-  position: relative;
-  transition: all 0.2s ease;
-  color: hsl(var(--muted-foreground));
-  border-bottom: 3px solid transparent;
-  z-index: 1;
-}
-
-.page-switcher__trigger:hover {
-  color: hsl(var(--foreground));
-  z-index: 2;
-}
-
-.page-switcher__trigger[data-state="active"] {
-  color: hsl(var(--foreground));
-  font-weight: 700;
-  border-bottom-color: hsl(var(--primary));
-  border-bottom-width: 3px;
-  box-shadow: 0 3px 0 0 hsl(var(--primary) / 0.4);
-  z-index: 3;
 }
 
 .app-menu {

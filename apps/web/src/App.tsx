@@ -1193,7 +1193,7 @@ export default function App() {
               }}
               className="page-switcher-tabs"
             >
-              <TabsList aria-label="Workspace sections">
+              <TabsList aria-label="Workspace sections" variant="line">
                 {pageOptions.map(({ value, label }) => (
                   <Tooltip key={value}>
                     <TooltipTrigger asChild>
