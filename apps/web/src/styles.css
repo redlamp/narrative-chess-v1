@@ -2000,7 +2000,95 @@ select {
 .recent-games-link {
   margin: 0;
 }
+
+/* Character Detail Panel */
+
+.character-detail-shell {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 12px;
+  height: 100%;
 }
+
+.character-tabs {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 12px;
+  height: 100%;
+}
+
+.character-tabs-list {
+  width: 100%;
+}
+
+.character-tabs-content {
+  display: grid;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.character-detail-container {
+  display: grid;
+  gap: 16px;
+}
+
+.character-recent-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.character-action-item {
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--muted) 72%, white 28%);
+  border-radius: var(--workspace-card-radius);
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.character-action-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.character-action-move {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 0.95rem;
+}
+
+.character-action-move strong {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.character-action-type {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted-foreground);
+}
+
+.character-action-headline {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.character-action-detail {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
+}
+
 
 .saved-match-list,
 .study-panel {

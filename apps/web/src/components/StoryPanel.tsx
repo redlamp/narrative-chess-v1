@@ -28,7 +28,7 @@ import {
 } from "../storyPanelLayoutState";
 import { Panel } from "./Panel";
 import { StoryBeatSection } from "./StoryBeatSection";
-import { StoryCharacterSection } from "./StoryCharacterSection";
+import { CharacterDetailPanel } from "./CharacterDetailPanel";
 import { StoryCityTileSection } from "./StoryCityTileSection";
 import { StoryToneSection } from "./StoryToneSection";
 
@@ -43,6 +43,7 @@ type StoryPanelProps = {
   focusedPiece: PieceState | null;
   focusedCharacter: CharacterSummary | null;
   focusedCharacterMoments: NarrativeEvent[];
+  moveHistory: MoveRecord[];
   showRecentCharacterActions: boolean;
   layoutState: StoryPanelLayoutState;
   layoutMode: boolean;
@@ -94,6 +95,7 @@ export function StoryPanel({
   focusedPiece,
   focusedCharacter,
   focusedCharacterMoments,
+  moveHistory,
   showRecentCharacterActions,
   layoutState,
   layoutMode,
@@ -216,11 +218,12 @@ export function StoryPanel({
       />
     ),
     character: (
-      <StoryCharacterSection
+      <CharacterDetailPanel
         focusedSquare={focusedSquare}
         focusedPiece={focusedPiece}
         focusedCharacter={focusedCharacter}
         focusedCharacterMoments={focusedCharacterMoments}
+        moveHistory={moveHistory}
         showRecentCharacterActions={showRecentCharacterActions}
       />
     ),

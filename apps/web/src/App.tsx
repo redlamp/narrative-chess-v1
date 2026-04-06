@@ -1508,6 +1508,7 @@ export default function App() {
                 focusedPiece={focusedPiece}
                 focusedCharacter={focusedCharacter}
                 focusedCharacterMoments={focusedCharacterMoments}
+                moveHistory={moveHistory}
                 showRecentCharacterActions={settings.showRecentCharacterActions}
                 layoutState={storyPanelLayout}
                 layoutMode={effectiveLayoutMode}
