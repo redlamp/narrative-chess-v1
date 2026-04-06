@@ -1424,7 +1424,7 @@ export default function App() {
                     viewMode="board"
                     districtsBySquare={edinburghDistrictsBySquare}
                     showCoordinates={settings.showBoardCoordinates}
-                    showDistrictLabels={false}
+                    showDistrictLabels={settings.showDistrictLabels}
                     onSquareClick={handleSquareClick}
                     onSquareHover={setHoveredSquare}
                     onSquareLeave={() => setHoveredSquare(null)}
