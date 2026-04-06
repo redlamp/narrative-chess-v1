@@ -8,14 +8,14 @@
 
 ## High Priority (Structural Refactors)
 
-### ✅ / 🔄 / ⏳ Task 1: Merge Saved Games + Historic Games
-- [ ] Consolidate into one component with "saved" / "historic" tabs
-- [ ] Unified format: name, players, location, date, description
-- [ ] Remove "Start, prev, next, end, resume local" buttons (handled in history component)
-- [ ] Maintain similar visual hierarchy to existing panels
-- **Status:** Not Started
-- **Effort:** 2-3 hrs
-- **Files Affected:** `StoryPanel.tsx`, study/saved match panel components
+### ✅ Task 1: Merge Saved Games + Historic Games
+- [✅] Consolidate into one component with "saved" / "historic" tabs
+- [✅] Unified format: name, players, location, date, description
+- [✅] Remove "Start, prev, next, end, resume local" buttons (handled in history component)
+- [✅] Maintain similar visual hierarchy to existing panels
+- **Status:** ✅ COMPLETED (commit e81caa9)
+- **Effort:** 2 hrs
+- **Files Affected:** Created RecentGamesPanel.tsx, updated App.tsx, added CSS
 
 ### ✅ / 🔄 / ⏳ Task 2: Decompose Story Component into 4 Standalone Components
 - [ ] Break Story into: Story Beat, Narrative Tone, City (tile), Character
@@ -133,7 +133,7 @@
 
 | Task # | Title | Status | Effort | Priority |
 |--------|-------|--------|--------|----------|
-| 1 | Saved + Historic Merge | ⏳ | 2-3h | ⭐ High |
+| 1 | Saved + Historic Merge | ✅ | 2h | ⭐ High |
 | 2 | Story Decomposition | ⏳ | 4-5h | ⭐ High |
 | 3 | Character Recent Actions | ⏳ | 1.5-2h | 🟡 Med |
 | 4 | Narrative Tone Info | ⏳ | 1h | 🟡 Med |
