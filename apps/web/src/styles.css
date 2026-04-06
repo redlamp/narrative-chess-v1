@@ -443,10 +443,6 @@ select {
   min-width: 7.5rem;
 }
 
-.page-switcher__trigger {
-  min-width: 7.5rem;
-}
-
 .app-menu {
   position: relative;
   display: inline-flex;

@@ -1195,16 +1195,9 @@ export default function App() {
             >
               <TabsList aria-label="Workspace sections" variant="line">
                 {pageOptions.map(({ value, label }) => (
-                  <Tooltip key={value}>
-                    <TooltipTrigger asChild>
-                      <TabsTrigger value={value} className="page-switcher__trigger">
-                        {label}
-                      </TabsTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" sideOffset={8}>
-                      {getPageCaption(value)}
-                    </TooltipContent>
-                  </Tooltip>
+                  <TabsTrigger key={value} value={value}>
+                    {label}
+                  </TabsTrigger>
                 ))}
               </TabsList>
             </Tabs>
