@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "name": "match-workspace",
+  "savedAt": "2026-04-05T14:38:00.272Z",
+  "layoutState": {
+    "version": 2,
+    "columnCount": 12,
+    "columnGap": 16,
+    "rowHeight": 64,
+    "panels": {
+      "board": {
+        "x": 7,
+        "y": 1,
+        "w": 4,
+        "h": 8
+      },
+      "moves": {
+        "x": 11,
+        "y": 1,
+        "w": 2,
+        "h": 15
+      },
+      "narrative": {
+        "x": 1,
+        "y": 9,
+        "w": 10,
+        "h": 8
+      },
+      "saved": {
+        "x": 1,
+        "y": 1,
+        "w": 3,
+        "h": 8
+      },
+      "study": {
+        "x": 4,
+        "y": 1,
+        "w": 3,
+        "h": 8
+      }
+    },
+    "collapsed": {
+      "moves": false,
+      "narrative": false,
+      "saved": false,
+      "study": false
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "name": "default-layout",
+  "savedAt": "2026-04-05T10:52:34.336Z",
+  "layoutState": {
+    "version": 2,
+    "columnCount": 12,
+    "columnGap": 16,
+    "rowHeight": 64,
+    "panels": {
+      "narrative": {
+        "x": 1,
+        "y": 1,
+        "w": 4,
+        "h": 10
+      },
+      "board": {
+        "x": 5,
+        "y": 1,
+        "w": 4,
+        "h": 8
+      },
+      "moves": {
+        "x": 9,
+        "y": 1,
+        "w": 4,
+        "h": 12
+      },
+      "study": {
+        "x": 5,
+        "y": 9,
+        "w": 4,
+        "h": 6
+      },
+      "saved": {
+        "x": 1,
+        "y": 12,
+        "w": 3,
+        "h": 6
+      },
+      "status": {
+        "x": 7,
+        "y": 15,
+        "w": 6,
+        "h": 4
+      }
+    },
+    "collapsed": {
+      "moves": false,
+      "narrative": false,
+      "saved": false,
+      "study": false,
+      "status": false
+    }
+  }
+}
