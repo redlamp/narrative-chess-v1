@@ -848,6 +848,102 @@ select {
   align-items: center;
 }
 
+.autocomplete-tag-list {
+  display: grid;
+  gap: 12px;
+  min-height: 15rem;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 0.15rem);
+  background: color-mix(in srgb, var(--muted) 24%, var(--background) 76%);
+}
+
+.autocomplete-tag-list__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-height: 4rem;
+}
+
+.autocomplete-tag-list__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--foreground);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.autocomplete-tag-list__chip:hover {
+  background: var(--muted);
+}
+
+.autocomplete-tag-list__chip:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 30%, transparent 70%);
+}
+
+.autocomplete-tag-list__chip-label {
+  min-width: 0;
+}
+
+.autocomplete-tag-list__editor {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.autocomplete-tag-list__input-wrapper {
+  position: relative;
+  width: 1fr;
+  flex: 1;
+}
+
+.autocomplete-tag-list__suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--background);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.autocomplete-tag-list__suggestion {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.autocomplete-tag-list__suggestion:hover,
+.autocomplete-tag-list__suggestion--selected {
+  background: var(--accent);
+}
+
+.autocomplete-tag-list__suggestion:focus-visible {
+  outline: 0;
+  background: var(--accent);
+}
+
 .workspace-grid {
   position: relative;
   display: grid;

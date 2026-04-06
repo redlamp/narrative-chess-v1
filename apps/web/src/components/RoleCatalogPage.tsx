@@ -22,11 +22,13 @@ import {
   findRoleCatalogEntry,
   groupRoleCatalogByPieceKind,
   pieceKinds,
+  traitPool,
+  verbPool,
   type RoleCatalog
 } from "../roleCatalog";
 import { IndexedWorkspace } from "./IndexedWorkspace";
 import { ClearableSearchField } from "./ClearableSearchField";
-import { EditableTagList } from "./EditableTagList";
+import { AutocompleteTagList } from "./AutocompleteTagList";
 import { PieceArt } from "./PieceArt";
 import { WorkspaceIntroCard } from "./WorkspaceIntroCard";
 import { WorkspaceListItem } from "./WorkspaceListItem";
@@ -485,12 +487,12 @@ export function RoleCatalogPage({
                 <Separator />
 
                 <div className="grid gap-4 lg:grid-cols-2">
-                  <EditableTagList
+                  <AutocompleteTagList
                     title="Traits"
                     description="Add or remove the descriptive tags that shape the role."
                     items={selectedRole.traits}
-                    placeholder="Add a trait"
-                    addLabel="Add trait"
+                    suggestions={traitPool}
+                    placeholder="Search or type a trait"
                     emptyText="Add traits to shape this role."
                     onAdd={(value) =>
                       onRoleCatalogChange(selectedRole.id, "traits", [...selectedRole.traits, value])
@@ -503,12 +505,12 @@ export function RoleCatalogPage({
                       )
                     }
                   />
-                  <EditableTagList
+                  <AutocompleteTagList
                     title="Verbs"
                     description="Add or remove action verbs for match narration and role prompts."
                     items={selectedRole.verbs}
-                    placeholder="Add a verb"
-                    addLabel="Add verb"
+                    suggestions={verbPool}
+                    placeholder="Search or type a verb"
                     emptyText="Add verbs to shape this role."
                     onAdd={(value) =>
                       onRoleCatalogChange(selectedRole.id, "verbs", [...selectedRole.verbs, value])

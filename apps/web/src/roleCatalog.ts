@@ -9,6 +9,8 @@ type NarrativeRosterConfig = {
   rolePools: Record<PieceKind, string[]>;
   pieceTraitBiases: Record<PieceKind, string[]>;
   pieceVerbBiases: Record<PieceKind, string[]>;
+  traits: string[];
+  verbs: string[];
 };
 
 export const pieceKinds: PieceKind[] = [
@@ -25,6 +27,10 @@ export type RoleCatalog = RoleCatalogEntry[];
 
 const rosterConfig = narrativeData.roster as NarrativeRosterConfig;
 const storageKey = "narrative-chess:role-catalog";
+
+// Export trait and verb pools for autocomplete
+export const traitPool = rosterConfig.traits ?? [];
+export const verbPool = rosterConfig.verbs ?? [];
 
 function getStorage() {
   if (typeof window === "undefined" || !window.localStorage) {
