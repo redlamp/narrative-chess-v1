@@ -461,6 +461,13 @@ select {
   height: auto;
 }
 
+.detail-editor-tabs-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  height: auto;
+}
+
 .page-switcher__button {
   min-width: 7.5rem;
 }
@@ -499,6 +506,25 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.layout-toolbar__drag-handle {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 2rem;
+  padding: 0 0.125rem 0 0;
+  cursor: grab;
+  user-select: none;
+}
+
+.layout-toolbar__drag-handle[data-dragging="true"] {
+  cursor: grabbing;
+}
+
+.layout-toolbar__close-button {
+  flex: 0 0 auto;
 }
 
 .layout-toolbar__section-meta {
@@ -764,6 +790,17 @@ select {
   width: 100%;
   min-width: 0;
   text-align: right;
+}
+
+.coordinate-stepper {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2, 0.5rem);
+  align-items: center;
+}
+
+.coordinate-stepper__drag {
+  cursor: ns-resize;
 }
 
 .menu-toggle {
@@ -1061,7 +1098,7 @@ select {
 .workspace-layout-shell__sidebar {
   position: fixed;
   top: 10.75rem;
-  right: 24px;
+  left: 24px;
   z-index: 40000;
   width: min(22rem, calc(100vw - 2rem));
   max-height: calc(100vh - 12rem);
@@ -2791,6 +2828,96 @@ select {
   min-width: 0;
 }
 
+.cities-workspace__placement-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.cities-page__list-item--hovered {
+  border-color: color-mix(in srgb, var(--foreground) 22%, var(--border) 78%);
+  background: color-mix(in srgb, var(--muted) 82%, var(--background) 18%);
+}
+
+.city-placement-editor {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.city-placement-editor__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.city-placement-editor__title {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.city-placement-editor__description {
+  color: var(--muted-foreground);
+  font-size: 0.9rem;
+}
+
+.city-placement-editor__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.city-placement-editor__board,
+.city-placement-editor__map {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.city-placement-editor__hint-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.city-placement-editor__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--muted-foreground);
+  font-size: 0.88rem;
+}
+
+.city-placement-editor__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.city-placement-editor__toggle-group,
+.city-placement-editor__toolbar-actions,
+.city-placement-editor__coordinates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.city-placement-editor__map-frame {
+  min-height: 20rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.city-placement-editor__map-canvas {
+  min-height: 20rem;
+}
+
 @media (max-width: 1360px) {
   .hero__status {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2820,6 +2947,10 @@ select {
     position: sticky;
     top: 24px;
     align-self: start;
+  }
+
+  .cities-workspace__placement-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .indexed-workspace__index,
@@ -2853,6 +2984,17 @@ select {
   .classic-games-workspace .page-card--index,
   .classic-games-workspace .page-card--secondary-index,
   .classic-games-workspace .page-card--detail {
+    min-height: 0;
+    max-height: none;
+  }
+
+  .indexed-workspace--layout-mode .indexed-workspace__index,
+  .indexed-workspace--layout-mode .indexed-workspace__secondary-index,
+  .indexed-workspace--layout-mode .indexed-workspace__detail,
+  .indexed-workspace--layout-mode .page-card-stack,
+  .indexed-workspace--layout-mode .page-card--index,
+  .indexed-workspace--layout-mode .page-card--secondary-index,
+  .indexed-workspace--layout-mode .page-card--detail {
     min-height: 0;
     max-height: none;
   }

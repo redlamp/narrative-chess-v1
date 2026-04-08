@@ -28,6 +28,10 @@ describe("edinburghReviewDraft", () => {
             dayProfile: "Edited day profile",
             nightProfile: "Edited night profile",
             toneCues: ["reflective"],
+            mapAnchor: {
+              longitude: -3.3,
+              latitude: 55.97
+            },
             contentStatus: "authored",
             reviewStatus: "needs review",
             reviewNotes: "Needs another pass",
@@ -40,6 +44,10 @@ describe("edinburghReviewDraft", () => {
 
     expect(hydrated.summary).toBe("Edited city summary");
     expect(hydrated.districts[0]?.name).toBe("Edited Cramond");
+    expect(hydrated.districts[0]?.mapAnchor).toEqual({
+      longitude: -3.3,
+      latitude: 55.97
+    });
     expect(hydrated.districts[1]?.name).toBe(edinburghBoard.districts[1]?.name);
   });
 

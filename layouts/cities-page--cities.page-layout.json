@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "layoutKey": "cities-page",
+  "layoutVariant": "three-pane",
+  "name": "cities",
+  "savedAt": "2026-04-08T22:36:41.757Z",
+  "layoutState": {
+    "version": 2,
+    "columnCount": 14,
+    "columnGap": 16,
+    "rowHeight": 64,
+    "panels": {
+      "intro": {
+        "x": 1,
+        "y": 1,
+        "w": 4,
+        "h": 2
+      },
+      "index": {
+        "x": 1,
+        "y": 3,
+        "w": 3,
+        "h": 11
+      },
+      "secondary": {
+        "x": 4,
+        "y": 3,
+        "w": 3,
+        "h": 11
+      },
+      "detail": {
+        "x": 7,
+        "y": 7,
+        "w": 8,
+        "h": 7
+      },
+      "tertiary": {
+        "x": 11,
+        "y": 1,
+        "w": 4,
+        "h": 6
+      },
+      "quaternary": {
+        "x": 7,
+        "y": 1,
+        "w": 4,
+        "h": 6
+      }
+    },
+    "visible": {
+      "intro": true,
+      "index": true,
+      "secondary": true,
+      "detail": true,
+      "tertiary": true,
+      "quaternary": true
+    }
+  }
+}

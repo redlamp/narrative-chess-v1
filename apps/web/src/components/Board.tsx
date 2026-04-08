@@ -32,6 +32,7 @@ type BoardProps = {
   districtsBySquare: Map<Square, DistrictCell>;
   showCoordinates: boolean;
   showDistrictLabels: boolean;
+  showPieces?: boolean;
   onSquareClick: (square: Square) => void;
   onSquareHover: (square: Square) => void;
   onSquareLeave: () => void;
@@ -66,6 +67,7 @@ export function Board({
   districtsBySquare,
   showCoordinates,
   showDistrictLabels,
+  showPieces = true,
   onSquareClick,
   onSquareHover,
   onSquareLeave
@@ -165,7 +167,7 @@ export function Board({
           files.map((file) => {
             const square = squareName(file, rank);
             const cell = cellMap.get(square);
-            const piece = cell?.occupant ?? getPieceAtSquare(snapshot, square);
+            const piece = showPieces ? cell?.occupant ?? getPieceAtSquare(snapshot, square) : null;
             const district = districtsBySquare.get(square) ?? null;
             const isSelected = selectedSquare === square;
             const isHovered = hoveredSquare === square;

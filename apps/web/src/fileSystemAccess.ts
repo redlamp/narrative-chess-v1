@@ -16,6 +16,20 @@ import {
   type WorkspaceLayoutFileReference
 } from "./layoutFiles";
 import { type WorkspaceLayoutState } from "./layoutState";
+import {
+  createPageLayoutFileName,
+  createPageLayoutFileRecord,
+  forgetPageLayoutFile,
+  normalizePageLayoutFileRecord,
+  normalizePageLayoutName,
+  rememberPageLayoutFile,
+  type PageLayoutFileReference
+} from "./pageLayoutFiles";
+import {
+  type PageLayoutPanelId,
+  type PageLayoutState,
+  type PageLayoutVariant
+} from "./pageLayoutState";
 
 type LocalPermissionState = "granted" | "denied" | "prompt";
 
@@ -107,6 +121,16 @@ type LoadedWorkspaceLayoutFile = {
   relativePath: string;
   savedAt: string;
   knownFiles: WorkspaceLayoutFileReference[];
+};
+
+type LoadedPageLayoutFile = {
+  directoryName: string;
+  fileName: string;
+  layoutName: string;
+  layoutState: PageLayoutState;
+  relativePath: string;
+  savedAt: string;
+  knownFiles: PageLayoutFileReference[];
 };
 
 type LoadedPieceStyles = {
@@ -1350,6 +1374,136 @@ export async function loadWorkspaceLayoutFileFromDirectory(
     }
 
     const knownFiles = rememberWorkspaceLayoutFile({
+      name: parsedLayoutFile.name,
+      fileName,
+      relativePath: target.displayPath,
+      savedAt: parsedLayoutFile.savedAt
+    });
+
+    return {
+      directoryName: handle.name,
+      fileName,
+      knownFiles,
+      layoutName: parsedLayoutFile.name,
+      layoutState: parsedLayoutFile.layoutState,
+      relativePath: target.displayPath,
+      savedAt: parsedLayoutFile.savedAt
+    };
+  }
+
+  return null;
+}
+
+export async function savePageLayoutFileToDirectory(input: {
+  layoutKey: string;
+  layoutVariant: PageLayoutVariant;
+  panelIds: PageLayoutPanelId[];
+  name: string;
+  layoutState: PageLayoutState;
+}) {
+  const handle = await requireWorkspaceLayoutDirectoryHandle();
+  const layoutFile = createPageLayoutFileRecord(input);
+  const fileName = createPageLayoutFileName({
+    layoutKey: input.layoutKey,
+    name: layoutFile.name
+  });
+
+  await ensureReadWritePermission(handle);
+
+  const target = await resolveWorkspaceLayoutTarget(handle, fileName);
+  await ensureReadWritePermission(target.directoryHandle);
+
+  const fileHandle = await target.directoryHandle.getFileHandle(fileName, {
+    create: true
+  });
+  const writable = await fileHandle.createWritable();
+
+  await writable.write(`${JSON.stringify(layoutFile, null, 2)}\n`);
+  await writable.close();
+
+  const knownFiles = rememberPageLayoutFile({
+    layoutKey: layoutFile.layoutKey,
+    name: layoutFile.name,
+    fileName,
+    relativePath: target.displayPath,
+    savedAt: layoutFile.savedAt
+  });
+
+  return {
+    directoryName: handle.name,
+    fileName,
+    knownFiles,
+    layoutName: layoutFile.name,
+    mode: target.fileExists ? "updated" : "created",
+    relativePath: target.displayPath,
+    savedAt: layoutFile.savedAt
+  } as const;
+}
+
+export async function deletePageLayoutFileFromDirectory(input: {
+  layoutKey: string;
+  name: string;
+}) {
+  const handle = await requireWorkspaceLayoutDirectoryHandle();
+  const normalizedName = normalizePageLayoutName(input.name);
+  const fileName = createPageLayoutFileName({
+    layoutKey: input.layoutKey,
+    name: normalizedName
+  });
+
+  await ensureReadWritePermission(handle);
+
+  const targets = await resolveWorkspaceLayoutSearchTargets(handle, fileName);
+  const target = targets[0] ?? null;
+
+  if (target && target.directoryHandle.removeEntry) {
+    await target.directoryHandle.removeEntry(fileName);
+  } else if (target) {
+    throw new Error("The selected folder cannot remove files from this browser session.");
+  }
+
+  const knownFiles = forgetPageLayoutFile(fileName, input.layoutKey);
+
+  return {
+    directoryName: handle.name,
+    fileName,
+    knownFiles,
+    layoutName: normalizedName,
+    relativePath: target?.displayPath ?? fileName
+  } as const;
+}
+
+export async function loadPageLayoutFileFromDirectory(input: {
+  layoutKey: string;
+  layoutVariant: PageLayoutVariant;
+  panelIds: PageLayoutPanelId[];
+  name: string;
+}): Promise<LoadedPageLayoutFile | null> {
+  const handle = await requireWorkspaceLayoutDirectoryHandle();
+
+  const normalizedName = normalizePageLayoutName(input.name);
+  const fileName = createPageLayoutFileName({
+    layoutKey: input.layoutKey,
+    name: normalizedName
+  });
+
+  await ensureReadWritePermission(handle);
+
+  const targets = await resolveWorkspaceLayoutSearchTargets(handle, fileName);
+  for (const target of targets) {
+    const rawLayoutFile = await readJsonFile(target.directoryHandle, fileName);
+    const parsedLayoutFile = normalizePageLayoutFileRecord({
+      value: rawLayoutFile,
+      layoutKey: input.layoutKey,
+      layoutVariant: input.layoutVariant,
+      panelIds: input.panelIds
+    });
+    if (!parsedLayoutFile) {
+      continue;
+    }
+
+    const knownFiles = rememberPageLayoutFile({
+      layoutKey: parsedLayoutFile.layoutKey,
       name: parsedLayoutFile.name,
       fileName,
       relativePath: target.displayPath,

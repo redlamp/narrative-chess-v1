@@ -1,4 +1,11 @@
-export const pageLayoutPanelIds = ["intro", "index", "secondary", "detail"] as const;
+export const pageLayoutPanelIds = [
+  "intro",
+  "index",
+  "secondary",
+  "detail",
+  "tertiary",
+  "quaternary"
+] as const;
 
 export type PageLayoutPanelId = (typeof pageLayoutPanelIds)[number];
 
@@ -12,11 +19,12 @@ export type PageLayoutRect = {
 };
 
 export type PageLayoutState = {
-  version: 1;
+  version: 2;
   columnCount: number;
   columnGap: number;
   rowHeight: number;
   panels: Record<PageLayoutPanelId, PageLayoutRect>;
+  visible: Record<PageLayoutPanelId, boolean>;
 };
 
 const pageLayoutDefaultColumnCount = 12;
@@ -30,17 +38,21 @@ const pageLayoutMaximumRowHeight = 256;
 const pageLayoutMinimumRows = 18;
 
 const minimumPanelWidth: Record<PageLayoutPanelId, number> = {
-  intro: 4,
-  index: 2,
-  secondary: 2,
-  detail: 4
+  intro: 1,
+  index: 1,
+  secondary: 1,
+  detail: 1,
+  tertiary: 1,
+  quaternary: 1
 };
 
 const minimumPanelHeight: Record<PageLayoutPanelId, number> = {
   intro: 1,
   index: 1,
   secondary: 1,
-  detail: 1
+  detail: 1,
+  tertiary: 1,
+  quaternary: 1
 };
 
 const defaultPanelsByVariant: Record<PageLayoutVariant, Record<PageLayoutPanelId, PageLayoutRect>> = {
@@ -48,19 +60,25 @@ const defaultPanelsByVariant: Record<PageLayoutVariant, Record<PageLayoutPanelId
     intro: { x: 1, y: 1, w: 12, h: 5 },
     index: { x: 1, y: 6, w: 4, h: 15 },
     secondary: { x: 5, y: 6, w: 3, h: 15 },
-    detail: { x: 5, y: 6, w: 8, h: 15 }
+    detail: { x: 5, y: 6, w: 8, h: 15 },
+    tertiary: { x: 5, y: 21, w: 4, h: 7 },
+    quaternary: { x: 9, y: 21, w: 4, h: 7 }
   },
   "three-pane": {
-    intro: { x: 1, y: 1, w: 12, h: 5 },
-    index: { x: 1, y: 6, w: 3, h: 15 },
-    secondary: { x: 4, y: 6, w: 3, h: 15 },
-    detail: { x: 7, y: 6, w: 6, h: 15 }
+    intro: { x: 1, y: 1, w: 12, h: 4 },
+    index: { x: 1, y: 5, w: 3, h: 14 },
+    secondary: { x: 4, y: 5, w: 3, h: 14 },
+    detail: { x: 7, y: 5, w: 6, h: 14 },
+    tertiary: { x: 7, y: 19, w: 3, h: 8 },
+    quaternary: { x: 10, y: 19, w: 3, h: 8 }
   },
   research: {
     intro: { x: 1, y: 1, w: 12, h: 4 },
     index: { x: 1, y: 5, w: 4, h: 14 },
     secondary: { x: 5, y: 5, w: 3, h: 14 },
-    detail: { x: 5, y: 5, w: 8, h: 14 }
+    detail: { x: 5, y: 5, w: 8, h: 14 },
+    tertiary: { x: 5, y: 19, w: 4, h: 7 },
+    quaternary: { x: 9, y: 19, w: 4, h: 7 }
   }
 };
 
@@ -165,14 +183,18 @@ function getStorageKey(layoutKey: string) {
 
 export function getDefaultPageLayoutState(variant: PageLayoutVariant): PageLayoutState {
   return {
-    version: 1,
+    version: 2,
     columnCount: pageLayoutDefaultColumnCount,
     columnGap: pageLayoutDefaultColumnGap,
     rowHeight: 44,
     panels: pageLayoutPanelIds.reduce((nextPanels, panelId) => {
       nextPanels[panelId] = { ...defaultPanelsByVariant[variant][panelId] };
       return nextPanels;
-    }, {} as Record<PageLayoutPanelId, PageLayoutRect>)
+    }, {} as Record<PageLayoutPanelId, PageLayoutRect>),
+    visible: pageLayoutPanelIds.reduce((nextVisible, panelId) => {
+      nextVisible[panelId] = true;
+      return nextVisible;
+    }, {} as Record<PageLayoutPanelId, boolean>)
   };
 }
 
@@ -190,6 +212,10 @@ export function normalizePageLayoutState(input: {
     candidate.panels && typeof candidate.panels === "object"
       ? (candidate.panels as Record<string, unknown>)
       : {};
+  const candidateVisible =
+    candidate.visible && typeof candidate.visible === "object"
+      ? (candidate.visible as Record<string, unknown>)
+      : {};
   const columnCount = normalizeColumnCount(candidate.columnCount);
   const normalizedPanels = pageLayoutPanelIds.reduce((nextPanels, panelId) => {
     nextPanels[panelId] = normalizePanelRect(
@@ -202,7 +228,7 @@ export function normalizePageLayoutState(input: {
   }, {} as Record<PageLayoutPanelId, PageLayoutRect>);
 
   return {
-    version: 1,
+    version: 2,
     columnCount,
     columnGap: normalizeColumnGap(candidate.columnGap),
     rowHeight: clamp(
@@ -210,7 +236,14 @@ export function normalizePageLayoutState(input: {
       pageLayoutMinimumRowHeight,
       pageLayoutMaximumRowHeight
     ),
-    panels: normalizedPanels
+    panels: normalizedPanels,
+    visible: pageLayoutPanelIds.reduce((nextVisible, panelId) => {
+      nextVisible[panelId] =
+        typeof candidateVisible[panelId] === "boolean"
+          ? (candidateVisible[panelId] as boolean)
+          : true;
+      return nextVisible;
+    }, {} as Record<PageLayoutPanelId, boolean>)
   };
 }
 
@@ -292,6 +325,24 @@ export function restorePageLayoutPanel(input: {
     panels: {
       ...input.layoutState.panels,
       [input.panelId]: restoredRect
+    },
+    visible: {
+      ...input.layoutState.visible,
+      [input.panelId]: true
+    }
+  };
+}
+
+export function setPageLayoutPanelVisible(input: {
+  layoutState: PageLayoutState;
+  panelId: PageLayoutPanelId;
+  visible: boolean;
+}) {
+  return {
+    ...input.layoutState,
+    visible: {
+      ...input.layoutState.visible,
+      [input.panelId]: input.visible
     }
   };
 }
@@ -414,6 +465,10 @@ export function getPageLayoutRowCount(input: {
   panelIds: PageLayoutPanelId[];
 }) {
   const maxRow = input.panelIds.reduce((currentMax, panelId) => {
+    if (!input.layoutState.visible[panelId]) {
+      return currentMax;
+    }
+
     const panel = input.layoutState.panels[panelId];
     return Math.max(currentMax, panel.y + panel.h - 1);
   }, pageLayoutMinimumRows);

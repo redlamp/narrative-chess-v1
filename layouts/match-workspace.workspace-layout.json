@@ -1,66 +1,66 @@
 {
   "version": 1,
   "name": "match-workspace",
-  "savedAt": "2026-04-05T14:38:00.272Z",
+  "savedAt": "2026-04-08T22:36:45.528Z",
   "layoutState": {
     "version": 3,
-    "columnCount": 12,
+    "columnCount": 14,
     "columnGap": 16,
     "rowHeight": 64,
     "panels": {
       "board": {
-        "x": 7,
+        "x": 8,
         "y": 1,
         "w": 4,
-        "h": 8
+        "h": 7
       },
       "moves": {
-        "x": 11,
+        "x": 12,
         "y": 1,
-        "w": 2,
-        "h": 15
+        "w": 3,
+        "h": 14
       },
       "city-map": {
-        "x": 7,
-        "y": 12,
+        "x": 1,
+        "y": 1,
         "w": 4,
-        "h": 5
+        "h": 4
       },
       "city-map-maplibre": {
-        "x": 7,
-        "y": 17,
+        "x": 1,
+        "y": 1,
         "w": 4,
-        "h": 5
+        "h": 7
       },
       "story-beat": {
-        "x": 1,
-        "y": 9,
-        "w": 6,
-        "h": 3
+        "x": 5,
+        "y": 8,
+        "w": 3,
+        "h": 6
       },
       "story-tile": {
-        "x": 1,
-        "y": 12,
+        "x": 5,
+        "y": 1,
         "w": 3,
-        "h": 5
+        "h": 7
       },
       "story-character": {
-        "x": 4,
-        "y": 12,
-        "w": 3,
-        "h": 5
+        "x": 8,
+        "y": 8,
+        "w": 4,
+        "h": 6
       },
       "story-tone": {
-        "x": 7,
-        "y": 9,
+        "x": 1,
+        "y": 8,
         "w": 4,
-        "h": 3
+        "h": 1
       },
       "recent-games": {
         "x": 1,
-        "y": 1,
-        "w": 3,
-        "h": 8
+        "y": 9,
+        "w": 4,
+        "h": 5
       }
     },
     "collapsed": {
@@ -76,7 +76,7 @@
     "visible": {
       "board": true,
       "moves": true,
-      "city-map": true,
+      "city-map": false,
       "city-map-maplibre": true,
       "story-beat": true,
       "story-tile": true,

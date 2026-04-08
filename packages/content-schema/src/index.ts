@@ -229,6 +229,12 @@ export type ReferenceGame = z.infer<typeof referenceGameSchema>;
 export const referenceGameLibrarySchema = z.array(referenceGameSchema);
 export type ReferenceGameLibrary = z.infer<typeof referenceGameLibrarySchema>;
 
+export const mapAnchorSchema = z.object({
+  longitude: z.number().min(-180).max(180),
+  latitude: z.number().min(-90).max(90)
+});
+export type MapAnchor = z.infer<typeof mapAnchorSchema>;
+
 export const districtCellSchema = z.object({
   id: z.string(),
   square: squareSchema,
@@ -239,6 +245,7 @@ export const districtCellSchema = z.object({
   dayProfile: z.string(),
   nightProfile: z.string(),
   toneCues: z.array(z.string()).min(1),
+  mapAnchor: mapAnchorSchema.optional(),
   contentStatus: contentStatusSchema,
   reviewStatus: reviewStatusSchema,
   reviewNotes: z.string().nullable(),

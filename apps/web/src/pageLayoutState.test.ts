@@ -4,6 +4,8 @@ import {
   getDefaultPageLayoutState,
   getPageLayoutRowCount,
   normalizePageLayoutState,
+  setPageLayoutPanelVisible,
+  updatePageLayoutPanelRect,
   updatePageLayoutColumnCount
 } from "./pageLayoutState";
 
@@ -58,5 +60,56 @@ describe("pageLayoutState", () => {
     expect(resizedLayout.columnCount).toBe(8);
     expect(resizedLayout.panels.detail.x + resizedLayout.panels.detail.w - 1).toBeLessThanOrEqual(8);
     expect(rowCount).toBeGreaterThanOrEqual(18);
+  });
+
+  it("defaults panel visibility to true when older layouts omit it", () => {
+    const layoutState = normalizePageLayoutState({
+      value: {
+        columnCount: 12,
+        panels: {
+          intro: { x: 1, y: 1, w: 12, h: 5 }
+        }
+      },
+      variant: "three-pane",
+      panelIds: ["intro", "index", "secondary", "detail"]
+    });
+
+    expect(layoutState.visible.intro).toBe(true);
+    expect(layoutState.visible.index).toBe(true);
+    expect(layoutState.visible.secondary).toBe(true);
+    expect(layoutState.visible.detail).toBe(true);
+  });
+
+  it("ignores hidden panels when calculating row count", () => {
+    const layoutState = updatePageLayoutPanelRect({
+      layoutState: getDefaultPageLayoutState("three-pane"),
+      panelIds: ["intro", "index", "secondary", "detail"],
+      panelId: "detail",
+      variant: "three-pane",
+      nextRect: {
+        x: 7,
+        y: 30,
+        w: 6,
+        h: 10
+      }
+    });
+    const hiddenDetailLayout = setPageLayoutPanelVisible({
+      layoutState,
+      panelId: "detail",
+      visible: false
+    });
+
+    expect(
+      getPageLayoutRowCount({
+        layoutState,
+        panelIds: ["intro", "index", "secondary", "detail"]
+      })
+    ).toBe(39);
+    expect(
+      getPageLayoutRowCount({
+        layoutState: hiddenDetailLayout,
+        panelIds: ["intro", "index", "secondary", "detail"]
+      })
+    ).toBeLessThan(39);
   });
 });

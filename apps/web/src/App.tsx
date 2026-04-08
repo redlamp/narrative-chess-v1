@@ -88,6 +88,7 @@ import { ClassicGamesLibraryPage } from "./components/ClassicGamesLibraryPage";
 import { DesignPage } from "./components/DesignPage";
 import { EdinburghReviewPage } from "./components/EdinburghReviewPage";
 import { LayoutToolbar } from "./components/LayoutToolbar";
+import { FloatingLayoutPanel } from "./components/FloatingLayoutPanel";
 import { MatchHistoryPanel } from "./components/MatchHistoryPanel";
 import { ResearchPage } from "./components/ResearchPage";
 import { RoleCatalogPage } from "./components/RoleCatalogPage";
@@ -410,6 +411,7 @@ export default function App() {
     ? savedMatches.find((savedMatch) => savedMatch.id === selectedSavedMatchId) ?? null
     : null;
   const focusedDistrict = getDistrictForSquare(storyFocusedSquare);
+  const selectedDistrict = getDistrictForSquare(selectedSquare);
   const lastMoveDistrict = lastMove ? getDistrictForSquare(lastMove.to) : null;
   const focusedPiece = storyFocusedSquare ? getPieceAtSquare(snapshot, storyFocusedSquare) : null;
   const focusedCharacter = focusedPiece ? snapshot.characters[focusedPiece.pieceId] ?? null : null;
@@ -1593,37 +1595,41 @@ export default function App() {
       ) : (
         <div className={`workspace-layout-shell ${effectiveLayoutMode ? "workspace-layout-shell--editing" : ""}`}>
           {page === "match" && effectiveLayoutMode ? (
-            <aside className="workspace-layout-shell__sidebar">
-              <LayoutToolbar
-                columnCount={workspaceLayout.columnCount}
-                columnGap={workspaceLayout.columnGap}
-                rowHeight={workspaceLayout.rowHeight}
-                showLayoutGrid={settings.showLayoutGrid}
-                layoutFileName={layoutFileName}
-                layoutDirectoryName={layoutDirectoryName}
-                layoutFileNotice={layoutFileNotice}
-                isLayoutDirectorySupported={isLayoutDirectorySupported}
-                layoutFileBusyAction={layoutFileBusyAction}
-                knownLayoutFiles={knownLayoutFiles}
-                components={layoutToolbarComponents}
-                onToggleLayoutMode={() => setIsLayoutMode(false)}
-                onColumnCountChange={handleWorkspaceColumnCountChange}
-                onColumnGapChange={handleWorkspaceColumnGapChange}
-                onRowHeightChange={handleWorkspaceRowHeightChange}
-                onToggleLayoutGrid={(checked) => handleBooleanSettingChange("showLayoutGrid", checked)}
-                onLayoutFileNameChange={setLayoutFileName}
-                onConnectLayoutDirectory={handleConnectLayoutDirectory}
-                onLoadLayoutFile={handleLoadLayoutFile}
-                onSaveLayoutFile={handleSaveLayoutFile}
-                onDeleteLayoutFile={handleDeleteLayoutFile}
-                onSelectKnownLayoutFile={setLayoutFileName}
-                onRestoreComponent={(panelId) => handleRestoreWorkspaceComponent(panelId as WorkspacePanelId)}
-                onToggleComponentVisibility={(panelId, visible) =>
-                  handleWorkspacePanelVisibilityChange(panelId as WorkspacePanelId, visible)
-                }
-                onResetLayout={handleResetLayout}
-              />
-            </aside>
+            <FloatingLayoutPanel>
+              {({ onDragHandlePointerDown, isDragging }) => (
+                <LayoutToolbar
+                  columnCount={workspaceLayout.columnCount}
+                  columnGap={workspaceLayout.columnGap}
+                  rowHeight={workspaceLayout.rowHeight}
+                  showLayoutGrid={settings.showLayoutGrid}
+                  layoutFileName={layoutFileName}
+                  layoutDirectoryName={layoutDirectoryName}
+                  layoutFileNotice={layoutFileNotice}
+                  isLayoutDirectorySupported={isLayoutDirectorySupported}
+                  layoutFileBusyAction={layoutFileBusyAction}
+                  knownLayoutFiles={knownLayoutFiles}
+                  components={layoutToolbarComponents}
+                  onDragHandlePointerDown={onDragHandlePointerDown}
+                  isDragging={isDragging}
+                  onToggleLayoutMode={() => setIsLayoutMode(false)}
+                  onColumnCountChange={handleWorkspaceColumnCountChange}
+                  onColumnGapChange={handleWorkspaceColumnGapChange}
+                  onRowHeightChange={handleWorkspaceRowHeightChange}
+                  onToggleLayoutGrid={(checked) => handleBooleanSettingChange("showLayoutGrid", checked)}
+                  onLayoutFileNameChange={setLayoutFileName}
+                  onConnectLayoutDirectory={handleConnectLayoutDirectory}
+                  onLoadLayoutFile={handleLoadLayoutFile}
+                  onSaveLayoutFile={handleSaveLayoutFile}
+                  onDeleteLayoutFile={handleDeleteLayoutFile}
+                  onSelectKnownLayoutFile={setLayoutFileName}
+                  onRestoreComponent={(panelId) => handleRestoreWorkspaceComponent(panelId as WorkspacePanelId)}
+                  onToggleComponentVisibility={(panelId, visible) =>
+                    handleWorkspacePanelVisibilityChange(panelId as WorkspacePanelId, visible)
+                  }
+                  onResetLayout={handleResetLayout}
+                />
+              )}
+            </FloatingLayoutPanel>
           ) : null}
 
           <main
@@ -1767,6 +1773,7 @@ export default function App() {
               >
                 <CityMapPanel
                   cityBoard={edinburghBoard}
+                  selectedDistrict={selectedDistrict}
                   hoveredDistrict={hoveredSquare ? focusedDistrict : null}
                   lastMoveDistrict={lastMoveDistrict}
                   lastMove={lastMove}
@@ -1801,6 +1808,7 @@ export default function App() {
               >
                 <CityMapLibrePanel
                   cityBoard={edinburghBoard}
+                  selectedDistrict={selectedDistrict}
                   hoveredDistrict={hoveredSquare ? focusedDistrict : null}
                   lastMoveDistrict={lastMoveDistrict}
                   lastMove={lastMove}

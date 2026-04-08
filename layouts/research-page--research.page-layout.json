@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "layoutKey": "research-page",
+  "layoutVariant": "two-pane",
+  "name": "research",
+  "savedAt": "2026-04-08T22:36:33.449Z",
+  "layoutState": {
+    "version": 2,
+    "columnCount": 12,
+    "columnGap": 16,
+    "rowHeight": 64,
+    "panels": {
+      "intro": {
+        "x": 1,
+        "y": 1,
+        "w": 12,
+        "h": 2
+      },
+      "index": {
+        "x": 1,
+        "y": 3,
+        "w": 4,
+        "h": 15
+      },
+      "secondary": {
+        "x": 5,
+        "y": 6,
+        "w": 3,
+        "h": 15
+      },
+      "detail": {
+        "x": 5,
+        "y": 3,
+        "w": 8,
+        "h": 15
+      },
+      "tertiary": {
+        "x": 5,
+        "y": 21,
+        "w": 4,
+        "h": 7
+      },
+      "quaternary": {
+        "x": 9,
+        "y": 21,
+        "w": 4,
+        "h": 7
+      }
+    },
+    "visible": {
+      "intro": true,
+      "index": true,
+      "secondary": true,
+      "detail": true,
+      "tertiary": true,
+      "quaternary": true
+    }
+  }
+}

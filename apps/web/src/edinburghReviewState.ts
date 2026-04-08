@@ -3,6 +3,7 @@ import {
   type CityBoard,
   type ContentStatus,
   type DistrictCell,
+  type MapAnchor,
   type ReviewStatus
 } from "@narrative-chess/content-schema";
 import { getCityBoardDefinition } from "./cityBoards";
@@ -44,6 +45,21 @@ function readStringArray(value: unknown, fallback: string[]) {
   return value.filter((item): item is string => typeof item === "string");
 }
 
+function readMapAnchor(value: unknown, fallback: MapAnchor | undefined) {
+  if (!isRecord(value)) {
+    return fallback;
+  }
+
+  const longitude = typeof value.longitude === "number" ? value.longitude : fallback?.longitude;
+  const latitude = typeof value.latitude === "number" ? value.latitude : fallback?.latitude;
+
+  if (longitude === undefined || latitude === undefined) {
+    return fallback;
+  }
+
+  return { longitude, latitude };
+}
+
 function hydrateDistrictCell(candidate: unknown, fallback: DistrictCell): DistrictCell {
   if (!isRecord(candidate)) {
     return { ...fallback };
@@ -59,6 +75,7 @@ function hydrateDistrictCell(candidate: unknown, fallback: DistrictCell): Distri
     dayProfile: readString(candidate.dayProfile, fallback.dayProfile),
     nightProfile: readString(candidate.nightProfile, fallback.nightProfile),
     toneCues: readStringArray(candidate.toneCues, fallback.toneCues),
+    mapAnchor: readMapAnchor(candidate.mapAnchor, fallback.mapAnchor),
     contentStatus:
       candidate.contentStatus === "empty" ||
       candidate.contentStatus === "procedural" ||

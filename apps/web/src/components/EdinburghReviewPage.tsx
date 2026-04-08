@@ -1,18 +1,34 @@
-import { useEffect, useMemo, useState } from "react";
-import type { CityBoard, DistrictCell } from "@narrative-chess/content-schema";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import type { CityBoard, DistrictCell, Square } from "@narrative-chess/content-schema";
+import {
+  ArrowUpDown,
+  Crosshair,
+  Download,
+  Folder,
+  FolderOpen,
+  RefreshCw,
+  RotateCcw,
+  Save
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from "@/components/ui/tooltip";
 import { cityBoardDefinitions, getCityBoardDefinition } from "../cityBoards";
+import { getDistrictMapCenter } from "./cityMapShared";
 import {
   buildCityBoardValidation,
   listCityBoardDraft,
@@ -31,6 +47,10 @@ import { WorkspaceIntroCard } from "./WorkspaceIntroCard";
 import { WorkspaceListItem } from "./WorkspaceListItem";
 import { WorkspaceNoticeCard } from "./WorkspaceNoticeCard";
 import { ClearableSearchField } from "./ClearableSearchField";
+import {
+  CityDistrictBoardEditor,
+  CityDistrictMapEditor
+} from "./CityDistrictPlacementEditor";
 
 type SaveNotice = {
   tone: "neutral" | "success" | "error";
@@ -84,6 +104,45 @@ function parseListValue(value: string) {
     .filter(Boolean);
 }
 
+function updateDistrictMapAnchorFromParts(input: {
+  district: DistrictCell;
+  fallbackAnchor: { longitude: number; latitude: number };
+  longitudeText?: string;
+  latitudeText?: string;
+}) {
+  const nextLongitudeText =
+    input.longitudeText ?? `${input.district.mapAnchor?.longitude ?? input.fallbackAnchor.longitude}`;
+  const nextLatitudeText =
+    input.latitudeText ?? `${input.district.mapAnchor?.latitude ?? input.fallbackAnchor.latitude}`;
+  const trimmedLongitude = nextLongitudeText.trim();
+  const trimmedLatitude = nextLatitudeText.trim();
+
+  if (!trimmedLongitude && !trimmedLatitude) {
+    return {
+      ...input.district,
+      mapAnchor: undefined
+    };
+  }
+
+  const longitude = trimmedLongitude === "" ? input.district.mapAnchor?.longitude ?? 0 : Number(trimmedLongitude);
+  const latitude = trimmedLatitude === "" ? input.district.mapAnchor?.latitude ?? 0 : Number(trimmedLatitude);
+
+  return {
+    ...input.district,
+    mapAnchor: {
+      longitude:
+        Number.isFinite(longitude) ? longitude : input.district.mapAnchor?.longitude ?? input.fallbackAnchor.longitude,
+      latitude:
+        Number.isFinite(latitude) ? latitude : input.district.mapAnchor?.latitude ?? input.fallbackAnchor.latitude
+    }
+  };
+}
+
+const boardSquares: Square[] = Array.from({ length: 8 }, (_, rankIndex) => 8 - rankIndex)
+  .flatMap((rank) =>
+    ["a", "b", "c", "d", "e", "f", "g", "h"].map((file) => `${file}${rank}` as Square)
+  );
+
 function downloadDraft(board: CityBoard) {
   const blob = new Blob([JSON.stringify(board, null, 2)], {
     type: "application/json"
@@ -116,6 +175,38 @@ function updateDistrict(
     districts: board.districts.map((district) =>
       district.id === districtId ? updater(district) : district
     )
+  };
+}
+
+function reassignDistrictSquare(board: CityBoard, districtId: string, nextSquare: Square) {
+  const selectedDistrict = board.districts.find((district) => district.id === districtId);
+  if (!selectedDistrict || selectedDistrict.square === nextSquare) {
+    return board;
+  }
+
+  const occupant = board.districts.find(
+    (district) => district.square === nextSquare && district.id !== districtId
+  );
+
+  return {
+    ...board,
+    districts: board.districts.map((district) => {
+      if (district.id === districtId) {
+        return {
+          ...district,
+          square: nextSquare
+        };
+      }
+
+      if (occupant && district.id === occupant.id) {
+        return {
+          ...district,
+          square: selectedDistrict.square
+        };
+      }
+
+      return district;
+    })
   };
 }
 
@@ -171,6 +262,87 @@ function compareDistricts(left: DistrictCell, right: DistrictCell, sortMode: Dis
   return left.name.localeCompare(right.name);
 }
 
+type CoordinateStepperFieldProps = {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (valueText: string) => void;
+};
+
+function CoordinateStepperField({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange
+}: CoordinateStepperFieldProps) {
+  const dragStartRef = useRef<{
+    startY: number;
+    startValue: number;
+  } | null>(null);
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    dragStartRef.current = {
+      startY: event.clientY,
+      startValue: value
+    };
+
+    const handlePointerMove = (pointerEvent: PointerEvent) => {
+      if (!dragStartRef.current) {
+        return;
+      }
+
+      const delta = dragStartRef.current.startY - pointerEvent.clientY;
+      const nextValue = Math.min(
+        Math.max(dragStartRef.current.startValue + Math.round(delta / 6) * step, min),
+        max
+      );
+      onChange(nextValue.toFixed(6));
+    };
+
+    const handlePointerUp = () => {
+      dragStartRef.current = null;
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  };
+
+  return (
+    <label className="grid gap-2">
+      <span className="text-sm font-medium">{label}</span>
+      <div className="coordinate-stepper">
+        <Input
+          name={`district-map-${label.toLowerCase()}`}
+          autoComplete="off"
+          type="number"
+          step={step}
+          min={min}
+          max={max}
+          value={value.toFixed(6)}
+          onChange={(event) => onChange(event.currentTarget.value)}
+        />
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="outline"
+          className="coordinate-stepper__drag"
+          aria-label={`Drag to adjust ${label.toLowerCase()}`}
+          onPointerDown={handlePointerDown}
+        >
+          <ArrowUpDown />
+        </Button>
+      </div>
+    </label>
+  );
+}
+
 type EdinburghReviewPageProps = {
   layoutMode: boolean;
   showLayoutGrid: boolean;
@@ -187,12 +359,17 @@ export function EdinburghReviewPage({
   const [selectedCityId, setSelectedCityId] = useState(initialCityId);
   const [draft, setDraft] = useState<CityBoard>(() => createInitialCityDraft());
   const [selectedRecordId, setSelectedRecordId] = useState(cityOverviewId);
+  const [hoveredDistrictId, setHoveredDistrictId] = useState<string | null>(null);
+  const [hoveredBoardSquare, setHoveredBoardSquare] = useState<Square | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [districtSortMode, setDistrictSortMode] = useState<DistrictSortMode>("name");
   const [directoryName, setDirectoryName] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<SaveNotice | null>(null);
   const [isDirectorySupported, setIsDirectorySupported] = useState(false);
+  const [selectedCityTab, setSelectedCityTab] = useState("basics");
+  const [selectedDistrictTab, setSelectedDistrictTab] = useState("basics");
+  const [isMapImportArmed, setIsMapImportArmed] = useState(false);
   const selectedCityDefinition =
     getCityBoardDefinition(selectedCityId) ?? initialCityDefinition ?? cityBoardDefinitions[0] ?? null;
   const validation = useMemo(() => buildCityBoardValidation(draft), [draft]);
@@ -244,6 +421,10 @@ export function EdinburghReviewPage({
 
     setDraft(listCityBoardDraft(selectedCityDefinition.id, selectedCityDefinition.board));
     setSelectedRecordId(cityOverviewId);
+    setSelectedCityTab("basics");
+    setIsMapImportArmed(false);
+    setHoveredDistrictId(null);
+    setHoveredBoardSquare(null);
   }, [selectedCityDefinition]);
 
   useEffect(() => {
@@ -268,10 +449,36 @@ export function EdinburghReviewPage({
         filteredDistricts[0] ??
         draft.districts[0] ??
         null;
+  const hoveredDistrictFromList = hoveredDistrictId
+    ? draft.districts.find((district) => district.id === hoveredDistrictId) ?? null
+    : null;
+  const hoveredDistrictFromBoard = hoveredBoardSquare
+    ? draft.districts.find((district) => district.square === hoveredBoardSquare) ?? null
+    : null;
+  const highlightedDistrict = hoveredDistrictFromList ?? hoveredDistrictFromBoard ?? null;
+  const selectedDistrictEffectiveMapAnchor = useMemo(() => {
+    if (!selectedDistrict) {
+      return null;
+    }
+
+    const [longitude, latitude] = getDistrictMapCenter(draft, selectedDistrict);
+    return {
+      longitude,
+      latitude
+    };
+  }, [draft, selectedDistrict]);
   const localityCounts = useMemo(() => countByLocality(draft), [draft]);
   const reviewedDistrictCount = draft.districts.filter(
     (district) => district.reviewStatus === "reviewed" || district.reviewStatus === "approved"
   ).length;
+
+  const selectDistrictById = (districtId: string) => {
+    setSelectedRecordId(districtId);
+    setSelectedDistrictTab("basics");
+    setIsMapImportArmed(false);
+    setHoveredDistrictId(null);
+    setHoveredBoardSquare(null);
+  };
 
   const setCityField = <Field extends keyof CityBoard>(field: Field, value: CityBoard[Field]) => {
     setDraft((current) => ({
@@ -311,6 +518,14 @@ export function EdinburghReviewPage({
       layoutMode={layoutMode}
       layoutKey="cities-page"
       layoutVariant="three-pane"
+      panelLabels={{
+        intro: "Overview",
+        index: "Cities",
+        secondary: "Districts",
+        detail: "District detail",
+        tertiary: "Board placement",
+        quaternary: "Map placement"
+      }}
       showLayoutGrid={showLayoutGrid}
       onToggleLayoutMode={onToggleLayoutMode}
       onToggleLayoutGrid={onToggleLayoutGrid}
@@ -329,107 +544,164 @@ export function EdinburghReviewPage({
         }
         title="Cities"
         actions={
-          <>
-            <Button
-              variant="outline"
-              onClick={() =>
-                runDirectoryAction("connect-directory", async () => {
-                  const result = await connectCityReviewDirectory();
-                  setDirectoryName(result.directoryName);
-                  setSaveNotice({
-                    tone: "success",
-                    text: `Connected to ${result.directoryName}.`
-                  });
-                })
-              }
-              disabled={!isDirectorySupported || busyAction !== null}
-            >
-              Connect folder
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() =>
-                runDirectoryAction("load-directory-draft", async () => {
-                  const fallback = selectedCityDefinition?.board ?? createInitialCityDraft();
-                  const result = await loadCityDraftFromDirectory(fallback);
-                  if (!result) {
-                    setSaveNotice({
-                      tone: "neutral",
-                      text: "No local city draft or canonical board file was found in the connected directory."
-                    });
-                    return;
-                  }
+          <TooltipProvider delayDuration={150}>
+            <div className="flex flex-wrap gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="outline"
+                    onClick={() =>
+                      runDirectoryAction("connect-directory", async () => {
+                        const result = await connectCityReviewDirectory();
+                        setDirectoryName(result.directoryName);
+                        setSaveNotice({
+                          tone: "success",
+                          text: `Connected to ${result.directoryName}.`
+                        });
+                      })
+                    }
+                    disabled={!isDirectorySupported || busyAction !== null}
+                    aria-label="Connect folder"
+                  >
+                    <Folder />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Connect folder</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="outline"
+                    onClick={() =>
+                      runDirectoryAction("load-directory-draft", async () => {
+                        const fallback = selectedCityDefinition?.board ?? createInitialCityDraft();
+                        const result = await loadCityDraftFromDirectory(fallback);
+                        if (!result) {
+                          setSaveNotice({
+                            tone: "neutral",
+                            text: "No local city draft or canonical board file was found in the connected directory."
+                          });
+                          return;
+                        }
 
                   setDraft(saveCityBoardDraft(result.board));
                   setSelectedCityId(result.board.id);
                   setSelectedRecordId(cityOverviewId);
+                  setSelectedCityTab("basics");
                   setSaveNotice({
                     tone: "success",
                     text: `Loaded ${result.sourceKind} data from ${result.relativePath}.`
                   });
-                })
-              }
-              disabled={busyAction !== null}
-            >
-              Load file
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() =>
-                runDirectoryAction("save-directory-draft", async () => {
-                  const result = await saveCityDraftToDirectory(draft);
-                  setSaveNotice({
-                    tone: "success",
-                    text: `Saved the current draft to ${result.relativePath} inside ${result.directoryName}.`
-                  });
-                })
-              }
-              disabled={busyAction !== null}
-            >
-              Save draft file
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                downloadDraft(draft);
-                setSaveNotice({
-                  tone: "neutral",
-                  text: `Downloaded ${draft.id}-board.local.json.`
-                });
-              }}
-              disabled={busyAction !== null}
-            >
-              Download JSON
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                const fallback = selectedCityDefinition?.board ?? createInitialCityDraft();
-                const nextDraft = resetCityBoardDraft(selectedCityId, fallback);
-                setDraft(nextDraft);
-                setSelectedCityId(nextDraft.id);
-                setSelectedRecordId(cityOverviewId);
-                setSaveNotice({
-                  tone: "neutral",
-                  text: `Reset the working draft back to the bundled ${nextDraft.name} board.`
-                });
-              }}
-            >
-              Reset draft
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setDraft(saveCityBoardDraft(draft));
-                setSaveNotice({
-                  tone: "success",
-                  text: "Re-saved the current browser draft."
-                });
-              }}
-            >
-              Re-save draft
-            </Button>
-          </>
+                      })
+                    }
+                    disabled={busyAction !== null}
+                    aria-label="Load file"
+                  >
+                    <FolderOpen />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Load file</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="outline"
+                    onClick={() =>
+                      runDirectoryAction("save-directory-draft", async () => {
+                        const result = await saveCityDraftToDirectory(draft);
+                        setSaveNotice({
+                          tone: "success",
+                          text: `Saved the current draft to ${result.relativePath} inside ${result.directoryName}.`
+                        });
+                      })
+                    }
+                    disabled={busyAction !== null}
+                    aria-label="Save draft file"
+                  >
+                    <Save />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Save draft file</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="outline"
+                    onClick={() => {
+                      downloadDraft(draft);
+                      setSaveNotice({
+                        tone: "neutral",
+                        text: `Downloaded ${draft.id}-board.local.json.`
+                      });
+                    }}
+                    disabled={busyAction !== null}
+                    aria-label="Download JSON"
+                  >
+                    <Download />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Download JSON</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="outline"
+                    onClick={() => {
+                      const fallback = selectedCityDefinition?.board ?? createInitialCityDraft();
+                      const nextDraft = resetCityBoardDraft(selectedCityId, fallback);
+                      setDraft(nextDraft);
+                      setSelectedCityId(nextDraft.id);
+                      setSelectedRecordId(cityOverviewId);
+                      setSelectedCityTab("basics");
+                      setSaveNotice({
+                        tone: "neutral",
+                        text: `Reset the working draft back to the bundled ${nextDraft.name} board.`
+                      });
+                    }}
+                    aria-label="Reset draft"
+                  >
+                    <RotateCcw />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Reset draft</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="outline"
+                    onClick={() => {
+                      setDraft(saveCityBoardDraft(draft));
+                      setSaveNotice({
+                        tone: "success",
+                        text: "Re-saved the current browser draft."
+                      });
+                    }}
+                    aria-label="Re-save draft"
+                  >
+                    <RefreshCw />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Re-save draft</TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
         }
         status={saveNotice}
       >
@@ -451,9 +723,6 @@ export function EdinburghReviewPage({
           <CardHeader className="gap-4">
             <div className="grid gap-2">
               <CardTitle>Cities</CardTitle>
-              <CardDescription>
-                Start with the city, then drill into districts and detail to the right.
-              </CardDescription>
             </div>
           </CardHeader>
           <CardContent className="page-card__content page-card__content--scroll pt-0">
@@ -469,6 +738,9 @@ export function EdinburghReviewPage({
                     }
                     setSelectedCityId(city.id);
                     setSelectedRecordId(cityOverviewId);
+                    setSelectedCityTab("basics");
+                    setHoveredDistrictId(null);
+                    setHoveredBoardSquare(null);
                   }}
                   selected={city.id === selectedCity?.id}
                   title={city.name}
@@ -503,9 +775,6 @@ export function EdinburghReviewPage({
                 <CardTitle>Districts</CardTitle>
                 {selectedCity ? <Badge variant="outline">{selectedCity.name}</Badge> : null}
               </div>
-              <CardDescription>
-                Select the city overview or drill into a district record like Edinburgh {">"} Broughton or London {">"} Camden Town.
-              </CardDescription>
             </div>
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_11rem]">
               <ClearableSearchField
@@ -544,7 +813,12 @@ export function EdinburghReviewPage({
             <div className="cities-page__list rounded-lg border p-3">
               <WorkspaceListItem
                 type="button"
-                onClick={() => setSelectedRecordId(cityOverviewId)}
+                onClick={() => {
+                  setSelectedRecordId(cityOverviewId);
+                  setSelectedCityTab("basics");
+                  setHoveredDistrictId(null);
+                  setHoveredBoardSquare(null);
+                }}
                 selected={selectedRecordId === cityOverviewId}
                 className="workspace-list-item--overview"
                 leading={<Badge variant="secondary">Overview</Badge>}
@@ -555,8 +829,13 @@ export function EdinburghReviewPage({
                 <WorkspaceListItem
                   key={district.id}
                   type="button"
-                  onClick={() => setSelectedRecordId(district.id)}
+                  onClick={() => selectDistrictById(district.id)}
+                  onMouseEnter={() => setHoveredDistrictId(district.id)}
+                  onMouseLeave={() => setHoveredDistrictId(null)}
+                  onFocus={() => setHoveredDistrictId(district.id)}
+                  onBlur={() => setHoveredDistrictId(null)}
                   selected={district.id === selectedDistrict?.id}
+                  className={highlightedDistrict?.id === district.id ? "cities-page__list-item--hovered" : undefined}
                   title={district.name}
                   description={district.locality}
                   meta={
@@ -585,214 +864,34 @@ export function EdinburghReviewPage({
                 <CardTitle>City detail editor</CardTitle>
                 {selectedCity ? <Badge variant="outline">{selectedCity.name}</Badge> : null}
               </div>
-              <CardDescription>
-                Edit the city-level summary, provenance, and source details that frame the active board mapping.
-              </CardDescription>
             </CardHeader>
             <CardContent className="page-card__content grid gap-4">
-              <div className="grid gap-4 lg:grid-cols-2">
-                <label className="grid gap-2">
-                  <span className="text-sm font-medium">City name</span>
-                  <Input
-                    name="city-name"
-                    autoComplete="off"
-                    value={draft.name}
-                    onChange={(event) => setCityField("name", event.currentTarget.value)}
-                  />
-                </label>
-                <label className="grid gap-2">
-                  <span className="text-sm font-medium">Country / region</span>
-                  <Input
-                    name="city-country"
-                    autoComplete="off"
-                    value={draft.country}
-                    onChange={(event) => setCityField("country", event.currentTarget.value)}
-                  />
-                </label>
-                <label className="grid gap-2 lg:col-span-2">
-                  <span className="text-sm font-medium">Summary</span>
-                  <Textarea
-                    name="city-summary"
-                    autoComplete="off"
-                    value={draft.summary}
-                    onChange={(event) => setCityField("summary", event.currentTarget.value)}
-                    rows={4}
-                  />
-                </label>
-                <label className="grid gap-2 lg:col-span-2">
-                  <span className="text-sm font-medium">Board orientation</span>
-                  <Textarea
-                    name="city-board-orientation"
-                    autoComplete="off"
-                    value={draft.boardOrientation}
-                    onChange={(event) => setCityField("boardOrientation", event.currentTarget.value)}
-                    rows={2}
-                  />
-                </label>
-                <label className="grid gap-2">
-                  <span className="text-sm font-medium">Content status</span>
-                  <select
-                    name="city-content-status"
-                    className="field-select"
-                    value={draft.contentStatus}
-                    onChange={(event) =>
-                      setCityField("contentStatus", event.currentTarget.value as CityBoard["contentStatus"])
-                    }
-                  >
-                    {statusOptions.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-2">
-                  <span className="text-sm font-medium">Review status</span>
-                  <select
-                    name="city-review-status"
-                    className="field-select"
-                    value={draft.reviewStatus}
-                    onChange={(event) =>
-                      setCityField("reviewStatus", event.currentTarget.value as CityBoard["reviewStatus"])
-                    }
-                  >
-                    {reviewOptions.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-2">
-                  <span className="text-sm font-medium">Last reviewed</span>
-                  <Input
-                    name="city-last-reviewed-at"
-                    autoComplete="off"
-                    type="date"
-                    value={draft.lastReviewedAt ?? ""}
-                    onChange={(event) => setCityField("lastReviewedAt", event.currentTarget.value || null)}
-                  />
-                </label>
-                <label className="grid gap-2">
-                  <span className="text-sm font-medium">Generation source</span>
-                  <Input
-                    name="city-generation-source"
-                    autoComplete="off"
-                    value={draft.generationSource}
-                    onChange={(event) => setCityField("generationSource", event.currentTarget.value)}
-                  />
-                </label>
-                <label className="grid gap-2 lg:col-span-2">
-                  <span className="text-sm font-medium">Review notes</span>
-                  <Textarea
-                    name="city-review-notes"
-                    autoComplete="off"
-                    value={draft.reviewNotes ?? ""}
-                    onChange={(event) => setCityField("reviewNotes", event.currentTarget.value || null)}
-                    rows={3}
-                  />
-                </label>
-                <label className="grid gap-2 lg:col-span-2">
-                  <span className="text-sm font-medium">Source URLs</span>
-                  <Textarea
-                    name="city-source-urls"
-                    autoComplete="off"
-                    spellCheck={false}
-                    value={formatListValue(draft.sourceUrls)}
-                    onChange={(event) => setCityField("sourceUrls", parseListValue(event.currentTarget.value))}
-                    rows={4}
-                  />
-                </label>
-              </div>
-            </CardContent>
-          </Card>
-          ) : null}
+              <Tabs value={selectedCityTab} onValueChange={setSelectedCityTab}>
+                <TabsList className="detail-editor-tabs-list">
+                  <TabsTrigger value="basics">Basics</TabsTrigger>
+                  <TabsTrigger value="narrative">Narrative</TabsTrigger>
+                  <TabsTrigger value="provenance">Provenance</TabsTrigger>
+                </TabsList>
 
-          {selectedDistrict ? (
-          <div className="cities-workspace__detail-sticky">
-          <Card className="page-card page-card--detail">
-            <CardHeader className="gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <CardTitle>District detail editor</CardTitle>
-                {selectedCity ? <Badge variant="outline">{selectedCity.name}</Badge> : null}
-                {selectedDistrict ? <Badge variant="secondary">{selectedDistrict.name}</Badge> : null}
-                {selectedDistrict ? <Badge variant="outline">{selectedDistrict.square}</Badge> : null}
-              </div>
-              <CardDescription>
-                Edit the district record and keep the draft grounded in readable, reviewable city context.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="page-card__content grid gap-4">
-              <>
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <label className="grid gap-2">
-                      <span className="text-sm font-medium">District name</span>
+                <TabsContent value="basics" className="grid gap-4 pt-2">
+                  <div className="grid gap-4 lg:grid-cols-3">
+                    <label className="grid gap-2 lg:col-span-3">
+                      <span className="text-sm font-medium">City name</span>
                       <Input
-                        name="district-name"
+                        name="city-name"
                         autoComplete="off"
-                        value={selectedDistrict.name}
-                        onChange={(event) =>
-                          updateSelectedDistrict((district) => ({
-                            ...district,
-                            name: event.currentTarget.value
-                          }))
-                        }
-                      />
-                    </label>
-                    <label className="grid gap-2">
-                      <span className="text-sm font-medium">Square</span>
-                      <Input
-                        name="district-square"
-                        autoComplete="off"
-                        value={selectedDistrict.square}
-                        onChange={(event) =>
-                          updateSelectedDistrict((district) => ({
-                            ...district,
-                            square: event.currentTarget.value as DistrictCell["square"]
-                          }))
-                        }
-                      />
-                    </label>
-                    <label className="grid gap-2">
-                      <span className="text-sm font-medium">Locality</span>
-                      <Input
-                        name="district-locality"
-                        autoComplete="off"
-                        value={selectedDistrict.locality}
-                        onChange={(event) =>
-                          updateSelectedDistrict((district) => ({
-                            ...district,
-                            locality: event.currentTarget.value
-                          }))
-                        }
-                      />
-                    </label>
-                    <label className="grid gap-2">
-                      <span className="text-sm font-medium">Last reviewed</span>
-                      <Input
-                        name="district-last-reviewed-at"
-                        autoComplete="off"
-                        type="date"
-                        value={selectedDistrict.lastReviewedAt ?? ""}
-                        onChange={(event) =>
-                          updateSelectedDistrict((district) => ({
-                            ...district,
-                            lastReviewedAt: event.currentTarget.value || null
-                          }))
-                        }
+                        value={draft.name}
+                        onChange={(event) => setCityField("name", event.currentTarget.value)}
                       />
                     </label>
                     <label className="grid gap-2">
                       <span className="text-sm font-medium">Content status</span>
                       <select
-                        name="district-content-status"
+                        name="city-content-status"
                         className="field-select"
-                        value={selectedDistrict.contentStatus}
+                        value={draft.contentStatus}
                         onChange={(event) =>
-                          updateSelectedDistrict((district) => ({
-                            ...district,
-                            contentStatus: event.currentTarget.value as DistrictCell["contentStatus"]
-                          }))
+                          setCityField("contentStatus", event.currentTarget.value as CityBoard["contentStatus"])
                         }
                       >
                         {statusOptions.map((status) => (
@@ -805,14 +904,11 @@ export function EdinburghReviewPage({
                     <label className="grid gap-2">
                       <span className="text-sm font-medium">Review status</span>
                       <select
-                        name="district-review-status"
+                        name="city-review-status"
                         className="field-select"
-                        value={selectedDistrict.reviewStatus}
+                        value={draft.reviewStatus}
                         onChange={(event) =>
-                          updateSelectedDistrict((district) => ({
-                            ...district,
-                            reviewStatus: event.currentTarget.value as DistrictCell["reviewStatus"]
-                          }))
+                          setCityField("reviewStatus", event.currentTarget.value as CityBoard["reviewStatus"])
                         }
                       >
                         {reviewOptions.map((status) => (
@@ -822,108 +918,460 @@ export function EdinburghReviewPage({
                         ))}
                       </select>
                     </label>
-                  </div>
-
-                  <Separator />
-
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <label className="grid gap-2 lg:col-span-2">
-                      <span className="text-sm font-medium">Day profile</span>
-                      <Textarea
-                        name="district-day-profile"
-                        autoComplete="off"
-                        value={selectedDistrict.dayProfile}
-                        onChange={(event) =>
-                          updateSelectedDistrict((district) => ({
-                            ...district,
-                            dayProfile: event.currentTarget.value
-                          }))
-                        }
-                        rows={3}
-                      />
-                    </label>
-                    <label className="grid gap-2 lg:col-span-2">
-                      <span className="text-sm font-medium">Night profile</span>
-                      <Textarea
-                        name="district-night-profile"
-                        autoComplete="off"
-                        value={selectedDistrict.nightProfile}
-                        onChange={(event) =>
-                          updateSelectedDistrict((district) => ({
-                            ...district,
-                            nightProfile: event.currentTarget.value
-                          }))
-                        }
-                        rows={3}
-                      />
-                    </label>
                     <label className="grid gap-2">
-                      <span className="text-sm font-medium">Descriptors</span>
-                      <Textarea
-                        name="district-descriptors"
+                      <span className="text-sm font-medium">Last reviewed</span>
+                      <Input
+                        name="city-last-reviewed-at"
                         autoComplete="off"
-                        value={formatListValue(selectedDistrict.descriptors)}
-                        onChange={(event) =>
-                          updateSelectedDistrict((district) => ({
-                            ...district,
-                            descriptors: parseListValue(event.currentTarget.value)
-                          }))
-                        }
-                        rows={5}
+                        type="date"
+                        value={draft.lastReviewedAt ?? ""}
+                        onChange={(event) => setCityField("lastReviewedAt", event.currentTarget.value || null)}
                       />
                     </label>
-                    <label className="grid gap-2">
-                      <span className="text-sm font-medium">Tone cues</span>
-                      <Textarea
-                        name="district-tone-cues"
-                        autoComplete="off"
-                        value={formatListValue(selectedDistrict.toneCues)}
-                        onChange={(event) =>
-                          updateSelectedDistrict((district) => ({
-                            ...district,
-                            toneCues: parseListValue(event.currentTarget.value)
-                          }))
-                        }
-                        rows={5}
-                      />
-                    </label>
-                    <label className="grid gap-2 lg:col-span-2">
-                      <span className="text-sm font-medium">Landmarks</span>
-                      <Textarea
-                        name="district-landmarks"
-                        autoComplete="off"
-                        value={formatListValue(selectedDistrict.landmarks)}
-                        onChange={(event) =>
-                          updateSelectedDistrict((district) => ({
-                            ...district,
-                            landmarks: parseListValue(event.currentTarget.value)
-                          }))
-                        }
-                        rows={4}
-                      />
-                    </label>
-                    <label className="grid gap-2 lg:col-span-2">
+                    <label className="grid gap-2 lg:col-span-3">
                       <span className="text-sm font-medium">Review notes</span>
                       <Textarea
-                        name="district-review-notes"
+                        name="city-review-notes"
                         autoComplete="off"
-                        value={selectedDistrict.reviewNotes ?? ""}
-                        onChange={(event) =>
-                          updateSelectedDistrict((district) => ({
-                            ...district,
-                            reviewNotes: event.currentTarget.value || null
-                          }))
-                        }
+                        value={draft.reviewNotes ?? ""}
+                        onChange={(event) => setCityField("reviewNotes", event.currentTarget.value || null)}
+                        rows={3}
+                      />
+                    </label>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="narrative" className="grid gap-4 pt-2">
+                  <div className="grid gap-4">
+                    <label className="grid gap-2">
+                      <span className="text-sm font-medium">Summary</span>
+                      <Textarea
+                        name="city-summary"
+                        autoComplete="off"
+                        value={draft.summary}
+                        onChange={(event) => setCityField("summary", event.currentTarget.value)}
+                        rows={4}
+                      />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="text-sm font-medium">Board orientation</span>
+                      <Textarea
+                        name="city-board-orientation"
+                        autoComplete="off"
+                        value={draft.boardOrientation}
+                        onChange={(event) => setCityField("boardOrientation", event.currentTarget.value)}
+                        rows={2}
+                      />
+                    </label>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="provenance" className="grid gap-4 pt-2">
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <label className="grid gap-2">
+                      <span className="text-sm font-medium">Country / region</span>
+                      <Input
+                        name="city-country"
+                        autoComplete="off"
+                        value={draft.country}
+                        onChange={(event) => setCityField("country", event.currentTarget.value)}
+                      />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="text-sm font-medium">Generation source</span>
+                      <Input
+                        name="city-generation-source"
+                        autoComplete="off"
+                        value={draft.generationSource}
+                        onChange={(event) => setCityField("generationSource", event.currentTarget.value)}
+                      />
+                    </label>
+                    <label className="grid gap-2 lg:col-span-2">
+                      <span className="text-sm font-medium">Source URLs</span>
+                      <Textarea
+                        name="city-source-urls"
+                        autoComplete="off"
+                        spellCheck={false}
+                        value={formatListValue(draft.sourceUrls)}
+                        onChange={(event) => setCityField("sourceUrls", parseListValue(event.currentTarget.value))}
                         rows={4}
                       />
                     </label>
                   </div>
-                </>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
-          </div>
+          ) : null}
+
+          {selectedDistrict ? (
+          <>
+            <Card className="page-card page-card--detail">
+              <CardHeader className="gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle>District detail editor</CardTitle>
+                  {selectedCity ? <Badge variant="outline">{selectedCity.name}</Badge> : null}
+                  <Badge variant="secondary">{selectedDistrict.name}</Badge>
+                  <Badge variant="outline">{selectedDistrict.square}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="page-card__content grid gap-4">
+                <Tabs value={selectedDistrictTab} onValueChange={setSelectedDistrictTab}>
+                  <TabsList className="detail-editor-tabs-list">
+                    <TabsTrigger value="basics">Basics</TabsTrigger>
+                    <TabsTrigger value="narrative">Narrative</TabsTrigger>
+                    <TabsTrigger value="location">Location</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="basics" className="grid gap-4 pt-2">
+                    <div className="grid gap-4 lg:grid-cols-3">
+                      <label className="grid gap-2 lg:col-span-3">
+                        <span className="text-sm font-medium">District name</span>
+                        <Input
+                          name="district-name"
+                          autoComplete="off"
+                          value={selectedDistrict.name}
+                          onChange={(event) =>
+                            updateSelectedDistrict((district) => ({
+                              ...district,
+                              name: event.currentTarget.value
+                            }))
+                          }
+                        />
+                      </label>
+                      <label className="grid gap-2">
+                        <span className="text-sm font-medium">Content status</span>
+                        <select
+                          name="district-content-status"
+                          className="field-select"
+                          value={selectedDistrict.contentStatus}
+                          onChange={(event) =>
+                            updateSelectedDistrict((district) => ({
+                              ...district,
+                              contentStatus: event.currentTarget.value as DistrictCell["contentStatus"]
+                            }))
+                          }
+                        >
+                          {statusOptions.map((status) => (
+                            <option key={status} value={status}>
+                              {status}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="grid gap-2">
+                        <span className="text-sm font-medium">Review status</span>
+                        <select
+                          name="district-review-status"
+                          className="field-select"
+                          value={selectedDistrict.reviewStatus}
+                          onChange={(event) =>
+                            updateSelectedDistrict((district) => ({
+                              ...district,
+                              reviewStatus: event.currentTarget.value as DistrictCell["reviewStatus"]
+                            }))
+                          }
+                        >
+                          {reviewOptions.map((status) => (
+                            <option key={status} value={status}>
+                              {status}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="grid gap-2">
+                        <span className="text-sm font-medium">Last reviewed</span>
+                        <Input
+                          name="district-last-reviewed-at"
+                          autoComplete="off"
+                          type="date"
+                          value={selectedDistrict.lastReviewedAt ?? ""}
+                          onChange={(event) =>
+                            updateSelectedDistrict((district) => ({
+                              ...district,
+                              lastReviewedAt: event.currentTarget.value || null
+                            }))
+                          }
+                        />
+                      </label>
+                      <label className="grid gap-2 lg:col-span-3">
+                        <span className="text-sm font-medium">Review notes</span>
+                        <Textarea
+                          name="district-review-notes"
+                          autoComplete="off"
+                          value={selectedDistrict.reviewNotes ?? ""}
+                          onChange={(event) =>
+                            updateSelectedDistrict((district) => ({
+                              ...district,
+                              reviewNotes: event.currentTarget.value || null
+                            }))
+                          }
+                          rows={4}
+                        />
+                      </label>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="narrative" className="grid gap-4 pt-2">
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <label className="grid gap-2 lg:col-span-2">
+                        <span className="text-sm font-medium">Day profile</span>
+                        <Textarea
+                          name="district-day-profile"
+                          autoComplete="off"
+                          value={selectedDistrict.dayProfile}
+                          onChange={(event) =>
+                            updateSelectedDistrict((district) => ({
+                              ...district,
+                              dayProfile: event.currentTarget.value
+                            }))
+                          }
+                          rows={3}
+                        />
+                      </label>
+                      <label className="grid gap-2 lg:col-span-2">
+                        <span className="text-sm font-medium">Night profile</span>
+                        <Textarea
+                          name="district-night-profile"
+                          autoComplete="off"
+                          value={selectedDistrict.nightProfile}
+                          onChange={(event) =>
+                            updateSelectedDistrict((district) => ({
+                              ...district,
+                              nightProfile: event.currentTarget.value
+                            }))
+                          }
+                          rows={3}
+                        />
+                      </label>
+                      <label className="grid gap-2">
+                        <span className="text-sm font-medium">Descriptions</span>
+                        <Textarea
+                          name="district-descriptors"
+                          autoComplete="off"
+                          value={formatListValue(selectedDistrict.descriptors)}
+                          onChange={(event) =>
+                            updateSelectedDistrict((district) => ({
+                              ...district,
+                              descriptors: parseListValue(event.currentTarget.value)
+                            }))
+                          }
+                          rows={5}
+                        />
+                      </label>
+                      <label className="grid gap-2">
+                        <span className="text-sm font-medium">Tone cues</span>
+                        <Textarea
+                          name="district-tone-cues"
+                          autoComplete="off"
+                          value={formatListValue(selectedDistrict.toneCues)}
+                          onChange={(event) =>
+                            updateSelectedDistrict((district) => ({
+                              ...district,
+                              toneCues: parseListValue(event.currentTarget.value)
+                            }))
+                          }
+                          rows={5}
+                        />
+                      </label>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="location" className="grid gap-4 pt-2">
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <label className="grid gap-2">
+                        <span className="text-sm font-medium">Board tile</span>
+                        <select
+                          name="district-square"
+                          className="field-select"
+                          value={selectedDistrict.square}
+                          onChange={(event) =>
+                            setDraft((current) =>
+                              reassignDistrictSquare(
+                                current,
+                                selectedDistrict.id,
+                                event.currentTarget.value as DistrictCell["square"]
+                              )
+                            )
+                          }
+                        >
+                          {boardSquares.map((square) => (
+                            <option key={square} value={square}>
+                              {square}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="grid gap-2">
+                        <span className="text-sm font-medium">Locality</span>
+                        <Input
+                          name="district-locality"
+                          autoComplete="off"
+                          value={selectedDistrict.locality}
+                          onChange={(event) =>
+                            updateSelectedDistrict((district) => ({
+                              ...district,
+                              locality: event.currentTarget.value
+                            }))
+                          }
+                        />
+                      </label>
+                      <label className="grid gap-2 lg:col-span-2">
+                        <span className="text-sm font-medium">Landmarks</span>
+                        <Textarea
+                          name="district-landmarks"
+                          autoComplete="off"
+                          value={formatListValue(selectedDistrict.landmarks)}
+                          onChange={(event) =>
+                            updateSelectedDistrict((district) => ({
+                              ...district,
+                              landmarks: parseListValue(event.currentTarget.value)
+                            }))
+                          }
+                          rows={4}
+                        />
+                      </label>
+                      <div className="grid gap-4 lg:col-span-2 lg:grid-cols-[auto_1fr_1fr]">
+                        <div className="grid gap-2">
+                          <span className="text-sm font-medium">Map import</span>
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  size="icon-sm"
+                                  variant={isMapImportArmed ? "secondary" : "outline"}
+                                  className="mt-auto"
+                                  onClick={() => setIsMapImportArmed((current) => !current)}
+                                  aria-label="Import coordinates from map placement"
+                                >
+                                  <Crosshair />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Click, then pick a location in Map placement</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <CoordinateStepperField
+                          label="Longitude"
+                          value={selectedDistrictEffectiveMapAnchor?.longitude ?? 0}
+                          min={-180}
+                          max={180}
+                          step={0.00001}
+                          onChange={(valueText) =>
+                            updateSelectedDistrict((district) =>
+                              updateDistrictMapAnchorFromParts({
+                                district,
+                                fallbackAnchor: selectedDistrictEffectiveMapAnchor ?? { longitude: 0, latitude: 0 },
+                                longitudeText: valueText
+                              })
+                            )
+                          }
+                        />
+                        <CoordinateStepperField
+                          label="Latitude"
+                          value={selectedDistrictEffectiveMapAnchor?.latitude ?? 0}
+                          min={-90}
+                          max={90}
+                          step={0.00001}
+                          onChange={(valueText) =>
+                            updateSelectedDistrict((district) =>
+                              updateDistrictMapAnchorFromParts({
+                                district,
+                                fallbackAnchor: selectedDistrictEffectiveMapAnchor ?? { longitude: 0, latitude: 0 },
+                                latitudeText: valueText
+                              })
+                            )
+                          }
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </>
           ) : null}
         </div>
+      }
+      tertiary={
+        <Card className="page-card page-card--detail">
+          <CardHeader className="gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle>Board placement</CardTitle>
+              {selectedDistrict ? <Badge variant="secondary">{selectedDistrict.square}</Badge> : null}
+            </div>
+          </CardHeader>
+          <CardContent className="page-card__content grid gap-4">
+            {selectedDistrict ? (
+              <CityDistrictBoardEditor
+                cityBoard={draft}
+                selectedDistrict={selectedDistrict}
+                highlightedDistrict={highlightedDistrict}
+                hoveredSquare={highlightedDistrict?.square ?? hoveredBoardSquare}
+                onHoveredSquareChange={setHoveredBoardSquare}
+                onSelectDistrict={selectDistrictById}
+                onSquareChange={(square) => {
+                  setDraft((current) => reassignDistrictSquare(current, selectedDistrict.id, square));
+                }}
+              />
+            ) : (
+              <CityDistrictBoardEditor
+                cityBoard={draft}
+                selectedDistrict={null}
+                highlightedDistrict={highlightedDistrict}
+                hoveredSquare={highlightedDistrict?.square ?? hoveredBoardSquare}
+                onHoveredSquareChange={setHoveredBoardSquare}
+                onSelectDistrict={selectDistrictById}
+                onSquareChange={() => {}}
+              />
+            )}
+          </CardContent>
+        </Card>
+      }
+      quaternary={
+        <Card className="page-card page-card--detail">
+          <CardHeader className="gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle>Map placement</CardTitle>
+              {selectedDistrict ? (
+                <Badge variant="outline">
+                  {selectedDistrict.mapAnchor ? "Reviewed anchor" : "Generated anchor"}
+                </Badge>
+              ) : null}
+            </div>
+          </CardHeader>
+          <CardContent className="page-card__content grid gap-4">
+            {selectedDistrict ? (
+              <CityDistrictMapEditor
+                cityBoard={draft}
+                selectedDistrict={selectedDistrict}
+                highlightedDistrict={highlightedDistrict}
+                onHighlightedDistrictChange={setHoveredDistrictId}
+                onSelectDistrict={selectDistrictById}
+                importModeArmed={isMapImportArmed}
+                onImportModeConsumed={() => setIsMapImportArmed(false)}
+                onMapAnchorChange={(mapAnchor) =>
+                  updateSelectedDistrict((district) => ({
+                    ...district,
+                    mapAnchor
+                  }))
+                }
+              />
+            ) : (
+              <CityDistrictMapEditor
+                cityBoard={draft}
+                selectedDistrict={null}
+                highlightedDistrict={highlightedDistrict}
+                onHighlightedDistrictChange={setHoveredDistrictId}
+                onSelectDistrict={selectDistrictById}
+                importModeArmed={false}
+                onImportModeConsumed={() => {}}
+                onMapAnchorChange={() => {}}
+              />
+            )}
+          </CardContent>
+        </Card>
       }
     />
   );

@@ -11,6 +11,7 @@ import {
 
 type CityMapPanelProps = {
   cityBoard: CityBoard;
+  selectedDistrict: DistrictCell | null;
   hoveredDistrict: DistrictCell | null;
   lastMoveDistrict: DistrictCell | null;
   lastMove: MoveRecord | null;
@@ -18,6 +19,7 @@ type CityMapPanelProps = {
 
 export function CityMapPanel({
   cityBoard,
+  selectedDistrict,
   hoveredDistrict,
   lastMoveDistrict,
   lastMove
@@ -27,18 +29,19 @@ export function CityMapPanel({
     () =>
       getActiveCityMapLocation({
         cityBoard,
+        selectedDistrict,
         hoveredDistrict,
         lastMoveDistrict,
         lastMove
       }),
-    [cityBoard, hoveredDistrict, lastMove, lastMoveDistrict]
+    [cityBoard, hoveredDistrict, lastMove, lastMoveDistrict, selectedDistrict]
   );
 
   const embedUrl = useMemo(
     () => buildGoogleEmbedUrl(activeLocation.query, viewMode, Math.round(activeLocation.zoom)),
     [activeLocation.query, activeLocation.zoom, viewMode]
   );
-  const openUrl = useMemo(() => buildGoogleOpenUrl(activeLocation.query), [activeLocation.query]);
+  const openUrl = useMemo(() => buildGoogleOpenUrl(activeLocation.openQuery), [activeLocation.openQuery]);
 
   return (
     <div className="city-map-panel">
