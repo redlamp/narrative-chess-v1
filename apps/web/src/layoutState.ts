@@ -1,3 +1,5 @@
+import bundledMatchWorkspaceLayout from "../../../layouts/match-workspace.workspace-layout.json";
+
 export const workspacePanelIds = [
   "board",
   "moves",
@@ -46,28 +48,26 @@ const minimumPanelWidth: Record<WorkspacePanelId, number> = {
   board: 4,
   moves: 2,
   narrative: 2,
-  saved: 2,
-  study: 2
+  "recent-games": 2
 };
 
 const minimumPanelHeight: Record<WorkspacePanelId, number> = {
   board: 2,
   moves: 1,
   narrative: 1,
-  saved: 1,
-  study: 1
+  "recent-games": 1
 };
 
-const defaultLayoutState: WorkspaceLayoutState = {
+const bundledFallbackLayoutState: WorkspaceLayoutState = {
   version: 2,
   columnCount: workspaceDefaultColumnCount,
   columnGap: workspaceDefaultColumnGap,
   rowHeight: 64,
   panels: {
-    board: { x: 8, y: 1, w: 3, h: 6 },
-    moves: { x: 11, y: 0, w: 2, h: 14 },
-    narrative: { x: 0, y: 7, w: 10, h: 8 },
-    "recent-games": { x: 1, y: 1, w: 4, h: 6 }
+    board: { x: 7, y: 1, w: 4, h: 8 },
+    moves: { x: 11, y: 1, w: 2, h: 15 },
+    narrative: { x: 1, y: 9, w: 10, h: 8 },
+    "recent-games": { x: 1, y: 1, w: 3, h: 8 }
   },
   collapsed: {
     moves: false,
@@ -75,6 +75,10 @@ const defaultLayoutState: WorkspaceLayoutState = {
     "recent-games": false
   }
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 function getStorage() {
   if (typeof window === "undefined" || !window.localStorage) {
@@ -112,12 +116,12 @@ function normalizeColumnGap(value: unknown) {
   );
 }
 
-function normalizePanelRect(
+function normalizePanelRectFromFallback(
   panelId: WorkspacePanelId,
   value: unknown,
-  columnCount: number
+  columnCount: number,
+  fallback: WorkspacePanelRect
 ): WorkspacePanelRect {
-  const fallback = defaultLayoutState.panels[panelId];
   const candidate = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   const width = clamp(
     roundOrFallback(candidate.w, fallback.w),
@@ -134,6 +138,66 @@ function normalizePanelRect(
     w: width,
     h: height
   };
+}
+
+const bundledLayoutStateCandidate = isRecord(bundledMatchWorkspaceLayout)
+  ? bundledMatchWorkspaceLayout.layoutState
+  : null;
+const bundledLayoutPanels: Record<string, unknown> = isRecord(bundledLayoutStateCandidate?.panels)
+  ? bundledLayoutStateCandidate.panels
+  : {};
+const bundledCollapsedPanels: Record<string, unknown> = isRecord(
+  bundledLayoutStateCandidate?.collapsed
+)
+  ? bundledLayoutStateCandidate.collapsed
+  : {};
+const defaultLayoutColumnCount = normalizeColumnCount(
+  bundledLayoutStateCandidate?.columnCount ?? bundledFallbackLayoutState.columnCount
+);
+
+const defaultLayoutState: WorkspaceLayoutState = {
+  version: 2,
+  columnCount: defaultLayoutColumnCount,
+  columnGap: normalizeColumnGap(
+    bundledLayoutStateCandidate?.columnGap ?? bundledFallbackLayoutState.columnGap
+  ),
+  rowHeight: clamp(
+    numberOrFallback(
+      bundledLayoutStateCandidate?.rowHeight,
+      bundledFallbackLayoutState.rowHeight
+    ),
+    workspaceMinimumRowHeight,
+    workspaceMaximumRowHeight
+  ),
+  panels: workspacePanelIds.reduce((nextPanels, panelId) => {
+    nextPanels[panelId] = normalizePanelRectFromFallback(
+      panelId,
+      bundledLayoutPanels[panelId],
+      defaultLayoutColumnCount,
+      bundledFallbackLayoutState.panels[panelId]
+    );
+    return nextPanels;
+  }, {} as Record<WorkspacePanelId, WorkspacePanelRect>),
+  collapsed: collapsibleWorkspacePanelIds.reduce((nextCollapsed, panelId) => {
+    nextCollapsed[panelId] =
+      typeof bundledCollapsedPanels[panelId] === "boolean"
+        ? (bundledCollapsedPanels[panelId] as boolean)
+        : bundledFallbackLayoutState.collapsed[panelId];
+    return nextCollapsed;
+  }, {} as Record<CollapsibleWorkspacePanelId, boolean>)
+};
+
+function normalizePanelRect(
+  panelId: WorkspacePanelId,
+  value: unknown,
+  columnCount: number
+): WorkspacePanelRect {
+  return normalizePanelRectFromFallback(
+    panelId,
+    value,
+    columnCount,
+    defaultLayoutState.panels[panelId]
+  );
 }
 
 function scalePanelRect(

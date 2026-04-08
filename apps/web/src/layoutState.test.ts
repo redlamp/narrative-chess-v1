@@ -54,7 +54,9 @@ describe("layoutState", () => {
     expect(canPlaceMovesOnBoard).toBe(true);
     expect(nextLayoutState.panels.moves.h).toBe(12);
     expect(nextLayoutState.panels.moves.x).toBe(1);
-    expect(nextLayoutState.panels.saved.y).toBe(layoutState.panels.saved.y);
+    expect(nextLayoutState.panels["recent-games"].y).toBe(
+      layoutState.panels["recent-games"].y
+    );
   });
 
   it("keeps layouts valid when the column count changes", () => {
@@ -68,5 +70,14 @@ describe("layoutState", () => {
     expect(resizedLayout.panels.board.w).toBeLessThanOrEqual(8);
     expect(resizedLayout.panels.moves.x + resizedLayout.panels.moves.w - 1).toBeLessThanOrEqual(8);
     expect(rowCount).toBeGreaterThanOrEqual(18);
+  });
+
+  it("keeps the recent-games panel finite when loading defaults", () => {
+    const layoutState = getDefaultWorkspaceLayoutState();
+
+    expect(layoutState.panels["recent-games"].w).toBeGreaterThanOrEqual(2);
+    expect(layoutState.panels["recent-games"].h).toBeGreaterThanOrEqual(1);
+    expect(Number.isFinite(layoutState.panels["recent-games"].x)).toBe(true);
+    expect(Number.isFinite(layoutState.panels["recent-games"].y)).toBe(true);
   });
 });

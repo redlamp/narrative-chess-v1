@@ -1366,7 +1366,7 @@ export default function App() {
         />
       ) : (
         <div className={`workspace-layout-shell ${effectiveLayoutMode ? "workspace-layout-shell--editing" : ""}`}>
-          {page === "match" ? (
+          {page === "match" && effectiveLayoutMode ? (
             <aside className="workspace-layout-shell__sidebar">
               <LayoutToolbar
                 columnCount={workspaceLayout.columnCount}
