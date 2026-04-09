@@ -57,6 +57,20 @@ type SharedLayoutToolbarProps = {
   onResetLayout: () => void;
 };
 
+type LayoutToolbarOpenSections = {
+  grid: boolean;
+  components: boolean;
+  layouts: boolean;
+};
+
+const defaultOpenSections: LayoutToolbarOpenSections = {
+  grid: false,
+  components: false,
+  layouts: false
+};
+
+let sharedOpenSections: LayoutToolbarOpenSections = { ...defaultOpenSections };
+
 export function SharedLayoutToolbar({
   columnCount,
   columnGap,
@@ -87,11 +101,22 @@ export function SharedLayoutToolbar({
   onToggleComponentVisibility,
   onResetLayout
 }: SharedLayoutToolbarProps) {
-  const [openSections, setOpenSections] = useState({
-    grid: true,
-    components: true,
-    layouts: true
-  });
+  const [openSections, setOpenSections] = useState<LayoutToolbarOpenSections>(() => ({
+    ...sharedOpenSections
+  }));
+
+  const updateOpenSections = (
+    updater: LayoutToolbarOpenSections | ((current: LayoutToolbarOpenSections) => LayoutToolbarOpenSections)
+  ) => {
+    setOpenSections((current) => {
+      const next =
+        typeof updater === "function"
+          ? (updater as (current: LayoutToolbarOpenSections) => LayoutToolbarOpenSections)(current)
+          : updater;
+      sharedOpenSections = { ...next };
+      return next;
+    });
+  };
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -126,21 +151,22 @@ export function SharedLayoutToolbar({
         <CardContent className="layout-toolbar__body">
           <Collapsible
             open={openSections.grid}
-            onOpenChange={(open) => setOpenSections((current) => ({ ...current, grid: open }))}
+            onOpenChange={(open) => updateOpenSections((current) => ({ ...current, grid: open }))}
             className="layout-toolbar__section"
           >
             <div className="layout-toolbar__section-header">
-              <h3 className="layout-toolbar__section-title">Grid</h3>
               <CollapsibleTrigger asChild>
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon-sm"
+                  size="icon-xs"
+                  className="layout-toolbar__section-toggle"
                   aria-label={openSections.grid ? "Collapse grid section" : "Expand grid section"}
                 >
                   <ChevronDown className={`layout-toolbar__section-chevron ${openSections.grid ? "is-open" : ""}`} />
                 </Button>
               </CollapsibleTrigger>
+              <h3 className="layout-toolbar__section-title">Grid</h3>
             </div>
 
             <CollapsibleContent className="layout-toolbar__section-content">
@@ -182,19 +208,16 @@ export function SharedLayoutToolbar({
 
           <Collapsible
             open={openSections.components}
-            onOpenChange={(open) => setOpenSections((current) => ({ ...current, components: open }))}
+            onOpenChange={(open) => updateOpenSections((current) => ({ ...current, components: open }))}
             className="layout-toolbar__section layout-toolbar__file-section"
           >
             <div className="layout-toolbar__section-header">
-              <div className="layout-toolbar__section-meta">
-                <h3 className="layout-toolbar__section-title">Components</h3>
-                <Badge variant="outline">{components.length}</Badge>
-              </div>
               <CollapsibleTrigger asChild>
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon-sm"
+                  size="icon-xs"
+                  className="layout-toolbar__section-toggle"
                   aria-label={openSections.components ? "Collapse components section" : "Expand components section"}
                 >
                   <ChevronDown
@@ -202,6 +225,10 @@ export function SharedLayoutToolbar({
                   />
                 </Button>
               </CollapsibleTrigger>
+              <div className="layout-toolbar__section-meta">
+                <h3 className="layout-toolbar__section-title">Components</h3>
+                <Badge variant="outline">{components.length}</Badge>
+              </div>
             </div>
 
             <CollapsibleContent className="layout-toolbar__section-content">
@@ -237,25 +264,26 @@ export function SharedLayoutToolbar({
 
           <Collapsible
             open={openSections.layouts}
-            onOpenChange={(open) => setOpenSections((current) => ({ ...current, layouts: open }))}
+            onOpenChange={(open) => updateOpenSections((current) => ({ ...current, layouts: open }))}
             className="layout-toolbar__section layout-toolbar__file-section"
           >
             <div className="layout-toolbar__section-header">
-              <h3 className="layout-toolbar__section-title">Layouts</h3>
+              <CollapsibleTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  className="layout-toolbar__section-toggle"
+                  aria-label={openSections.layouts ? "Collapse layouts section" : "Expand layouts section"}
+                >
+                  <ChevronDown
+                    className={`layout-toolbar__section-chevron ${openSections.layouts ? "is-open" : ""}`}
+                  />
+                </Button>
+              </CollapsibleTrigger>
               <div className="layout-toolbar__section-meta">
+                <h3 className="layout-toolbar__section-title">Layouts</h3>
                 {layoutDirectoryName ? <Badge variant="outline">Connected: {layoutDirectoryName}</Badge> : null}
-                <CollapsibleTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={openSections.layouts ? "Collapse layouts section" : "Expand layouts section"}
-                  >
-                    <ChevronDown
-                      className={`layout-toolbar__section-chevron ${openSections.layouts ? "is-open" : ""}`}
-                    />
-                  </Button>
-                </CollapsibleTrigger>
               </div>
             </div>
 

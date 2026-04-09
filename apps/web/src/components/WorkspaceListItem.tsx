@@ -31,14 +31,20 @@ export function WorkspaceListItem({
         className
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          {leading ? <span aria-hidden="true" className="text-lg leading-none">{leading}</span> : null}
-          <span className="min-w-0 font-medium">{title}</span>
+      <div className="workspace-list-item__header flex items-start justify-between gap-3">
+        <div className="workspace-list-item__title-row flex min-w-0 items-center gap-3">
+          {leading ? (
+            <span aria-hidden="true" className="workspace-list-item__leading text-lg leading-none">
+              {leading}
+            </span>
+          ) : null}
+          <span className="workspace-list-item__title min-w-0 font-medium">{title}</span>
         </div>
-        {meta ? <div className="flex flex-wrap justify-end gap-2">{meta}</div> : null}
+        {meta ? <div className="workspace-list-item__meta flex flex-wrap justify-end gap-2">{meta}</div> : null}
       </div>
-      {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+      {description ? (
+        <p className="workspace-list-item__description text-sm text-muted-foreground">{description}</p>
+      ) : null}
     </button>
   );
 }

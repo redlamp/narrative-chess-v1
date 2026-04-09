@@ -391,8 +391,8 @@ export default function App() {
   const effectiveLayoutMode = isLayoutMode && !isCompactViewport;
   const useFreeformWorkspaceLayout = !isCompactViewport;
   const workspaceRowCount = useMemo(
-    () => getWorkspaceLayoutRowCount(workspaceLayout),
-    [workspaceLayout]
+    () => getWorkspaceLayoutRowCount(workspaceLayout, effectiveLayoutMode ? 18 : 1),
+    [effectiveLayoutMode, workspaceLayout]
   );
   const panelConstraintMaxSize = useMemo(
     () => ({

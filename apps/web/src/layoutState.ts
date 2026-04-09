@@ -655,15 +655,20 @@ export function getSnappedWorkspaceRow(input: {
   return Math.max(1, Math.floor(Math.max(input.offsetY, 0) / Math.max(stride, 1)) + 1);
 }
 
-export function getWorkspaceLayoutRowCount(layoutState: WorkspaceLayoutState) {
+export function getWorkspaceLayoutRowCount(
+  layoutState: WorkspaceLayoutState,
+  minimumRows: number = workspaceMinimumRows
+) {
+  const safeMinimumRows = Math.max(1, minimumRows);
   const maxRow = workspacePanelIds.reduce((currentMax, panelId) => {
     if (!layoutState.visible[panelId]) {
       return currentMax;
     }
 
     const panel = layoutState.panels[panelId];
-    return Math.max(currentMax, panel.y + panel.h - 1);
-  }, workspaceMinimumRows);
+    const renderHeight = getWorkspacePanelRenderHeight(layoutState, panelId);
+    return Math.max(currentMax, panel.y + renderHeight - 1);
+  }, safeMinimumRows);
 
-  return Math.max(workspaceMinimumRows, maxRow);
+  return Math.max(safeMinimumRows, maxRow);
 }

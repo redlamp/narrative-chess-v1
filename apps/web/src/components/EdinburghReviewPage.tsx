@@ -10,7 +10,6 @@ import type { CityBoard, DistrictCell, Square } from "@narrative-chess/content-s
 import {
   ArrowDownAZ,
   ArrowDownZA,
-  ArrowUpDown,
   BadgeCheck,
   Check,
   ChevronDown,
@@ -19,6 +18,7 @@ import {
   FilePenLine,
   Folder,
   FolderOpen,
+  Move,
   OctagonAlert,
   Bot,
   RotateCcw,
@@ -455,6 +455,7 @@ type CoordinateStepperFieldProps = {
   max: number;
   step: number;
   disabled?: boolean;
+  className?: string;
   onChange: (valueText: string) => void;
 };
 
@@ -465,11 +466,57 @@ function CoordinateStepperField({
   max,
   step,
   disabled = false,
+  className,
   onChange
 }: CoordinateStepperFieldProps) {
+  return (
+    <label className={className ? `grid gap-2 ${className}` : "grid gap-2"}>
+      <span className="text-sm font-medium">{label}</span>
+      <div className="coordinate-stepper">
+        <Input
+          name={`district-map-${label.toLowerCase()}`}
+          autoComplete="off"
+        type="number"
+        step={step}
+        min={min}
+        max={max}
+          disabled={disabled}
+          value={value.toFixed(6)}
+          onChange={(event) => onChange(event.currentTarget.value)}
+        />
+      </div>
+    </label>
+  );
+}
+
+type MapPositionMoveButtonProps = {
+  longitude: number;
+  latitude: number;
+  longitudeMin: number;
+  longitudeMax: number;
+  latitudeMin: number;
+  latitudeMax: number;
+  step: number;
+  disabled?: boolean;
+  onMove: (longitudeText: string, latitudeText: string) => void;
+};
+
+function MapPositionMoveButton({
+  longitude,
+  latitude,
+  longitudeMin,
+  longitudeMax,
+  latitudeMin,
+  latitudeMax,
+  step,
+  disabled = false,
+  onMove
+}: MapPositionMoveButtonProps) {
   const dragStartRef = useRef<{
+    startX: number;
     startY: number;
-    startValue: number;
+    startLongitude: number;
+    startLatitude: number;
   } | null>(null);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -479,8 +526,10 @@ function CoordinateStepperField({
 
     event.preventDefault();
     dragStartRef.current = {
+      startX: event.clientX,
       startY: event.clientY,
-      startValue: value
+      startLongitude: longitude,
+      startLatitude: latitude
     };
 
     const handlePointerMove = (pointerEvent: PointerEvent) => {
@@ -488,12 +537,18 @@ function CoordinateStepperField({
         return;
       }
 
-      const delta = dragStartRef.current.startY - pointerEvent.clientY;
-      const nextValue = Math.min(
-        Math.max(dragStartRef.current.startValue + Math.round(delta / 6) * step, min),
-        max
+      const deltaX = pointerEvent.clientX - dragStartRef.current.startX;
+      const deltaY = dragStartRef.current.startY - pointerEvent.clientY;
+      const nextLongitude = Math.min(
+        Math.max(dragStartRef.current.startLongitude + Math.round(deltaX / 6) * step, longitudeMin),
+        longitudeMax
       );
-      onChange(nextValue.toFixed(6));
+      const nextLatitude = Math.min(
+        Math.max(dragStartRef.current.startLatitude + Math.round(deltaY / 6) * step, latitudeMin),
+        latitudeMax
+      );
+
+      onMove(nextLongitude.toFixed(6), nextLatitude.toFixed(6));
     };
 
     const handlePointerUp = () => {
@@ -507,33 +562,24 @@ function CoordinateStepperField({
   };
 
   return (
-    <label className="grid gap-2">
-      <span className="text-sm font-medium">{label}</span>
-      <div className="coordinate-stepper">
-        <Input
-          name={`district-map-${label.toLowerCase()}`}
-          autoComplete="off"
-        type="number"
-        step={step}
-        min={min}
-        max={max}
-        disabled={disabled}
-        value={value.toFixed(6)}
-        onChange={(event) => onChange(event.currentTarget.value)}
-      />
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="outline"
-          className="coordinate-stepper__drag"
-          aria-label={`Drag to adjust ${label.toLowerCase()}`}
-          disabled={disabled}
-          onPointerDown={handlePointerDown}
-        >
-          <ArrowUpDown />
-        </Button>
-      </div>
-    </label>
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="outline"
+            className="coordinate-stepper__drag"
+            aria-label="Drag to move location"
+            disabled={disabled}
+            onPointerDown={handlePointerDown}
+          >
+            <Move />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Drag to move location</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -1564,9 +1610,8 @@ export function EdinburghReviewPage({
                           rows={4}
                         />
                       </label>
-                      <div className="grid gap-4 lg:col-span-2 lg:grid-cols-[auto_1fr_1fr]">
+                      <div className="cities-page__coordinate-row lg:col-span-2">
                         <div className="grid gap-2">
-                          <span className="text-sm font-medium">Map import</span>
                           <TooltipProvider delayDuration={150}>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -1577,22 +1622,23 @@ export function EdinburghReviewPage({
                                   className="mt-auto"
                                   disabled={isBulkDistrictSelection}
                                   onClick={() => setIsMapImportArmed((current) => !current)}
-                                  aria-label="Import coordinates from map placement"
+                                  aria-label="Target map position"
                                 >
                                   <Crosshair />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Click, then pick a location in Map placement</TooltipContent>
+                              <TooltipContent>Target Map Position</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         </div>
                         <CoordinateStepperField
-                          label="Longitude"
+                          label="Long"
                           value={selectedDistrictEffectiveMapAnchor?.longitude ?? 0}
                           min={-180}
                           max={180}
                           step={0.00001}
                           disabled={isBulkDistrictSelection}
+                          className="coordinate-stepper-field--compact"
                           onChange={(valueText) =>
                             updateSelectedDistricts((district) =>
                               updateDistrictMapAnchorFromParts({
@@ -1604,18 +1650,39 @@ export function EdinburghReviewPage({
                           }
                         />
                         <CoordinateStepperField
-                          label="Latitude"
+                          label="Lat"
                           value={selectedDistrictEffectiveMapAnchor?.latitude ?? 0}
                           min={-90}
                           max={90}
                           step={0.00001}
                           disabled={isBulkDistrictSelection}
+                          className="coordinate-stepper-field--compact"
                           onChange={(valueText) =>
                             updateSelectedDistricts((district) =>
                               updateDistrictMapAnchorFromParts({
                                 district,
                                 fallbackAnchor: selectedDistrictEffectiveMapAnchor ?? { longitude: 0, latitude: 0 },
                                 latitudeText: valueText
+                              })
+                            )
+                          }
+                        />
+                        <MapPositionMoveButton
+                          longitude={selectedDistrictEffectiveMapAnchor?.longitude ?? 0}
+                          latitude={selectedDistrictEffectiveMapAnchor?.latitude ?? 0}
+                          longitudeMin={-180}
+                          longitudeMax={180}
+                          latitudeMin={-90}
+                          latitudeMax={90}
+                          step={0.00001}
+                          disabled={isBulkDistrictSelection}
+                          onMove={(longitudeText, latitudeText) =>
+                            updateSelectedDistricts((district) =>
+                              updateDistrictMapAnchorFromParts({
+                                district,
+                                fallbackAnchor: selectedDistrictEffectiveMapAnchor ?? { longitude: 0, latitude: 0 },
+                                longitudeText,
+                                latitudeText
                               })
                             )
                           }

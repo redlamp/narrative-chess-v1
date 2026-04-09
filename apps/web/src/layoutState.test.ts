@@ -151,4 +151,46 @@ describe("layoutState", () => {
     expect(getWorkspaceLayoutRowCount(hiddenBottomPanelLayout)).toBeLessThan(35);
     expect(hiddenBottomPanelLayout.visible["recent-games"]).toBe(false);
   });
+
+  it("can fit to visible rendered panels when a lower minimum row floor is requested", () => {
+    const compactLayout = normalizeWorkspaceLayoutState({
+      columnCount: 12,
+      panels: {
+        board: { x: 1, y: 1, w: 4, h: 6 },
+        moves: { x: 5, y: 1, w: 2, h: 6 },
+        "city-map": { x: 7, y: 1, w: 3, h: 3 },
+        "city-map-maplibre": { x: 10, y: 1, w: 3, h: 3 },
+        "story-beat": { x: 1, y: 7, w: 4, h: 2 },
+        "story-tile": { x: 5, y: 7, w: 4, h: 2 },
+        "story-character": { x: 9, y: 7, w: 4, h: 2 },
+        "story-tone": { x: 1, y: 9, w: 4, h: 1 },
+        "recent-games": { x: 5, y: 9, w: 4, h: 2 }
+      }
+    });
+
+    expect(getWorkspaceLayoutRowCount(compactLayout, 1)).toBe(10);
+  });
+
+  it("uses collapsed render height when calculating row count", () => {
+    const layoutState = updateWorkspacePanelRect({
+      layoutState: getDefaultWorkspaceLayoutState(),
+      panelId: "recent-games",
+      nextRect: {
+        x: 1,
+        y: 20,
+        w: 3,
+        h: 8
+      }
+    });
+    const collapsedLayout = {
+      ...layoutState,
+      collapsed: {
+        ...layoutState.collapsed,
+        "recent-games": true
+      }
+    };
+
+    expect(getWorkspaceLayoutRowCount(layoutState, 1)).toBe(27);
+    expect(getWorkspaceLayoutRowCount(collapsedLayout, 1)).toBe(20);
+  });
 });
