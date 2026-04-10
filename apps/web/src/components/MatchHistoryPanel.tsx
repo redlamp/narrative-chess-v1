@@ -1,5 +1,5 @@
 import { useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import type { CharacterSummary, MoveRecord } from "@narrative-chess/content-schema";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -15,6 +15,8 @@ type MatchHistoryPanelProps = {
   onToggleCollapse: () => void;
   onJumpToStart: () => void;
   onStepBackward: () => void;
+  isPlaying: boolean;
+  onTogglePlayback: () => void;
   onStepForward: () => void;
   onJumpToEnd: () => void;
   onSelectPly: (ply: number) => void;
@@ -82,6 +84,8 @@ export function MatchHistoryPanel({
   onToggleCollapse,
   onJumpToStart,
   onStepBackward,
+  isPlaying,
+  onTogglePlayback,
   onStepForward,
   onJumpToEnd,
   onSelectPly,
@@ -182,6 +186,19 @@ export function MatchHistoryPanel({
                 </TooltipTrigger>
                 <TooltipContent>Drag to scrub</TooltipContent>
               </Tooltip>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="match-history__play-toggle"
+                onClick={onTogglePlayback}
+                disabled={totalPlies <= 0}
+                aria-label={isPlaying ? "Pause move playback" : "Play move playback"}
+                aria-pressed={isPlaying}
+              >
+                {isPlaying ? <Pause /> : <Play />}
+                <span>{isPlaying ? "Pause" : "Play"}</span>
+              </Button>
               <Button
                 type="button"
                 variant="outline"

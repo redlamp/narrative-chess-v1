@@ -1,624 +1,636 @@
 # Product Requirements Document (PRD)
 
-**Last Updated:** April 6, 2026
-**Status:** Living Document - Primary Source of Truth
-**Supersedes:** `docs/queue.md` (The queue is now integrated into the milestones below)
+Last Updated: April 11, 2026
+Status: Active prototype, local-first, static deployment
 
 ---
 
-## 1. Overview
+## 1. Product Summary
 
-**Codename:** Narrative Chess  
-**Product Type:** Web-based chess game with a generative narrative layer.  
-**Premise:** A chess game where the board is a real city, the pieces are people, and every move contributes to an emergent social narrative.
+Codename: Narrative Chess
 
-Narrative Chess reinterprets the rules and structure of chess through urban geography, character systems, and story generation. Each board maps to a city. Each square maps to a neighborhood, district, or borough. Each piece becomes a person with a role, background, motivations, and evolving history. As players make moves, the game generates narrative context around those actions, transforming abstract strategy into an unfolding story.
+Narrative Chess is a web-based chess experience with a narrative layer grounded in city geography, district metadata, and character framing.
 
-The project begins as a playable digital chess experience with a strong data foundation for later narrative and visual expansion. Over time, it grows into a hybrid of strategy game, city simulator, character generator, and comic/story engine.
+The product priority order remains:
 
----
+1. chess clarity and correctness
+2. lightweight narrative value
+3. city-context presentation
+4. richer spatial or visual presentation later
 
-## 2. Vision
+The app is now beyond a pure prototype shell. It includes a playable local chess experience, study replay support, city-aware board presentation, structured content editors, shared layout tooling, and static deployment on GitHub Pages. It is not yet database-backed and still relies on a mix of browser-local state, optional local file saves, and checked-in content files.
 
-Create a chess-driven storytelling system where:
+The app surface now spans six meaningful page areas:
 
-- classic chess rules remain legible and intact
-- city geography shapes tone, identity, and character origin
-- pieces feel like people rather than tokens
-- each move builds narrative momentum
-- the same chess match can be retold as a dramatic, funny, tragic, or absurd story
-
-The long-term aspiration is for a completed match to feel like both:
-
-1. a strategically valid chess game
-2. a coherent, replayable story artifact
+- Play
+- Cities
+- Classics
+- Roles
+- Research
+- Design
 
 ---
 
-## 3. Product Goals
+## 2. Product Intent
 
-### Primary Goals
-- Deliver a solid, readable, enjoyable digital chess foundation.
-- Build a framework for city-based boards tied to real places.
-- Generate distinctive characters from piece type + city + neighborhood + team context.
-- Produce a lightweight narrative log that reacts to gameplay events.
-- Establish technical foundations for later 3D, visual vignette, and comic-book output.
+The target experience is still:
 
-### Secondary Goals
-- Enable players to compare how the same opening or classic game becomes a different story in different cities.
-- Support online play and spectatorship later.
-- Create a system that can scale from text-first narrative to illustrated or cinematic presentation.
+- a valid and readable chess game
+- a city-aware board where districts matter
+- a cast of lightweight characters attached to pieces
+- a narrative layer that reacts to moves, captures, checks, and game state
 
-### Non-Goals for Initial Release
-- Fully simulated open-world city navigation.
-- AAA-quality character rendering.
-- Real-time action gameplay.
-- Fully voice-acted or authored branching dialogue.
-- Complex combat simulation beyond chess resolution.
+This is not yet a social simulation, open-world city sim, or 3D narrative engine. Those remain possible future directions, but they are not the current milestone.
 
 ---
 
-## 4. Core Design Pillars
+## 3. Current Product Surface
 
-### 4.1 Chess First
-The game must remain understandable and functional as chess. Narrative should enrich the game, not obscure legal moves, board state, or turn structure.
+### 3.1 Play
 
-### 4.2 Place Matters
-The city is not cosmetic. Neighborhood identity, socioeconomic cues, local landmarks, and cultural context should meaningfully influence the tone and construction of characters.
+The Play page is the most mature game surface. It currently includes:
 
-### 4.3 Pieces Are People
-Every piece should feel like an individual with a role, traits, and a potential arc.
+- a playable local chess board with legal move validation
+- move history with replay stepping and scrubbing
+- a shared animation playhead for board and map motion
+- saved games and historic game study flows
+- Story Beat, City Tile, Character, Narrative Tone, and map panels
+- Google Maps and MapLibre variants for city map presentation
+- shared layout mode with panel visibility, resizing, saved layouts, and per-panel bounds
 
-### 4.4 Emergent Story Over Fixed Plot
-The game should generate compelling narrative framing around moves rather than requiring fully authored storylines.
+### 3.2 Cities
 
-### 4.5 Tone Range
-Narrative outcomes can be comic, dramatic, absurd, political, intimate, or disturbing. The system should support tonal variation without defaulting to moral simplicity.
+The Cities page is now a real authoring surface, not just a placeholder.
 
-### 4.6 Avoid Harmful Reduction
-The system must avoid simplistic or offensive mappings around race, class, religion, gender, or morality. Rival teams should be framed through institutions, factions, sports, unions, families, political machines, or local subcultures rather than crude identity binaries.
+It currently includes:
 
----
+- city list and district list views
+- City Editor and District Editor detail panels
+- board placement and map placement panels
+- district multi-select for some bulk editing flows
+- map anchor, radius, locality, landmarks, day/night profile, and tone cue editing
+- file save/load integration and browser draft persistence
+- explicit dirty-state handling and save/reset affordances
 
-## 5. Experience Summary
+### 3.3 Classics
 
-A player starts a match in a selected city. The standard 8x8 board is visible in an abstract board mode. Each square corresponds to a real neighborhood or subdistrict. The player can switch to a city/map mode that presents the board through city and district context. In early milestones, this may be a simpler labeled or overlaid map view rather than a full board-to-city morph.
+The Classics page supports historic/reference games and study flows, including:
 
-Each piece begins the game as a generated character informed by:
+- list/detail browsing
+- structured metadata
+- detail links
+- loading games into the Play workspace
 
-- piece type
-- side/faction
-- starting district
-- local city context
-- team narrative framing
+### 3.4 Roles
 
-As pieces move, capture, protect, pressure, sacrifice, or promote, the game records and narrativizes these actions. The result is both a chess move history and a character/story history.
+The Roles page supports editing role catalogs used in lightweight character generation:
 
----
+- piece-type grouping
+- list/detail editing
+- browser persistence and file save workflows
 
-## 6. Gameplay Concept
+### 3.5 Research
 
-### 6.1 Board as City
-- The board remains 8x8 in game logic.
-- Each square maps to a neighborhood, district, or subdistrict.
-- Board mode preserves chess readability.
-- Map mode visualizes the city and district layout.
-- Day/night square treatment reflects white/black square parity and can imply temporal rhythm.
+The Research page exists as a structured planning/reference surface. It is not yet a deep production tool, but it is part of the authoring workflow.
 
-### 6.2 Square Identity
-Each square should ideally contain:
-- district/neighborhood name
-- high-level descriptors (residential, nightlife, industrial, affluent, student-heavy, historic, waterfront, etc.)
-- socioeconomic/cultural tags
-- optional landmark hooks
-- narrative tone cues
+### 3.6 Design
 
-### 6.3 Piece Identity
-Pieces should feel like distinct people shaped by role, place, faction, and emerging history. For the first playable version, character identity should stay lightweight and readable. The canonical implementation schema for early character generation is defined in **Section 10.1 First Playable Character Schema**.
-
-### 6.4 Teams / Factions
-Teams replace simplistic good-vs-evil framing with situational rivalries. Examples:
-- rival unions
-- political factions
-- sports supporters
-- crime families
-- neighborhood coalitions
-- media empires
-- activist groups
-- city agencies in conflict
-
-The same visual side can represent different faction setups in different matches.
-
-### 6.5 Capture Interpretation
-Captures do not always imply death. Capture may be narrated as:
-- arrest
-- public humiliation
-- social ousting
-- scandal
-- deplatforming
-- exposure
-- career ruin
-- blackmail
-- displacement
-- injury
-- disappearance
-- murder
-
-The framing depends on tone, character type, city, and prior events.
-
-### 6.6 Promotion
-Pawn promotion is a major narrative moment. The piece may gain:
-- a new role
-- new status
-- changed name presentation
-- altered aesthetic
-- transformed narrative vocabulary
-
-Promotion should often rhyme with the pawn’s origin while reflecting reinvention.
+The Design page now includes a typography zoo and reference area for visual hierarchy work. It is a design support page, not a gameplay page.
 
 ---
 
-## 7. Narrative System
+## 4. Major Delivered Changes Since Project Start
 
-### 7.1 Narrative Layers
-The narrative system should evolve in layers.
+This list is worth sharing because the app has moved well beyond the original "core chess only" state.
 
-**Layer 1: Event Log**
-A structured move log with flavor text.
-*Examples: Phillip patrols Newhaven. Aisha cuts through Leith and applies pressure downtown. Camila exposes Darren and forces him off the board.*
+### 4.1 Core Chess and Replay
 
-**Layer 2: Character Memory**
-Events become part of each character’s record.
-*Examples: falsely accused another character, survived a near capture, defended the king twice, spent most of the game shielding the back rank.*
+- legal local chess built around `packages/game-core`
+- move history and undo
+- replay and PGN-based study support
+- saved match support in the browser
+- board-state-derived character and event views
 
-**Layer 3: Relational Hooks**
-Previous actions can be referenced later.
-*Examples: a liar later gets exposed, a cautious character becomes reckless, a neglected piece makes a decisive intervention.*
+### 4.2 City-Aware Play Surface
 
-**Layer 4: Scene Generation**
-Important moves can be reframed as vignettes or comic panels.
+- Edinburgh integrated as the active play city
+- district-aware board labeling and hover/selection behavior
+- City Tile and Story Beat panels
+- MapLibre city map with district markers, radius overlays, and piece overlays
+- Google Maps map panel retained as a comparison/fallback surface
 
-### 7.2 Tone Engine
-Narrative output should support adjustable tone presets:
-- grounded realism
-- dark comedy
-- tabloid melodrama
-- civic noir
-- absurd satire
-- tragic urban drama
+### 4.3 Character and Narrative Layer
 
-### 7.3 Narrative Constraints
-The system should avoid:
-- making immutable traits the reason for morality
-- overusing violence
-- flattening neighborhoods into stereotypes
-- generating offensive character mappings without explicit, intentional framing
+- generated character roster from city and role pools
+- Character panel with Details and Recent Actions tabs
+- move-to-event narrative generation in `packages/narrative-engine`
+- tone presets that already affect generated output
 
----
+### 4.4 Authoring and Content Tools
 
-## 8. City System
+- Cities editor with district map placement and board placement
+- role catalog editor
+- classic game library editor
+- design exploration page
+- research comparison page
 
-### 8.1 Initial City Candidates
-Recommended first cities:
-- Edinburgh
-- New York City
-- Los Angeles
-- Amsterdam
+### 4.5 Layout and Workspace Tooling
 
-### 8.2 City Selection Criteria
-A candidate city should ideally have:
-- recognizable district identity
-- strong public map data availability
-- clear cultural texture
-- diverse population and occupations
-- useful landmark density
-- interesting class, political, and social contrasts
+- shared layout mode across Play and content pages
+- drag/resize behavior
+- panel visibility toggles
+- saveable page/workspace layouts
+- panel bound editing via per-panel settings
 
-### 8.3 City-to-Board Mapping Rules
-Requirements:
-- 64 board cells must map to 64 coherent districts or subdistricts
-- mappings should feel intuitive where possible
-- existing neighborhoods should be reused before inventing arbitrary divisions
-- large districts may be split naturally by roads, rivers, landmarks, or known sub-areas
-- neighboring tiles should broadly preserve geographic proximity where practical
+### 4.6 Persistence and Delivery
 
-### 8.4 City Research Data Model
-For each district, capture:
-- name
-- parent borough or administrative area
-- summary description
-- land use type
-- class or economic cues
-- demographic texture at a high level
-- political or cultural notes
-- notable institutions or landmarks
-- day and night energy profile
-- candidate occupations for resident characters
+- browser-local persistence for many settings and drafts
+- optional local file save/load via File System Access APIs
+- "Save everything" workflow
+- GitHub Pages deployment working from `main`
 
 ---
 
-## 9. Views and UX
+## 5. Architecture Snapshot
 
-### 9.1 Board View
-Primary gameplay surface.
-*Requirements: highly legible chessboard, standard move highlighting, selected piece state, history log, hover or click details for piece identity, optional narrative snippets.*
+### 5.1 Package Boundaries
 
-### 9.2 Map View
-A city-referenced interpretation of the board.
-*Requirements: district labels or overlays, selected piece remains readable, valid move destinations clearly highlighted, simple contextual city view in early milestones, optional richer map or 3D presentation later.*
+- `apps/web`
+  - UI, panels, page composition, editor flows, browser persistence, deployment surface
+- `packages/game-core`
+  - chess.js integration, legal move validation, replay generation, snapshot handling
+- `packages/content-schema`
+  - shared Zod schemas and TypeScript contracts
+- `packages/narrative-engine`
+  - character generation, move-to-event translation, tone-aware narrative templates
+- `content/`
+  - checked-in city boards, classic games, piece styles, narrative template data
 
-### 9.3 Character Info Panel
-Should show:
-- name
-- role
-- district of origin
-- faction
-- traits
-- current status
-- key past actions
-- one-line description
+### 5.2 State Ownership
 
-### 9.4 Narrative Panel / Match Chronicle
-Should show:
-- move history
-- flavored event log
-- major turning points
-- optional filters by character
+The app mostly respects the intended boundary:
 
----
+- chess simulation state is owned outside the renderer
+- board/map rendering consumes snapshots
+- authoring pages own their own editor state in the web app
 
-## 10. Character Data and Generation Constraints
+The biggest remaining issue is not simulation correctness. It is persistence fragmentation.
 
-### 10.1 First Playable Character Schema
-For the first playable version, each piece should be assigned:
-- full name
-- role
-- district of origin
-- faction
-- 4-6 traits selected from a larger curated pool of 10-20 traits
-- 4-6 verbs selected from a larger curated pool of 10-20 verbs
-- one-line description
+### 5.3 Persistence Model Today
 
-Later versions may expand character detail, but early milestones should keep identity readable, lightweight, and safe to generate procedurally.
+The app currently uses a mixed local-first model:
 
-### 10.2 Generation Constraints
-- separate appearance or style from moral framing
-- allow some fields to be unknown, omitted, or deferred
-- do not make immutable identity traits the cause of good or evil alignment
-- allow culturally progressive and diverse character representation
-- allow antagonistic or harmful characters, including racists, bigots, and other hostile social roles, when they serve the narrative, but do not frame those traits as culturally representative of groups or neighborhoods
-- prefer broad plausibility and editorial restraint over overconfident specificity
+- `localStorage` for app settings, layouts, saved matches, role/catalog drafts, and city drafts
+- IndexedDB for persisted local directory handles
+- local file save/load for explicit JSON and CSS export/import
+- checked-in JSON files in `content/` and `layouts/`
 
-### 10.3 Structured Character Model
-- id
-- match_id
-- piece_id
-- piece_type
-- faction
-- district_origin
-- first_name
-- middle_name
-- last_name
-- display_name
-- role
-- trait_ids
-- verb_ids
-- one_line_description
-- appearance_tags
-- cultural_context_notes
-- memory_log
-- status
-- generation_source
-- generation_model
-- content_status (`empty`, `procedural`, `authored`)
-- review_status (`empty`, `needs review`, `reviewed`, `approved`)
-- review_notes
-- last_reviewed_at
+This model is useful for rapid iteration, but it is now the main source of confusion between:
 
-### 10.4 Notes on Character Data
-Early versions should avoid broad procedural generation of sensitive demographic fields such as religion, sexuality, or ethnicity as explicit structured data. The main risks are stereotype reinforcement, overconfident inference, flattening neighborhoods into caricature, and accidentally making identity traits feel causally linked to morality.
+- local browser state
+- local filesystem state
+- repo-tracked canonical files
+- GitHub Pages deployed state
 
-To reduce those risks:
-- keep the early schema focused on role, district, traits, verbs, and description
-- use optional `cultural_context_notes` only where grounded in reviewed city content
-- allow identity-relevant details to remain unknown, omitted, or implied lightly in authored text later
-- separate style and presentation from ethical alignment or narrative worth
+That data-source ambiguity is the highest-priority product infrastructure problem.
 
 ---
 
-## 11. Recommended MVP
+## 6. Current Milestone Status
 
-### 11.1 MVP Slice
-- standard playable chess
-- one city only: Edinburgh
-- board mode plus simple map mode
-- district labels for all 64 cells
-- generated text-only character bios for all pieces
-- flavored narrative event log for moves and captures
-- no online play yet
-- no 3D city mesh requirement yet
-- no full comic generation yet
+Practical milestone guidance:
 
-### 11.2 Prototype Sequencing
-#### Prototype A — Core Local Chess
-**Status:** ✅ Completed
-**Goal:** local playable chess, move history and undo, minimal narrative event hooks, optional low-skill legal-move opponent.
-**Notes:** Core logic is stable.
+Even though work has landed in Milestones 3, 4, and 6, the project should still be managed as a Milestone 2 plus Milestone 6 consolidation effort. The right next move is not to widen scope further. It is to make Play and Cities dependable, align authored data with gameplay, and remove ambiguity about what data is canonical.
 
-#### Prototype B — Edinburgh Board
-**Status:** 🟡 In Progress (Needs Integration)
-**Goal:** Edinburgh district mapping added to the board, district labels and basic city context in UI, board and city data coordinated through shared schemas, simple map-mode support.
-**Notes:** Requires wiring `game-core` state transitions to consume `CityBoard` data.
+### Milestone 0 - Foundation
 
----
+Status: Complete
 
-## 12. Technical Recommendation
+Delivered:
 
-### 12.1 App Structure
-Use a lightweight monorepo to support agent parallelism while keeping the repository manageable on a basic GitHub account.
+- monorepo structure
+- TypeScript and test setup
+- shared schemas
+- baseline docs and agent guidance
 
-**Structure:**
-- `apps/web` — primary React application
-- `packages/game-core` — chess rules wrappers, move/state logic
-- `packages/content-schema` — shared TypeScript/Zod schemas
-- `packages/narrative-engine` — event generation, templates, and memory hooks
-- `content/cities` — city and district data
-- `content/templates` — narrative templates, verbs, and tone presets
-- `docs` — design notes, research, and workflow docs
-- `AGENTS.md` — project-level guidance for agentic coding tools
+### Milestone 1 - Core Chess Vertical Slice
 
-### 12.2 Frontend
-React + TypeScript + shadcn/ui
+Status: Complete
 
-### 12.3 Board Rendering
-Start with a 2D chess board to validate gameplay clarity, board interactions, and the basic narrative layer. Map elements should follow after the core chess experience is working. If the proof of concept is strong, the project can later move to a Three.js-based 3D board and city presentation.
+Delivered:
 
-### 12.4 3D / Spatial Layer
-Three.js is the planned path for later board-space presentation, but it is not required for the initial prototype.
+- legal local chess
+- move history and undo
+- study replay loading
+- responsive Play shell
+- baseline event log generation
 
-### 12.5 Game Logic
-Use a validated chess rules library such as chess.js early, wrapped with custom narrative hooks. For solo play, investigate existing lightweight chess AI or engine integrations appropriate for hobbyist-level play. The first goal is a simple, approachable player-vs-computer mode rather than a highly advanced opponent.
+### Milestone 2 - City Board Prototype
 
-### 12.6 State Management
-Zustand or Redux Toolkit. Zustand is likely enough at the beginning.
+Status: In progress, substantially delivered for Edinburgh
 
-### 12.7 Backend / Data Layer
-Supabase or another PostgreSQL-backed service for:
-- city data tables
-- district metadata
-- character generation templates
-- saved games
-- user accounts later
-- online game state later
+Delivered:
 
----
+- Edinburgh mapped into Play
+- district metadata surfaced in gameplay panels
+- MapLibre and Google map variants
+- Cities editor for district data and placement
 
-## 13. Data Model (High Level)
+Still missing to mark complete:
 
-### 13.1 City
-- id, name, country, style_tags, faction_presets, district_map
+- multiple playable cities wired into the Play experience
+- cleaner canonical data flow from content/editor into gameplay
+- stronger distinction between published and local-only board edits
 
-### 13.2 District
-- id, city_id, name, board_coordinate, borough, descriptors, landmarks, day_profile, night_profile, role_biases
+### Milestone 3 - Character Generation System
 
-### 13.3 Match
-- id, city_id, factions, opening_seed, move_history, event_history, result
+Status: In progress
 
-### 13.4 Event
-- id, match_id, move_number, event_type, actor_character_id, target_character_id, location_district_id, generated_text, tags
+Delivered:
 
----
+- generated character roster
+- role catalog support
+- Character panel and Recent Actions view
 
-## 14. Risks
+Still missing to mark complete:
 
-### Design Risks
-- narrative overwhelms chess readability
-- city mappings feel arbitrary or forced
-- generated characters become repetitive or stereotyped
-- the tone shifts too wildly to feel coherent
+- stronger authored/procedural override path
+- richer district-informed variation
+- explicit character revision workflow
 
-### Technical Risks
-- geospatial rendering complexity grows too early
-- online multiplayer adds too much architecture burden before the core is proven
-- content schema becomes too broad before use cases are validated
+### Milestone 4 - Narrative Event Layer
 
-### Ethical Risks
-- neighborhoods represented reductively
-- demographic inference handled insensitively
-- faction framing accidentally creates harmful optics
+Status: In progress
 
----
+Delivered:
 
-## 15. Open Questions and Current Decisions
+- move and capture framing
+- tone presets
+- Story Beat and Character narrative surfaces
+- event history attached to snapshots
 
-- **Is the main fantasy competitive chess with flavor, or storytelling through chess with strategy support?**
-  *Decision:* Preserve chess as the foundation while building strong narrative support around it.
+Still missing to mark complete:
 
-- **Should the system support solo play vs AI in the first public prototype?**
-  *Decision:* Yes, a simple chess AI or lightweight engine integration is the target, but it must not delay the core playable prototype.
+- stronger memory callbacks
+- better event variety and suppression of repetitive text
+- more contextual use of district/city/state information
 
-- **Should each city be hand-crafted or partially automated?**
-  *Decision:* Based on open city/district data, then passed through a research and editorial phase.
+### Milestone 5 - Visual Identity and 3D Presence
 
-- **How authored vs procedural should bios be?**
-  *Decision:* Start procedural, but the system must track and support a transition toward authored content.
+Status: Not started as a formal milestone
 
-- **When should the project shift from text-only to models?**
-  *Decision:* After proof of concept for basic gameplay and basic narrative is in place.
+Groundwork already present:
 
----
+- refined 2D presentation
+- map overlays
+- SVG piece assets
+- map and board piece motion
 
-## 16. Milestones and Agentic Workstreams
+Not yet started:
 
-The phase list below describes product scope evolution. The milestone plan below translates that scope into practical delivery slices that can be worked on in parallel.
+- 3D board
+- scene-based presentation
+- 3D character or district visualization
 
-**Progress Tracking:**
-*   **✅ Completed:** Feature is implemented, tested, and stable in the core logic.
-*   **🟡 In Progress:** Work has started, but integration or final polish is required.
-*   **⚪ Not Started:** Feature is scoped but no work has begun.
+### Milestone 6 - Durable Content and Save Infrastructure
 
-### Milestone 0 — Project Foundation
-**Objective:** Establish repo structure, development conventions, core tooling, and integration boundaries before feature work accelerates.
-**Progress:** ✅ Completed
-**Deliverables:** monorepo structure, TS/linting/formatting/test setup, baseline React app, initial documentation, content folder strategy, schema validation approach.
+Status: In progress
 
-### Milestone 1 — Core Chess Vertical Slice
-**Objective:** Deliver a clean, fully playable local chess experience with a strong UI foundation.
-**Progress:** ✅ Completed
-**Deliverables:** legal chess rules, move history and undo, selected-piece/valid-move highlighting, game-end conditions, baseline responsive UI shell, minimal narrative event log.
+Delivered:
 
-### Milestone 2 — City Board Prototype
-**Objective:** Replace abstract squares with district-aware board data for one city.
-**Progress:** 🟡 In Progress
-**Deliverables:** one fully mapped city board (Edinburgh), 64 board coordinates mapped to neighborhoods/subdistricts, district metadata model populated, board labels and district details visible in UI, board view and simple map view toggle.
-**Notes:** Requires wiring `game-core` state transitions to consume `CityBoard` data.
+- local save/load flows
+- checked-in content files
+- browser draft persistence
+- Pages deployment pipeline
 
-### Milestone 3 — Character Generation System
-**Objective:** Give every piece a generated human identity grounded in role, place, and faction.
-**Progress:** 🟡 In Progress
-**Deliverables:** character schema finalized, archetype role pools per piece type, first-pass naming strategy, district-informed trait generation, hover/click character cards, piece metadata stored in match state.
-**Notes:** Requires integrating `DistrictCell` data into `CharacterSummary` generation.
+Still missing to mark complete:
 
-### Milestone 4 — Narrative Event Layer
-**Objective:** Turn chess actions into readable narrative output.
-**Progress:** 🟡 In Progress
-**Deliverables:** flavored event log layered over move history, action templates by piece type and event type, capture interpretation rules, initial character memory hooks, tone preset support at a basic level.
-**Notes:** The engine is functional but needs richer context from the City/Character data to elevate the narrative quality.
+- single canonical data source
+- sync strategy
+- database-backed storage
+- revision history and conflict handling
 
-### Milestone 5 — Visual Identity and 3D Presence
-**Objective:** Introduce lightweight spatial and character representation without losing chess readability.
-**Progress:** ⚪ Not Started
-**Deliverables:** improved board presentation in 3D space, low-fi piece or character stand-ins, camera controls suited to a board game, visual distinction between board mode and map mode, basic atmosphere/shader experiments.
+### Milestone 7 - Multiplayer and Session Play
 
-### Milestone 6 — Saved Matches and Content Infrastructure
-**Objective:** Make the system durable enough to support iteration, replay, and future expansion.
-**Progress:** ⚪ Not Started
-**Deliverables:** persisted matches or exportable match snapshots, content loading strategy for cities, templates, and factions, admin/debug views for inspecting generated data, backend or hosted data layer introduced only where needed.
+Status: Not started
 
-### Milestone 7 — Multiplayer and Session Play
-**Objective:** Add networked play only after the single-player/local prototype is strong.
-**Progress:** ⚪ Not Started
-**Deliverables:** room creation and joining, synchronized move state, server-authoritative or host-authoritative validation, reconnect handling, multiplayer-ready event log behavior.
+### Milestone 8 - Story Artifact Output
 
-### Milestone 8 — Narrative Vignettes and Story Artifact Output
-**Objective:** Turn major moments into more memorable story artifacts.
-**Progress:** ⚪ Not Started
-**Deliverables:** selection rules for important moments, simple staged scenes or keyframe vignettes, exportable story recap or comic-like sequence, end-of-match summary focused on arcs and turning points.
+Status: Not started
+
+### Working Milestone Recommendation
+
+For planning and agent coordination, the active target should be:
+
+- primary: Milestone 2 completion
+- parallel support: Milestone 6 durability work
+- controlled support only: Milestone 3 and 4 quality improvements where they directly improve Play
 
 ---
 
-## 17. AGENTS.md Guidance
+## 7. Current Strengths
 
-The repository should include an `AGENTS.md` file at the root so tools like Codex and Claude Code have clear project instructions before making changes.
+### 7.1 Chess Readability is Real
 
-### Purpose of `AGENTS.md`
-- define architecture boundaries
-- define editing and ownership expectations
-- define how agents should scope work
-- define coding and testing expectations
-- reduce drift between parallel agent threads
+The app is not merely thematic mock UI. There is a real playable chess core with replay and state inspection.
 
-### Recommended contents of `AGENTS.md`
-*(Content remains as previously defined)*
+### 7.2 City Authoring Is Already Useful
 
----
+The Cities page is now productive enough to shape district placement, metadata, radius, and board alignment without leaving the app.
 
-## 18. Working Model for Claude Code Agents
+### 7.3 Layout Tooling Is Powerful
 
-*(Content remains as previously defined)*
+The shared layout system has become one of the app's strongest internal tools. It supports fast iteration across Play and content pages.
+
+### 7.4 The Repository Boundaries Are Mostly Sound
+
+`game-core`, `content-schema`, and `narrative-engine` remain meaningful boundaries. That is a strong base for further work.
 
 ---
 
-## 19. Proposed Next Steps
+## 8. Current Weaknesses and Risks
 
-1. **Lock Milestone 0 and Milestone 1 scope.** (✅ Complete)
-2. **Define repo/package structure** before parallel agent work begins. (✅ Complete)
-3. **Establish core schemas** for `City`, `District`, `Character`, `Match`, and `Event`. (✅ Complete)
-4. **Build the local chess vertical slice first.** (✅ Complete)
-5. **Choose the first city and begin structured district mapping in parallel.** (Next Focus)
-6. **Add character generation** only after the chess and city data contracts are stable.
+### 8.1 Data Canonicality Is Unclear
 
-**Next Action:** Focus on Milestone 2: City Board Prototype. This requires integrating the structured data from `content/cities/` into the state management of `game-core` and then feeding that enriched state into `narrative-engine`.
+This is the main issue.
 
----
+Right now it is too easy for:
 
-## 20. Implementation Status & Alignment Notes
+- local browser drafts
+- local saved files
+- checked-in repo content
+- deployed Pages state
 
-**Current State (2026-04-06):**
-- ✅ Milestone 0: Repo structure, TypeScript setup, linting complete
-- ✅ Milestone 1: Legal local chess, move history, undo, clear board UI implemented
-- 🟡 Milestone 2: Edinburgh board mapped, district labels wired, keyboard shortcuts added; full integration in progress
-- 🟡 Milestone 3: Character generation schema defined; character display enhanced
-- 🟡 Milestone 4: Narrative event generation working; ready for richer context integration
+to drift apart.
 
-**Important Deviations to Correct:**
+### 8.2 Play Is Feature-Rich but Not Yet Simplified
 
-1. **Chess-First Principle:** The app currently reads more like a tool dashboard than a chess-first experience. Utility pages and editor surfaces should support the game, not compete with it. Reduce persistent chrome where non-essential.
+The Play page has a lot of useful surfaces, but it is easy for the app to feel like a toolbench rather than a chess-first play experience.
 
-2. **Content Editor Unification:** Cities, Roles, Classics, and Research pages have useful content but inconsistent editing patterns. Establish one reusable editor shell across all content pages.
+### 8.3 Narrative Quality Is Still Template-First
 
-3. **Workspace Tooling Scope:** Layout editor, layout files, and named file saves are practical but beyond MVP scope. Keep them as support features, not product center.
+The current narrative system works, but it is still a lightweight framing layer. It is not yet delivering strong arcs or low-repetition storytelling over longer games.
 
-4. **Accessibility as Acceptance Criteria:** Keyboard behavior and semantics should be built-in requirements for all interactive flows, not added as polish later.
+### 8.4 UI Regression Risk Is High
 
-5. **Style & Assets Framing:** Piece styles, CSS references, and asset management are valuable but should be framed as content/reference tooling, not core gameplay.
+There is a lot of UI state now:
 
----
+- layout mode
+- panel visibility
+- map hover and selection
+- story/detail panel sync
+- saved match state
+- content editor draft state
 
-## 21. Supporting Authoring Tools
+This makes regression risk high unless more UI behavior is covered by targeted tests and review passes.
 
-Beyond the core match experience, the app supports structured content creation and review:
+### 8.5 Performance Risk Is Growing
 
-### Content Categories
+The Play page now combines:
 
-- **City Boards**: Structured 8x8 district mappings with neighborhood data, landmarks, tone cues, and day/night profiles
-- **Character Roles**: Templates for piece-type behavior across traits, verbs, and summary generation
-- **Narrative Templates**: Event headlines, details, and tone-specific codas for move-to-story translation
-- **Reference Games**: Classic chess games for study and narrative comparison
-- **Piece Styles**: CSS and visual asset references for piece rendering
+- shared motion timelines
+- board overlays
+- MapLibre overlays
+- several synchronized side panels
 
-### Editor Patterns
-
-All content editors should follow these principles:
-
-- **List/Detail Pattern**: Searchable list on left, detail editor on right
-- **Full-Page Scroll**: Prefer vertical scrolling over nested scroll regions
-- **Structured Tags**: Use consistent tag input patterns (autocomplete, clear, add/remove)
-- **Review Metadata**: Include `contentStatus`, `reviewStatus`, `reviewNotes`, `lastReviewedAt` fields
-- **Direct File Persistence**: Save back to `.json` or source files without hidden application state
-
-### Acceptance Criteria for Editor UX
-
-- Search field clears with button or shorthand (Escape key in focused field)
-- Keyboard navigation works within list (arrow keys, Home/End)
-- Tab order is logical and accessible
-- Selected/hovered states are visually distinct
-- No deeply nested modals; prefer inline editing or persistent panels
-- Save/load operations provide clear feedback
+That is workable now, but it needs explicit performance discipline to avoid gradually degrading.
 
 ---
 
-## 22. Next Features & Deferred Work
+## 9. What Should Happen Next
 
-**Priority 1: Editor UX Consistency**
-- Simplify Cities column display to name + count
-- Add sort options for Cities and Roles pages
-- Unified tag editor pattern across content pages
+The next phase should not be "add more pages." It should be consolidation.
 
-**Priority 2: Style & Asset Reference**
-- Create page for piece art, CSS styling, and asset review
-- Support configurable style options for pieces and states
-- Allow CSS styles to be saved and reused
+### 9.1 Priority A - Data and Persistence Cleanup
 
-**Priority 3: Layout & Settings Recovery**
-- Add option to reset local layout files to defaults
-- Improve error handling for corrupted persistence
+Goal: define one canonical source for content and layout state.
 
-**Priority 4: Research Organization**
-- Tab-based organization: Competition, Art Assets, Style Reference
+Work:
 
-**Priority 5: Docs & Onboarding**
-- Keep PRD and recovery queue current
-- Document authoring workflows explicitly
-- Maintain user-facing notes for agent efficiency
+- formalize canonical vs draft data rules
+- define what is browser cache only
+- define what must be saved to file
+- plan backend/database migration path, but do not implement it yet unless it directly solves a current workflow problem
+- make "published state" and "local draft state" explicit in UI
 
+### 9.2 Priority B - Play Surface Stabilization
+
+Goal: make Play feel tighter and more reliable.
+
+Work:
+
+- reduce remaining layout/panel inconsistencies
+- improve animation reliability and performance
+- tighten panel sync rules
+- continue removing UI clutter that weakens chess readability
+
+### 9.3 Priority C - Cities Workflow Maturity
+
+Goal: make Cities the dependable source for authored district data.
+
+Work:
+
+- improve district editing workflow
+- clarify save/reset semantics
+- improve map search and placement loops
+- prepare the path from edited city data into gameplay without hidden drift
+
+### 9.4 Priority D - Narrative Quality Pass
+
+Goal: improve output quality before expanding scope.
+
+Work:
+
+- enrich move templates with more context
+- reduce repetitive phrasing
+- use district, role, and prior actions more effectively
+- define a clear boundary for "lightweight but good enough" narrative output
+
+### 9.5 Priority E - Shared Editor Shell Consistency
+
+Goal: keep support pages useful without fragmenting interaction patterns.
+
+Work:
+
+- normalize list/detail layouts where practical
+- standardize button bars, save/reset semantics, and notification behavior
+- keep shadcn-based patterns consistent across Play support panels and editor pages
+
+---
+
+## 10. Proposed Agent Workstreams
+
+These are the agent roles worth using next. They should be treated as bounded workstreams with disjoint write scopes where possible.
+
+### Agent 1 - Persistence and Data Contracts
+
+Focus:
+
+- `apps/web/src/*State.ts`
+- `apps/web/src/fileSystemAccess.ts`
+- `layouts/`
+- `content/`
+
+Responsibilities:
+
+- document current persistence sources
+- define canonical vs draft rules
+- propose backend-ready schema mapping
+- reduce drift between browser, file, and deployed data
+
+### Agent 2 - Play Surface and Motion
+
+Focus:
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/Board.tsx`
+- `apps/web/src/components/CityMapLibrePanel.tsx`
+- `apps/web/src/hooks/useMovePlayhead.ts`
+- `apps/web/src/hooks/useCaptureImpact.ts`
+
+Responsibilities:
+
+- stabilize animation behavior
+- improve frame pacing and overlay sync
+- simplify panel behavior where it conflicts with play clarity
+
+### Agent 3 - Cities Authoring
+
+Focus:
+
+- `apps/web/src/components/EdinburghReviewPage.tsx`
+- `apps/web/src/components/CityDistrictPlacementEditor.tsx`
+- related draft state modules
+
+Responsibilities:
+
+- improve district editor ergonomics
+- tighten bulk edit rules
+- improve save/reset and placement workflows
+- prepare cities to feed gameplay more directly
+
+### Agent 4 - Narrative Systems
+
+Focus:
+
+- `packages/narrative-engine`
+- `content/templates/narrative-data.json`
+
+Responsibilities:
+
+- reduce repetition
+- improve move/capture/check framing
+- define memory and callback rules for later milestones
+
+### Agent 5 - Content and Editorial Tooling
+
+Focus:
+
+- Roles
+- Classics
+- Research
+- Design
+
+Responsibilities:
+
+- keep editor patterns consistent
+- improve authoring flow
+- make support pages useful without letting them dominate the product
+
+### Agent 6 - QA and Regression Review
+
+Focus:
+
+- targeted UI review
+- persistence checks
+- GitHub Pages and deployment verification
+
+Responsibilities:
+
+- regression review after each major UI/data change
+- workflow verification for save, load, publish, and deploy
+- accessibility and keyboard checks for critical panels
+
+### Recommended Agent Sequence
+
+The highest-value order from here is:
+
+1. Agent 1 defines data ownership, persistence rules, and draft vs published behavior.
+2. Agent 2 and Agent 3 work in parallel once those rules are clear enough to avoid drift.
+3. Agent 4 improves narrative quality only after the Play and Cities contracts are stable.
+4. Agent 5 follows by normalizing the support pages to the same editor shell patterns.
+5. Agent 6 runs continuously as a review and regression pass after each major change set.
+
+---
+
+## 11. Recommended Delivery Sequence From Here
+
+1. clarify persistence rules and canonical data ownership
+2. stabilize Play interactions and animation/performance
+3. stabilize Cities as the primary authored data workflow
+4. improve narrative quality using the current schema
+5. only then decide on backend/database implementation
+
+This order is important. A database will help, but it will not fix unclear data ownership by itself.
+
+---
+
+## 12. Immediate Next Tasks
+
+### 12.1 Short-Term
+
+- document persistence sources and UI states
+- define "published data" vs "local draft data" in-product
+- reduce Play page polish debt
+- review Cities save/load behavior end to end
+- define which values are allowed to remain browser-only cache
+- make local file saves and repo-tracked content visibly distinct in UI
+
+### 12.2 Medium-Term
+
+- choose the canonical data model for layouts, cities, districts, characters, and saved matches
+- prepare database migration plan
+- wire authored city content more cleanly into gameplay
+- improve narrative event quality
+- normalize shared editor and button-bar patterns across non-Play pages
+
+### 12.3 Deferred
+
+- multiplayer
+- 3D presentation
+- comic/vignette generation
+- heavier backend complexity before data contracts are stable
+
+---
+
+## 13. Acceptance Criteria For The Next Phase
+
+The next phase should be considered successful if:
+
+- local edits, saved files, and deployed content stop drifting silently
+- Play feels reliable and chess-first after recent UI expansion
+- Cities becomes the dependable place to author and inspect district data
+- narrative output improves without expanding schema complexity too early
+- the team can explain where every important class of data lives
+
+---
+
+## 14. Summary
+
+Narrative Chess is now a serious local-first prototype with:
+
+- a real chess core
+- city-aware play surfaces
+- structured content editors
+- layout tooling
+- deployable static delivery
+
+The biggest gap is no longer "can the app do enough?" It can.
+
+The biggest gap is:
+
+- data source clarity
+- consolidation
+- stability under growing UI complexity
+
+That should drive the next milestone work.

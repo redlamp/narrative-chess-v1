@@ -138,6 +138,8 @@ type PanelSizeConstraint = {
   maxH: number;
 };
 
+const historyPlaybackDelayMs = 700;
+
 const panelTitles: Record<WorkspacePanelId, string> = {
   board: "Board",
   moves: "Match History (PGN)",
@@ -399,6 +401,7 @@ export default function App() {
   const [pieceStyleFileNotice, setPieceStyleFileNotice] = useState<LayoutFileNotice | null>(null);
   const [isPieceStyleDirectorySupported, setIsPieceStyleDirectorySupported] = useState(false);
   const [selectedSavedMatchId, setSelectedSavedMatchId] = useState<string | null>(null);
+  const [isHistoryPlaying, setIsHistoryPlaying] = useState(false);
   const [playCityBoard, setPlayCityBoard] = useState<CityBoard>(() =>
     listCityBoardDraft(edinburghBoard.id, edinburghBoard)
   );
@@ -480,6 +483,72 @@ export default function App() {
     referenceGamesLibrary[0] ??
     null;
   const hasActiveGame = isStudyMode || totalPlies > 0;
+
+  useEffect(() => {
+    if (!isHistoryPlaying) {
+      return;
+    }
+
+    if (page !== "match" || totalPlies <= 0 || selectedPly >= totalPlies) {
+      setIsHistoryPlaying(false);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      goToPly(selectedPly + 1);
+    }, historyPlaybackDelayMs);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [goToPly, isHistoryPlaying, page, selectedPly, totalPlies]);
+
+  useEffect(() => {
+    setIsHistoryPlaying(false);
+  }, [timelineKey]);
+
+  const handleToggleHistoryPlayback = useCallback(() => {
+    if (isHistoryPlaying) {
+      setIsHistoryPlaying(false);
+      return;
+    }
+
+    if (totalPlies <= 0) {
+      return;
+    }
+
+    if (selectedPly >= totalPlies) {
+      goToPly(0);
+    }
+
+    setIsHistoryPlaying(true);
+  }, [goToPly, isHistoryPlaying, selectedPly, totalPlies]);
+
+  const handleHistoryJumpToStart = useCallback(() => {
+    setIsHistoryPlaying(false);
+    jumpToStart();
+  }, [jumpToStart]);
+
+  const handleHistoryStepBackward = useCallback(() => {
+    setIsHistoryPlaying(false);
+    stepBackward();
+  }, [stepBackward]);
+
+  const handleHistoryStepForward = useCallback(() => {
+    setIsHistoryPlaying(false);
+    stepForward();
+  }, [stepForward]);
+
+  const handleHistoryJumpToEnd = useCallback(() => {
+    setIsHistoryPlaying(false);
+    jumpToEnd();
+  }, [jumpToEnd]);
+
+  const handleHistorySelectPly = useCallback((nextPly: number) => {
+    setIsHistoryPlaying(false);
+    goToPly(nextPly);
+  }, [goToPly]);
+
   const effectiveLayoutMode = isLayoutMode && !isCompactViewport;
   const useFreeformWorkspaceLayout = !isCompactViewport;
   const workspaceRowCount = useMemo(
@@ -1906,11 +1975,13 @@ export default function App() {
                 totalPlies={totalPlies}
                 collapsed={workspaceLayout.collapsed.moves}
                 onToggleCollapse={() => handleTogglePanelCollapse("moves")}
-                onJumpToStart={jumpToStart}
-                onStepBackward={stepBackward}
-                onStepForward={stepForward}
-                onJumpToEnd={jumpToEnd}
-                onSelectPly={goToPly}
+                onJumpToStart={handleHistoryJumpToStart}
+                onStepBackward={handleHistoryStepBackward}
+                isPlaying={isHistoryPlaying}
+                onTogglePlayback={handleToggleHistoryPlayback}
+                onStepForward={handleHistoryStepForward}
+                onJumpToEnd={handleHistoryJumpToEnd}
+                onSelectPly={handleHistorySelectPly}
               />
               {renderMoveSurface("moves")}
               {renderResizeHandle("moves")}

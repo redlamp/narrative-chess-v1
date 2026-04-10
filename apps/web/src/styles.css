@@ -1960,6 +1960,10 @@ select {
   width: 2.5rem;
 }
 
+.match-history__play-toggle {
+  min-width: 4.75rem;
+}
+
 .match-history__scrubber {
   display: inline-flex;
   align-items: center;
