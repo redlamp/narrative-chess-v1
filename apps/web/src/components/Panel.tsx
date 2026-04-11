@@ -11,11 +11,12 @@ import {
 } from "@/components/ui/card";
 
 type PanelProps = {
-  title: string;
+  title: ReactNode;
   eyebrow?: string;
   leadingAction?: ReactNode;
   action?: ReactNode;
   className?: string;
+  bodyClassName?: string;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
   children: ReactNode;
@@ -27,12 +28,14 @@ export function Panel({
   leadingAction,
   action,
   className,
+  bodyClassName,
   collapsed = false,
   onToggleCollapse,
   children
 }: PanelProps) {
   const panelTitleId = useId();
   const panelBodyId = useId();
+  const accessibleTitle = typeof title === "string" ? title : "panel";
 
   return (
     <Card className={cn("panel", collapsed && "panel--collapsed", className)} size="sm">
@@ -47,7 +50,7 @@ export function Panel({
               onClick={onToggleCollapse}
               aria-controls={panelBodyId}
               aria-expanded={!collapsed}
-              aria-label={`${collapsed ? "Expand" : "Collapse"} ${title}`}
+              aria-label={`${collapsed ? "Expand" : "Collapse"} ${accessibleTitle}`}
             >
               {collapsed ? <ChevronRight /> : <ChevronDown />}
             </Button>
@@ -64,7 +67,7 @@ export function Panel({
       </CardHeader>
       {!collapsed ? (
         <CardContent
-          className="panel__body"
+          className={cn("panel__body", bodyClassName)}
           id={panelBodyId}
           role="region"
           aria-labelledby={panelTitleId}

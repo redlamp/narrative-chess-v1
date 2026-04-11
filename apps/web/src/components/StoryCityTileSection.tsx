@@ -1,39 +1,99 @@
-import type { CharacterSummary, DistrictCell, PieceState } from "@narrative-chess/content-schema";
+import { ExternalLink } from "lucide-react";
+import type { CharacterSummary, CityBoard, DistrictCell, PieceState } from "@narrative-chess/content-schema";
+import { Button } from "@/components/ui/button";
+import { getPieceDisplayName } from "../chessPresentation";
+import { buildOpenStreetMapUrl, getDistrictMapCenter } from "./cityMapShared";
 import { PieceArt } from "./PieceArt";
 
 type StoryCityTileSectionProps = {
+  cityBoard: CityBoard;
   focusedDistrict: DistrictCell | null;
+  selectedDistrict: DistrictCell | null;
   focusedPiece: PieceState | null;
   focusedCharacter: CharacterSummary | null;
+  isHoverPreview: boolean;
   showLabel?: boolean;
 };
 
 export function StoryCityTileSection({
+  cityBoard,
   focusedDistrict,
+  selectedDistrict,
   focusedPiece,
   focusedCharacter,
+  isHoverPreview,
   showLabel = true
 }: StoryCityTileSectionProps) {
+  const blankValue = "\u00A0";
+  const showSourceLink = Boolean(
+    focusedDistrict &&
+      selectedDistrict &&
+      focusedDistrict.id === selectedDistrict.id &&
+      !isHoverPreview
+  );
+  const sourceUrl =
+    showSourceLink && focusedDistrict
+      ? buildOpenStreetMapUrl(getDistrictMapCenter(cityBoard, focusedDistrict), focusedDistrict.mapAnchor ? 14 : 12)
+      : null;
+  const summary = focusedDistrict
+    ? [focusedDistrict.locality, focusedDistrict.dayProfile].filter(Boolean).join(" | ") || blankValue
+    : blankValue;
+  const descriptors = focusedDistrict?.descriptors.length ? focusedDistrict.descriptors : [blankValue];
+  const landmarks = focusedDistrict?.landmarks.length ? focusedDistrict.landmarks : [blankValue];
+  const occupantName = focusedCharacter?.fullName || blankValue;
+  const occupantRole = focusedCharacter?.role || blankValue;
+  const occupantPieceText = focusedPiece ? getPieceDisplayName(focusedPiece) : blankValue;
+
   return (
     <section className="story-section story-section--city story-section--stable">
-      {showLabel ? <p className="field-label">City Tile</p> : null}
-      {focusedDistrict ? (
-        <>
-          <div className="detail-card__title-row story-section__title-row">
-            <h3 className="story-section__title story-city__title city-map-panel__title">
-              {focusedDistrict.name}
-            </h3>
-            <span className="side-pill side-pill--compact side-pill--white">{focusedDistrict.square}</span>
+      {showLabel ? <p className="field-label">District</p> : null}
+      <>
+          <p className="detail-card__description story-section__description">{summary}</p>
+          <div className="story-city__occupant-group">
+            <p className="field-label">Occupant</p>
+            <div className="story-city__occupant">
+              <div className="story-city__occupant-copy">
+                <p className="character-detail-container__name story-city__occupant-name">
+                  {occupantName}
+                </p>
+                <p className="story-city__occupant-role">{occupantRole}</p>
+              </div>
+              <div className="character-detail-container__piece-meta">
+                <span className="character-detail-container__piece-text">{occupantPieceText}</span>
+                <span
+                  className={[
+                    "piece-badge__icon",
+                    focusedPiece ? `piece-badge__icon--${focusedPiece.side}` : "",
+                    "character-detail-container__piece-icon",
+                    focusedPiece ? "" : "character-detail-container__piece-icon--placeholder"
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  aria-hidden={!focusedPiece}
+                >
+                  {focusedPiece ? (
+                    <PieceArt
+                      side={focusedPiece.side}
+                      kind={focusedPiece.kind}
+                      className="board-piece-art board-piece-art--badge"
+                    />
+                  ) : (
+                    blankValue
+                  )}
+                </span>
+              </div>
+            </div>
           </div>
-          <p className="detail-card__description story-section__description">
-            {focusedDistrict.locality} | {focusedDistrict.dayProfile}
-          </p>
-          <div className="story-city__groups">
-            <div className="story-city__group">
-              <p className="field-label">Descriptors</p>
+          <div className="story-city__details-grid">
+            <div className="story-city__group story-city__group--description">
+              <p className="field-label">Description</p>
               <div className="chip-row">
-                {focusedDistrict.descriptors.map((descriptor) => (
-                  <span key={descriptor} className="chip">
+                {descriptors.map((descriptor, index) => (
+                  <span
+                    key={`${descriptor}-${index}`}
+                    className={`chip${descriptor === blankValue ? " chip--placeholder" : ""}`}
+                    aria-hidden={descriptor === blankValue}
+                  >
                     {descriptor}
                   </span>
                 ))}
@@ -42,55 +102,29 @@ export function StoryCityTileSection({
             <div className="story-city__group">
               <p className="field-label">Landmarks</p>
               <div className="chip-row">
-                {focusedDistrict.landmarks.map((landmark) => (
-                  <span key={landmark} className="chip chip--soft">
+                {landmarks.map((landmark, index) => (
+                  <span
+                    key={`${landmark}-${index}`}
+                    className={`chip chip--soft${landmark === blankValue ? " chip--placeholder" : ""}`}
+                    aria-hidden={landmark === blankValue}
+                  >
                     {landmark}
                   </span>
                 ))}
               </div>
             </div>
           </div>
-          {focusedPiece && focusedCharacter ? (
-            <div className="story-city__occupant-group">
-              <p className="field-label">Occupant</p>
-              <div className="story-city__occupant">
-                <span className={`piece-badge__icon piece-badge__icon--${focusedPiece.side}`}>
-                  <PieceArt
-                    side={focusedPiece.side}
-                    kind={focusedPiece.kind}
-                    className="board-piece-art board-piece-art--badge"
-                  />
-                </span>
-                <div className="story-city__occupant-copy">
-                  <p className="piece-badge__label">{focusedCharacter.fullName}</p>
-                </div>
-              </div>
+          {sourceUrl ? (
+            <div className="story-city__footer">
+              <Button asChild variant="outline" size="sm">
+                <a href={sourceUrl} target="_blank" rel="noreferrer">
+                  Source
+                  <ExternalLink className="size-3.5" />
+                </a>
+              </Button>
             </div>
           ) : null}
-        </>
-      ) : (
-        <div className="story-empty-state story-empty-state--city">
-          <div className="detail-card__title-row story-section__title-row">
-            <h3 className="story-section__title city-map-panel__title">District</h3>
-          </div>
-          <div
-            className="story-empty-state__spacer story-empty-state__spacer--description"
-            aria-hidden="true"
-          />
-          <div className="story-empty-state__group">
-            <p className="field-label">Descriptors</p>
-            <div className="story-empty-state__spacer story-empty-state__spacer--group" aria-hidden="true" />
-          </div>
-          <div className="story-empty-state__group">
-            <p className="field-label">Landmarks</p>
-            <div className="story-empty-state__spacer story-empty-state__spacer--group" aria-hidden="true" />
-          </div>
-          <div className="story-empty-state__group">
-            <p className="field-label">Occupant</p>
-            <div className="story-empty-state__spacer story-empty-state__spacer--occupant" aria-hidden="true" />
-          </div>
-        </div>
-      )}
+      </>
     </section>
   );
 }

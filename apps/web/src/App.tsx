@@ -8,19 +8,38 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent
 } from "react";
-import { Building2, ChessPawn, Cog, LayoutDashboard, Moon, Pencil, Scroll, Sun, Telescope, UsersRound } from "lucide-react";
+import {
+  Building2,
+  ChessPawn,
+  ChevronDown,
+  Cog,
+  LayoutDashboard,
+  Moon,
+  Pencil,
+  Scroll,
+  Sun,
+  Telescope,
+  UsersRound
+} from "lucide-react";
 import { getPieceAtSquare } from "@narrative-chess/game-core";
 import { getCharacterEventHistory } from "@narrative-chess/narrative-engine";
 import type { CityBoard, PieceKind, Square } from "@narrative-chess/content-schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   applyAppTheme,
   listAppSettings,
-  resetAppSettings,
   saveAppSettings,
   type AppSettings
 } from "./appSettings";
@@ -55,6 +74,8 @@ import { listReferenceGames, saveReferenceGames, type ReferenceGameLibrary } fro
 import {
   connectRoleCatalogDirectory,
   getConnectedRoleCatalogDirectoryName,
+  loadClassicGamesFromDirectory,
+  loadCityDraftFromDirectory,
   loadRoleCatalogFromDirectory,
   saveRoleCatalogDraftToDirectory,
   supportsDirectoryWrite as supportsRoleCatalogDirectory,
@@ -93,6 +114,7 @@ import { StoryBeatSection } from "./components/StoryBeatSection";
 import { StoryCityTileSection } from "./components/StoryCityTileSection";
 import { StoryToneSection } from "./components/StoryToneSection";
 import { CharacterDetailPanel } from "./components/CharacterDetailPanel";
+import { DistrictBadge } from "./components/DistrictBadge";
 import { RecentGamesPanel } from "./components/RecentGamesPanel";
 import { useChessMatch } from "./hooks/useChessMatch";
 import { useMovePlayhead } from "./hooks/useMovePlayhead";
@@ -146,7 +168,7 @@ const panelTitles: Record<WorkspacePanelId, string> = {
   "city-map": "City Map (Google)",
   "city-map-maplibre": "Map",
   "story-beat": "Story Beat",
-  "story-tile": "City Tile",
+  "story-tile": "District",
   "story-character": "Character",
   "story-tone": "Narrative Tone",
   "recent-games": "Saved Games"
@@ -390,6 +412,7 @@ export default function App() {
   const [layoutFileNotice, setLayoutFileNotice] = useState<LayoutFileNotice | null>(null);
   const [saveEverythingNotice, setSaveEverythingNotice] = useState<SaveEverythingNotice | null>(null);
   const [isSavingEverything, setIsSavingEverything] = useState(false);
+  const [isLoadingEverything, setIsLoadingEverything] = useState(false);
   const [knownLayoutFiles, setKnownLayoutFiles] = useState<WorkspaceLayoutFileReference[]>(() =>
     listKnownWorkspaceLayoutFiles()
   );
@@ -406,10 +429,33 @@ export default function App() {
     listCityBoardDraft(edinburghBoard.id, edinburghBoard)
   );
   const handleCityBoardDraftChange = useCallback((board: CityBoard) => {
-    if (board.id === edinburghBoard.id) {
+    if (board.id === playCityBoard.id) {
       setPlayCityBoard(board);
     }
-  }, []);
+  }, [playCityBoard.id]);
+
+  useEffect(() => {
+    if (
+      !workspaceLayout.collapsed.board &&
+      !workspaceLayout.collapsed.moves &&
+      !workspaceLayout.collapsed["story-tone"] &&
+      !workspaceLayout.collapsed["city-map-maplibre"]
+    ) {
+      return;
+    }
+
+    setWorkspaceLayout((current) =>
+      ["board", "moves", "story-tone", "city-map-maplibre"].reduce(
+        (nextLayout, panelId) =>
+          setWorkspacePanelCollapsed({
+            layoutState: nextLayout,
+            panelId: panelId as CollapsibleWorkspacePanelId,
+            collapsed: false
+          }),
+        current
+      )
+    );
+  }, [workspaceLayout.collapsed]);
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const {
     snapshot,
@@ -580,7 +626,6 @@ export default function App() {
       {
         id: "moves",
         label: panelTitles.moves,
-        collapsed: workspaceLayout.collapsed.moves,
         visible: workspaceLayout.visible.moves
       },
       {
@@ -592,7 +637,6 @@ export default function App() {
       {
         id: "city-map-maplibre",
         label: panelTitles["city-map-maplibre"],
-        collapsed: workspaceLayout.collapsed["city-map-maplibre"],
         visible: workspaceLayout.visible["city-map-maplibre"]
       },
       {
@@ -616,7 +660,6 @@ export default function App() {
       {
         id: "story-tone",
         label: panelTitles["story-tone"],
-        collapsed: workspaceLayout.collapsed["story-tone"],
         visible: workspaceLayout.visible["story-tone"]
       },
       {
@@ -629,6 +672,44 @@ export default function App() {
     [workspaceLayout.collapsed, workspaceLayout.visible]
   );
 
+  const playMapCityMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" variant="ghost" size="sm" className="panel__title-trigger">
+          <span className="panel__title-trigger-label">{playCityBoard.name}</span>
+          <ChevronDown data-icon="inline-end" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Cities</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={playCityBoard.id}
+          onValueChange={(nextCityId) => {
+            const nextDefinition = cityBoardDefinitions.find((definition) => definition.id === nextCityId);
+            if (!nextDefinition) {
+              return;
+            }
+
+            setPlayCityBoard(listCityBoardDraft(nextDefinition.id, nextDefinition.board));
+          }}
+        >
+          {cityBoardDefinitions.map((definition) => (
+            <DropdownMenuRadioItem key={definition.id} value={definition.id}>
+              {definition.displayLabel}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+  const playHeaderDistrict = hoveredSquare ? focusedDistrict : selectedDistrict;
+  const renderPlayHeaderDistrictBadge = () => (
+    <DistrictBadge
+      name={playHeaderDistrict?.name ?? null}
+      square={playHeaderDistrict?.square ?? null}
+      className="district-badge--header"
+    />
+  );
   const applyResizeConstraints = (
     panelId: WorkspacePanelId,
     nextRect: WorkspacePanelRect,
@@ -1219,11 +1300,6 @@ export default function App() {
     );
   };
 
-  const handleResetSettings = () => {
-    const nextSettings = resetAppSettings();
-    setSettings(nextSettings);
-  };
-
   const handleThemeChange = (theme: AppSettings["theme"]) => {
     setSettings((current) => ({
       ...current,
@@ -1404,7 +1480,7 @@ export default function App() {
   };
 
   const handleSaveEverything = () => {
-    if (isSavingEverything) {
+    if (isSavingEverything || isLoadingEverything) {
       return;
     }
 
@@ -1502,6 +1578,131 @@ export default function App() {
         });
       } finally {
         setIsSavingEverything(false);
+      }
+    })();
+  };
+
+  const handleLoadEverything = () => {
+    if (isSavingEverything || isLoadingEverything) {
+      return;
+    }
+
+    void (async () => {
+      setIsLoadingEverything(true);
+      setSaveEverythingNotice(null);
+
+      const loadedItems: string[] = [];
+      const skippedItems: string[] = [];
+      const failedItems: string[] = [];
+      const recordLoad = async (
+        label: string,
+        action: () => Promise<boolean>
+      ) => {
+        try {
+          const didLoad = await action();
+          if (didLoad) {
+            loadedItems.push(label);
+          } else {
+            skippedItems.push(label);
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "unknown error";
+          failedItems.push(`${label}: ${message}`);
+        }
+      };
+
+      try {
+        const nextWorkspaceLayout = listWorkspaceLayoutState();
+        const nextRoleCatalog = listRoleCatalog();
+        const nextReferenceGames = listReferenceGames();
+
+        setWorkspaceLayout(nextWorkspaceLayout);
+        setKnownLayoutFiles(listKnownWorkspaceLayoutFiles());
+        setRoleCatalog(nextRoleCatalog);
+        setReferenceGamesLibrary(nextReferenceGames);
+        setSelectedReferenceGameId((currentId) =>
+          nextReferenceGames.some((game) => game.id === currentId)
+            ? currentId
+            : nextReferenceGames[0]?.id ?? ""
+        );
+
+        cityBoardDefinitions.forEach((definition) => {
+          const board = listCityBoardDraft(definition.id, definition.board);
+          saveCityBoardDraft(board);
+          if (definition.id === edinburghBoard.id) {
+            setPlayCityBoard(board);
+          }
+        });
+
+        loadedItems.push("browser state");
+
+        await recordLoad("Play layout", async () => {
+          const result = await loadWorkspaceLayoutFileFromDirectory(layoutFileName);
+          if (!result) {
+            return false;
+          }
+
+          saveWorkspaceLayoutState(result.layoutState);
+          setWorkspaceLayout(result.layoutState);
+          setKnownLayoutFiles(result.knownFiles);
+          setLayoutDirectoryName(result.directoryName);
+          setLayoutFileName(result.layoutName);
+          return true;
+        });
+
+        for (const definition of cityBoardDefinitions) {
+          await recordLoad(`${definition.displayLabel} city data`, async () => {
+            const result = await loadCityDraftFromDirectory(definition.board);
+            if (!result) {
+              return false;
+            }
+
+            const nextBoard = saveCityBoardDraft(result.board);
+            if (definition.id === edinburghBoard.id) {
+              setPlayCityBoard(nextBoard);
+            }
+            return true;
+          });
+        }
+
+        await recordLoad("Historic games", async () => {
+          const result = await loadClassicGamesFromDirectory();
+          if (!result) {
+            return false;
+          }
+
+          const nextGames = saveReferenceGames(result.games);
+          setReferenceGamesLibrary(nextGames);
+          setSelectedReferenceGameId((currentId) =>
+            nextGames.some((game) => game.id === currentId)
+              ? currentId
+              : nextGames[0]?.id ?? ""
+          );
+          return true;
+        });
+
+        await recordLoad("Character roles", async () => {
+          const result = await loadRoleCatalogFromDirectory();
+          if (!result) {
+            return false;
+          }
+
+          const nextCatalog = saveRoleCatalog(result.roleCatalog);
+          setRoleCatalog(nextCatalog);
+          setRoleCatalogDirectoryName(result.directoryName);
+          return true;
+        });
+
+        setSaveEverythingNotice({
+          tone: failedItems.length ? "error" : "success",
+          text: failedItems.length
+            ? `Loaded ${loadedItems.length} item(s). ${failedItems.length} failed: ${failedItems.join(" | ")}`
+            : skippedItems.length
+              ? `Loaded ${loadedItems.join(", ")}. Skipped: ${skippedItems.join(", ")}.`
+              : `Loaded ${loadedItems.join(", ")}.`
+        });
+      } finally {
+        setIsLoadingEverything(false);
       }
     })();
   };
@@ -1720,15 +1921,13 @@ export default function App() {
 
             <AppMenu
               isOpen={isMenuOpen}
-              settings={settings}
               onOpenChange={setIsMenuOpen}
-              onResetSettings={handleResetSettings}
               onSaveEverything={handleSaveEverything}
+              onLoadEverything={handleLoadEverything}
               isSavingEverything={isSavingEverything}
+              isLoadingEverything={isLoadingEverything}
               saveEverythingNotice={saveEverythingNotice}
-              onThemeChange={handleThemeChange}
-              onDefaultViewModeChange={handleDefaultViewModeChange}
-              onBooleanSettingChange={handleBooleanSettingChange}
+              onDismissSaveEverythingNotice={() => setSaveEverythingNotice(null)}
             />
           </div>
 
@@ -1912,39 +2111,29 @@ export default function App() {
                 useFreeformWorkspaceLayout
               )}
             >
-              <Card className="board-panel" size="sm">
-                <CardHeader className="board-panel__header">
-                  <div className="panel__heading">
-                    <div className="grid gap-1">
-                      <CardTitle className="panel__title">
-                        {isStudyMode ? "Study replay board" : "Board"}
-                      </CardTitle>
-                    </div>
-                  </div>
-                  <div className="board-panel__meta">
-                    <span className="side-pill">Edinburgh</span>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="board-panel__content">
-                  <Board
-                    snapshot={snapshot}
-                    cells={boardSquares}
-                    selectedSquare={selectedSquare}
-                    hoveredSquare={hoveredSquare}
-                    inspectedSquare={inspectedSquare}
-                    legalMoves={legalMoves}
-                    viewMode={settings.defaultViewMode}
-                    districtsBySquare={playDistrictsBySquare}
-                    showCoordinates={settings.showBoardCoordinates}
-                    showDistrictLabels={settings.showDistrictLabels}
-                    animatedPieces={animatedPieces}
-                    onSquareClick={handleSquareClick}
-                    onSquareHover={setHoveredSquare}
-                    onSquareLeave={() => setHoveredSquare(null)}
-                  />
-                </CardContent>
-              </Card>
+              <Panel
+                className="board-panel"
+                bodyClassName="board-panel__content"
+                title="Board"
+                action={renderPlayHeaderDistrictBadge()}
+              >
+                <Board
+                  snapshot={snapshot}
+                  cells={boardSquares}
+                  selectedSquare={selectedSquare}
+                  hoveredSquare={hoveredSquare}
+                  inspectedSquare={inspectedSquare}
+                  legalMoves={legalMoves}
+                  viewMode={settings.defaultViewMode}
+                  districtsBySquare={playDistrictsBySquare}
+                  showCoordinates={true}
+                  showDistrictLabels={settings.showDistrictLabels}
+                  animatedPieces={animatedPieces}
+                  onSquareClick={handleSquareClick}
+                  onSquareHover={setHoveredSquare}
+                  onSquareLeave={() => setHoveredSquare(null)}
+                />
+              </Panel>
 
               {renderMoveSurface("board")}
               {renderResizeHandle("board")}
@@ -1973,8 +2162,6 @@ export default function App() {
                 characters={snapshot.characters}
                 selectedPly={selectedPly}
                 totalPlies={totalPlies}
-                collapsed={workspaceLayout.collapsed.moves}
-                onToggleCollapse={() => handleTogglePanelCollapse("moves")}
                 onJumpToStart={handleHistoryJumpToStart}
                 onStepBackward={handleHistoryStepBackward}
                 isPlaying={isHistoryPlaying}
@@ -2007,6 +2194,7 @@ export default function App() {
             >
               <Panel
                 title="City Map (Google)"
+                action={renderPlayHeaderDistrictBadge()}
                 collapsed={workspaceLayout.collapsed["city-map"]}
                 onToggleCollapse={() => handleTogglePanelCollapse("city-map")}
               >
@@ -2040,11 +2228,7 @@ export default function App() {
                 useFreeformWorkspaceLayout
               )}
             >
-              <Panel
-                title="Map"
-                collapsed={workspaceLayout.collapsed["city-map-maplibre"]}
-                onToggleCollapse={() => handleTogglePanelCollapse("city-map-maplibre")}
-              >
+              <Panel title={playMapCityMenu} action={renderPlayHeaderDistrictBadge()}>
                 <CityMapLibrePanel
                   cityBoard={playCityBoard}
                   pieces={animatedPieces}
@@ -2111,14 +2295,18 @@ export default function App() {
               )}
             >
               <Panel
-                title="City Tile"
+                title="District"
+                action={renderPlayHeaderDistrictBadge()}
                 collapsed={workspaceLayout.collapsed["story-tile"]}
                 onToggleCollapse={() => handleTogglePanelCollapse("story-tile")}
               >
                 <StoryCityTileSection
+                  cityBoard={playCityBoard}
                   focusedDistrict={focusedDistrict}
+                  selectedDistrict={selectedDistrict}
                   focusedPiece={focusedPiece}
                   focusedCharacter={focusedCharacter}
+                  isHoverPreview={Boolean(hoveredSquare)}
                   showLabel={false}
                 />
               </Panel>
@@ -2182,7 +2370,6 @@ export default function App() {
             >
               <Panel
                 title="Narrative Tone"
-                collapsed={workspaceLayout.collapsed["story-tone"]}
                 action={
                   <StoryToneSection
                     tonePreset={tonePreset}
@@ -2191,7 +2378,6 @@ export default function App() {
                     inline
                   />
                 }
-                onToggleCollapse={() => handleTogglePanelCollapse("story-tone")}
               >
                 <p className="muted">Set the narration style for generated beats and summaries.</p>
               </Panel>

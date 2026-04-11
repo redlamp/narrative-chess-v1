@@ -374,17 +374,6 @@ export function CityMapLibrePanel({
 
   return (
     <div className="city-map-panel city-map-panel--maplibre">
-      <div className="city-map-panel__meta">
-        <div className="city-map-panel__meta-row">
-          <h3 className="city-map-panel__title">{activeLocation.title}</h3>
-          {activeLocation.squareLabel ? (
-            <span className="side-pill side-pill--compact side-pill--white">
-              {activeLocation.squareLabel}
-            </span>
-          ) : null}
-        </div>
-      </div>
-
       <div className="city-map-panel__frame">
         <div className="city-maplibre-panel__stage">
           <div ref={mapContainerRef} className="city-maplibre-panel__canvas" />

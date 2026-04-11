@@ -14,6 +14,9 @@ import {
   BadgeCheck,
   Check,
   ChevronDown,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
   Crosshair,
   Download,
   FilePenLine,
@@ -21,6 +24,7 @@ import {
   FolderOpen,
   Move,
   OctagonAlert,
+  Paintbrush,
   Bot,
   RotateCcw,
   Save,
@@ -53,7 +57,7 @@ import {
   TooltipTrigger
 } from "@/components/ui/tooltip";
 import { cityBoardDefinitions, getCityBoardDefinition } from "../cityBoards";
-import { getDistrictMapCenter, getDistrictRadiusMeters } from "./cityMapShared";
+import { getDistrictMapCenter, getDistrictRadiusMeters, getSquareTone } from "./cityMapShared";
 import {
   buildCityBoardValidation,
   listCityBoardDraft,
@@ -74,6 +78,7 @@ import { WorkspaceIntroCard } from "./WorkspaceIntroCard";
 import { WorkspaceListItem } from "./WorkspaceListItem";
 import { WorkspaceNoticeCard } from "./WorkspaceNoticeCard";
 import { ClearableSearchField } from "./ClearableSearchField";
+import { DistrictBadge } from "./DistrictBadge";
 import {
   CityDistrictBoardEditor,
   CityDistrictMapEditor
@@ -102,9 +107,10 @@ const districtSortOptions = [
   { value: "name", label: "Name" },
   { value: "square-file", label: "Square (file)" },
   { value: "square-rank", label: "Square (rank)" },
+  { value: "square-color", label: "Square (color)" },
   { value: "locality", label: "Locality" },
+  { value: "content-status", label: "Content status" },
   { value: "review-status", label: "Review status" },
-  { value: "recently-reviewed", label: "Recently reviewed" }
 ] as const;
 
 type DistrictSortMode = (typeof districtSortOptions)[number]["value"];
@@ -116,6 +122,11 @@ type StatusMeta = {
   label: string;
   icon: LucideIcon;
   toneClassName: `status-tone--${StatusTone}`;
+};
+type DistrictListGroup = {
+  key: string;
+  label: string;
+  districts: DistrictCell[];
 };
 
 const initialCityDefinition = cityBoardDefinitions[0] ?? null;
@@ -394,6 +405,27 @@ function compareDistricts(left: DistrictCell, right: DistrictCell, sortMode: Dis
     }
   }
 
+  if (sortMode === "square-color") {
+    const toneOrder = new Map([
+      ["dark", 0],
+      ["light", 1]
+    ] as const);
+    const toneDelta =
+      (toneOrder.get(getSquareTone(left.square)) ?? 0) - (toneOrder.get(getSquareTone(right.square)) ?? 0);
+    if (toneDelta !== 0) {
+      return toneDelta;
+    }
+  }
+
+  if (sortMode === "content-status") {
+    const contentOrder = new Map(statusOptions.map((status, index) => [status, index] as const));
+    const contentDelta =
+      (contentOrder.get(left.contentStatus) ?? 0) - (contentOrder.get(right.contentStatus) ?? 0);
+    if (contentDelta !== 0) {
+      return contentDelta;
+    }
+  }
+
   if (sortMode === "review-status") {
     const reviewOrder = new Map(reviewStatusSortOrder.map((status, index) => [status, index] as const));
     const reviewDelta =
@@ -403,15 +435,36 @@ function compareDistricts(left: DistrictCell, right: DistrictCell, sortMode: Dis
     }
   }
 
-  if (sortMode === "recently-reviewed") {
-    const leftReviewed = left.lastReviewedAt ? Date.parse(left.lastReviewedAt) : Number.NEGATIVE_INFINITY;
-    const rightReviewed = right.lastReviewedAt ? Date.parse(right.lastReviewedAt) : Number.NEGATIVE_INFINITY;
-    if (leftReviewed !== rightReviewed) {
-      return rightReviewed - leftReviewed;
-    }
+  return left.name.localeCompare(right.name);
+}
+
+function getDistrictGroupLabel(district: DistrictCell, sortMode: DistrictSortMode) {
+  if (sortMode === "square-file") {
+    return district.square[0]!.toUpperCase();
   }
 
-  return left.name.localeCompare(right.name);
+  if (sortMode === "square-rank") {
+    return `Rank ${district.square[1]}`;
+  }
+
+  if (sortMode === "square-color") {
+    return getSquareTone(district.square) === "light" ? "Light squares" : "Dark squares";
+  }
+
+  if (sortMode === "locality") {
+    return district.locality || "No locality";
+  }
+
+  if (sortMode === "content-status") {
+    return getContentStatusMeta(district.contentStatus).label;
+  }
+
+  if (sortMode === "review-status") {
+    return getReviewStatusMeta(district.reviewStatus).label;
+  }
+
+  const initial = district.name.trim().charAt(0).toUpperCase();
+  return initial || "#";
 }
 
 function clampRadiusMeters(radiusMeters: number) {
@@ -714,6 +767,8 @@ export function EdinburghReviewPage({
   const [searchQuery, setSearchQuery] = useState("");
   const [districtSortMode, setDistrictSortMode] = useState<DistrictSortMode>("name");
   const [districtSortDirection, setDistrictSortDirection] = useState<DistrictSortDirection>("asc");
+  const [expandedDistrictGroups, setExpandedDistrictGroups] = useState<Record<string, boolean>>({});
+  const [showDistrictSquareColors, setShowDistrictSquareColors] = useState(true);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<SaveNotice | null>(null);
   const [isDirectorySupported, setIsDirectorySupported] = useState(false);
@@ -817,6 +872,54 @@ export function EdinburghReviewPage({
     },
     [draft.districts, districtSortDirection, districtSortMode, searchQuery]
   );
+  const groupedDistricts = useMemo<DistrictListGroup[]>(
+    () =>
+      filteredDistricts.reduce<DistrictListGroup[]>((groups, district) => {
+        const label = getDistrictGroupLabel(district, districtSortMode);
+        const key = `${districtSortMode}:${label}`;
+        const existingGroup = groups[groups.length - 1];
+
+        if (existingGroup && existingGroup.key === key) {
+          existingGroup.districts.push(district);
+          return groups;
+        }
+
+        groups.push({
+          key,
+          label,
+          districts: [district]
+        });
+        return groups;
+      }, []),
+    [districtSortMode, filteredDistricts]
+  );
+  const showDistrictGroups = districtSortMode !== "name";
+  const areAllDistrictGroupsExpanded =
+    showDistrictGroups &&
+    groupedDistricts.length > 0 &&
+    groupedDistricts.every((group) => expandedDistrictGroups[group.key] !== false);
+
+  useEffect(() => {
+    setExpandedDistrictGroups((current) => {
+      const next: Record<string, boolean> = {};
+      let changed = false;
+
+      for (const group of groupedDistricts) {
+        const currentValue = current[group.key];
+        next[group.key] = currentValue ?? true;
+        if (currentValue === undefined) {
+          changed = true;
+        }
+      }
+
+      const currentKeys = Object.keys(current);
+      if (!changed && currentKeys.length !== groupedDistricts.length) {
+        changed = true;
+      }
+
+      return changed ? next : current;
+    });
+  }, [groupedDistricts]);
   const selectedDistrictIdSet = useMemo(() => new Set(selectedDistrictIds), [selectedDistrictIds]);
   const selectedDistrict =
     selectedDistrictIds.length === 0
@@ -1376,6 +1479,25 @@ export function EdinburghReviewPage({
             <div className="grid gap-3">
               <div className="cities-districts-section-header">
                 <h3>Districts</h3>
+                <TooltipProvider delayDuration={150}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant={showDistrictSquareColors ? "secondary" : "outline"}
+                        aria-pressed={showDistrictSquareColors}
+                        aria-label={showDistrictSquareColors ? "Disable district square colors" : "Enable district square colors"}
+                        onClick={() => setShowDistrictSquareColors((current) => !current)}
+                      >
+                        <Paintbrush />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {showDistrictSquareColors ? "Disable square colors" : "Enable square colors"}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
               <ClearableSearchField
                 label={null}
@@ -1423,74 +1545,209 @@ export function EdinburghReviewPage({
                 >
                   {districtSortDirection === "asc" ? <ArrowDownAZ /> : <ArrowDownZA />}
                 </Button>
+                <TooltipProvider delayDuration={150}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="outline"
+                        onClick={() =>
+                          setExpandedDistrictGroups(
+                            groupedDistricts.reduce<Record<string, boolean>>((nextGroups, group) => {
+                              nextGroups[group.key] = !areAllDistrictGroupsExpanded;
+                              return nextGroups;
+                            }, {})
+                          )
+                        }
+                        disabled={!showDistrictGroups || groupedDistricts.length === 0}
+                        aria-label={areAllDistrictGroupsExpanded ? "Collapse all groups" : "Expand all groups"}
+                      >
+                        {areAllDistrictGroupsExpanded ? <ChevronsDownUp /> : <ChevronsUpDown />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {areAllDistrictGroupsExpanded ? "Collapse all" : "Expand all"}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </div>
           </CardHeader>
           <CardContent className="page-card__content page-card__content--scroll pt-0">
-            <ul className="cities-page__list">
-              {filteredDistricts.map((district) => (
-                (() => {
-                  const contentStatusMeta = getContentStatusMeta(district.contentStatus);
-                  const reviewStatusMeta = getReviewStatusMeta(district.reviewStatus);
-                  const ContentStatusIcon = contentStatusMeta.icon;
-                  const ReviewStatusIcon = reviewStatusMeta.icon;
+            <div className="cities-page__groups">
+              {showDistrictGroups
+                ? groupedDistricts.map((group) => {
+                const isExpanded = expandedDistrictGroups[group.key] !== false;
 
-                  return (
-                    <WorkspaceListItem
-                      key={district.id}
+                return (
+                  <section key={group.key} className="cities-page__group">
+                    <button
                       type="button"
-                      onClick={(event) => handleDistrictListItemClick(district.id, event)}
-                      onMouseEnter={() => setHoveredDistrictId(district.id)}
-                      onMouseLeave={() => setHoveredDistrictId(null)}
-                      onFocus={() => setHoveredDistrictId(district.id)}
-                      onBlur={() => setHoveredDistrictId(null)}
-                      selected={selectedDistrictIdSet.has(district.id)}
-                      className={highlightedDistrict?.id === district.id ? "cities-page__list-item--hovered" : undefined}
-                      title={
-                        <h4 className="cities-page__district-title">
-                          <span className="cities-page__district-title-text">{district.name}</span>
-                          {dirtyDistrictIdSet.has(district.id) ? (
-                            <span
-                              className="cities-page__dirty-indicator"
-                              aria-label="District has unsaved edits"
-                              title="District has unsaved edits"
-                            >
-                              <Asterisk />
-                            </span>
-                          ) : null}
-                        </h4>
+                      className="cities-page__group-toggle"
+                      onClick={() =>
+                        setExpandedDistrictGroups((current) => ({
+                          ...current,
+                          [group.key]: !(current[group.key] !== false)
+                        }))
                       }
-                      meta={
-                        <>
-                          <Badge variant="outline" className="cities-page__district-square-badge">
-                            {district.square}
-                          </Badge>
-                          <span
-                            className={`cities-page__status-indicator ${contentStatusMeta.toneClassName}`}
-                            aria-label={`Content status: ${contentStatusMeta.label}`}
-                            title={`Content status: ${contentStatusMeta.label}`}
-                          >
-                            <ContentStatusIcon />
-                          </span>
-                          <span
-                            className={`cities-page__status-indicator ${reviewStatusMeta.toneClassName}`}
-                            aria-label={`Review status: ${reviewStatusMeta.label}`}
-                            title={`Review status: ${reviewStatusMeta.label}`}
-                          >
-                            <ReviewStatusIcon />
-                          </span>
-                        </>
-                      }
-                    />
-                  );
-                })()
-              ))}
+                      aria-expanded={isExpanded}
+                    >
+                      <span className="cities-page__group-toggle-label">
+                        {isExpanded ? <ChevronDown /> : <ChevronRight />}
+                        <span>{group.label}</span>
+                      </span>
+                      <span className="cities-page__group-count">{group.districts.length}</span>
+                    </button>
+                    {isExpanded ? (
+                      <ul className="cities-page__list">
+                        {group.districts.map((district) => {
+                          const contentStatusMeta = getContentStatusMeta(district.contentStatus);
+                          const reviewStatusMeta = getReviewStatusMeta(district.reviewStatus);
+                          const ContentStatusIcon = contentStatusMeta.icon;
+                          const ReviewStatusIcon = reviewStatusMeta.icon;
+                          const squareTone = getSquareTone(district.square);
+
+                          return (
+                            <WorkspaceListItem
+                              key={district.id}
+                              type="button"
+                              onClick={(event) => handleDistrictListItemClick(district.id, event)}
+                              onMouseEnter={() => setHoveredDistrictId(district.id)}
+                              onMouseLeave={() => setHoveredDistrictId(null)}
+                              onFocus={() => setHoveredDistrictId(district.id)}
+                              onBlur={() => setHoveredDistrictId(null)}
+                              selected={selectedDistrictIdSet.has(district.id)}
+                              className={[
+                                showDistrictSquareColors ? `cities-page__list-item--square-${squareTone}` : "",
+                                highlightedDistrict?.id === district.id ? "cities-page__list-item--hovered" : undefined
+                              ]
+                                .filter(Boolean)
+                                .join(" ")}
+                              title={
+                                <h4 className="cities-page__district-title">
+                                  <span className="cities-page__district-title-text">{district.name}</span>
+                                  {dirtyDistrictIdSet.has(district.id) ? (
+                                    <span
+                                      className="cities-page__dirty-indicator"
+                                      aria-label="District has unsaved edits"
+                                      title="District has unsaved edits"
+                                    >
+                                      <Asterisk />
+                                    </span>
+                                  ) : null}
+                                </h4>
+                              }
+                              meta={
+                                <>
+                                  <span
+                                    className={[
+                                      "cities-page__district-square-pill",
+                                      `cities-page__district-square-pill--${squareTone}`
+                                    ].join(" ")}
+                                  >
+                                    {district.square}
+                                  </span>
+                                  <span
+                                    className={`cities-page__status-indicator ${contentStatusMeta.toneClassName}`}
+                                    aria-label={`Content status: ${contentStatusMeta.label}`}
+                                    title={`Content status: ${contentStatusMeta.label}`}
+                                  >
+                                    <ContentStatusIcon />
+                                  </span>
+                                  <span
+                                    className={`cities-page__status-indicator ${reviewStatusMeta.toneClassName}`}
+                                    aria-label={`Review status: ${reviewStatusMeta.label}`}
+                                    title={`Review status: ${reviewStatusMeta.label}`}
+                                  >
+                                    <ReviewStatusIcon />
+                                  </span>
+                                </>
+                              }
+                            />
+                          );
+                        })}
+                      </ul>
+                    ) : null}
+                  </section>
+                );
+              })
+                : (
+                  <ul className="cities-page__list">
+                    {filteredDistricts.map((district) => {
+                      const contentStatusMeta = getContentStatusMeta(district.contentStatus);
+                      const reviewStatusMeta = getReviewStatusMeta(district.reviewStatus);
+                      const ContentStatusIcon = contentStatusMeta.icon;
+                      const ReviewStatusIcon = reviewStatusMeta.icon;
+                      const squareTone = getSquareTone(district.square);
+
+                      return (
+                        <WorkspaceListItem
+                          key={district.id}
+                          type="button"
+                          onClick={(event) => handleDistrictListItemClick(district.id, event)}
+                          onMouseEnter={() => setHoveredDistrictId(district.id)}
+                          onMouseLeave={() => setHoveredDistrictId(null)}
+                          onFocus={() => setHoveredDistrictId(district.id)}
+                          onBlur={() => setHoveredDistrictId(null)}
+                          selected={selectedDistrictIdSet.has(district.id)}
+                          className={[
+                            showDistrictSquareColors ? `cities-page__list-item--square-${squareTone}` : "",
+                            highlightedDistrict?.id === district.id ? "cities-page__list-item--hovered" : undefined
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          title={
+                            <h4 className="cities-page__district-title">
+                              <span className="cities-page__district-title-text">{district.name}</span>
+                              {dirtyDistrictIdSet.has(district.id) ? (
+                                <span
+                                  className="cities-page__dirty-indicator"
+                                  aria-label="District has unsaved edits"
+                                  title="District has unsaved edits"
+                                >
+                                  <Asterisk />
+                                </span>
+                              ) : null}
+                            </h4>
+                          }
+                          meta={
+                            <>
+                              <span
+                                className={[
+                                  "cities-page__district-square-pill",
+                                  `cities-page__district-square-pill--${squareTone}`
+                                ].join(" ")}
+                              >
+                                {district.square}
+                              </span>
+                              <span
+                                className={`cities-page__status-indicator ${contentStatusMeta.toneClassName}`}
+                                aria-label={`Content status: ${contentStatusMeta.label}`}
+                                title={`Content status: ${contentStatusMeta.label}`}
+                              >
+                                <ContentStatusIcon />
+                              </span>
+                              <span
+                                className={`cities-page__status-indicator ${reviewStatusMeta.toneClassName}`}
+                                aria-label={`Review status: ${reviewStatusMeta.label}`}
+                                title={`Review status: ${reviewStatusMeta.label}`}
+                              >
+                                <ReviewStatusIcon />
+                              </span>
+                            </>
+                          }
+                        />
+                      );
+                    })}
+                  </ul>
+                )}
               {!filteredDistricts.length ? (
-                <li className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
                   No districts matched that search.
-                </li>
+                </div>
               ) : null}
-            </ul>
+            </div>
           </CardContent>
         </Card>
       }
@@ -2093,12 +2350,16 @@ export function EdinburghReviewPage({
       }
       tertiary={
         <Card className="page-card page-card--detail">
-          <CardHeader className="gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <CardTitle>Board</CardTitle>
-              {selectedDistrict && !isBulkDistrictSelection ? (
-                <Badge variant="secondary">{selectedDistrict.square}</Badge>
-              ) : null}
+          <CardHeader className="panel__header">
+            <div className="panel__heading">
+              <CardTitle className="panel__title">Board</CardTitle>
+            </div>
+            <div className="panel__action">
+              <DistrictBadge
+                name={(highlightedDistrict ?? selectedDistrict)?.name ?? null}
+                square={(highlightedDistrict ?? selectedDistrict)?.square ?? null}
+                className="district-badge--header"
+              />
             </div>
           </CardHeader>
           <CardContent className="page-card__content grid gap-4">
@@ -2130,10 +2391,17 @@ export function EdinburghReviewPage({
       }
       quaternary={
         <Card className="page-card page-card--detail">
-          <CardHeader className="gap-2">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <CardTitle>Map</CardTitle>
+          <CardHeader className="panel__header">
+            <div className="panel__heading">
+              <CardTitle className="panel__title">Map</CardTitle>
+            </div>
+            <div className="panel__action city-placement-editor__map-header-action">
               <div ref={mapPlacementSearchContainerRef} className="city-placement-editor__geocoder-host" />
+              <DistrictBadge
+                name={(highlightedDistrict ?? selectedDistrict)?.name ?? null}
+                square={(highlightedDistrict ?? selectedDistrict)?.square ?? null}
+                className="district-badge--header"
+              />
             </div>
           </CardHeader>
           <CardContent className="page-card__content page-card__content--map-placement">

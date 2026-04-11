@@ -1,4 +1,4 @@
-import { useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import type { CharacterSummary, MoveRecord } from "@narrative-chess/content-schema";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,8 @@ type MatchHistoryPanelProps = {
   characters: Record<string, CharacterSummary>;
   selectedPly: number;
   totalPlies: number;
-  collapsed: boolean;
-  onToggleCollapse: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
   onJumpToStart: () => void;
   onStepBackward: () => void;
   isPlaying: boolean;
@@ -105,9 +105,59 @@ export function MatchHistoryPanel({
   headerAction
 }: MatchHistoryPanelProps) {
   const movePairs = buildMovePairs(moves);
+  const scoreContainerRef = useRef<HTMLDivElement | null>(null);
+  const moveButtonRefs = useRef(new Map<number, HTMLButtonElement>());
+  const isScrollDragActiveRef = useRef(false);
   const scrubStartRef = useRef<{ clientX: number; clientY: number; selectedPly: number } | null>(null);
   const clampedSelectedPly = Math.min(Math.max(selectedPly, 0), totalPlies);
   const scrubLabel = `${clampedSelectedPly} / ${totalPlies}`;
+
+  useEffect(() => {
+    const handlePointerRelease = () => {
+      isScrollDragActiveRef.current = false;
+    };
+
+    window.addEventListener("pointerup", handlePointerRelease);
+    window.addEventListener("pointercancel", handlePointerRelease);
+
+    return () => {
+      window.removeEventListener("pointerup", handlePointerRelease);
+      window.removeEventListener("pointercancel", handlePointerRelease);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (clampedSelectedPly <= 0 || isScrollDragActiveRef.current) {
+      return;
+    }
+
+    const scoreContainer = scoreContainerRef.current;
+    const activeMoveButton = moveButtonRefs.current.get(clampedSelectedPly);
+    if (!scoreContainer || !activeMoveButton) {
+      return;
+    }
+
+    const containerRect = scoreContainer.getBoundingClientRect();
+    const buttonRect = activeMoveButton.getBoundingClientRect();
+    const isAboveViewport = buttonRect.top < containerRect.top;
+    const isBelowViewport = buttonRect.bottom > containerRect.bottom;
+
+    if (isAboveViewport || isBelowViewport) {
+      activeMoveButton.scrollIntoView({
+        block: "nearest",
+        inline: "nearest"
+      });
+    }
+  }, [clampedSelectedPly]);
+
+  const setMoveButtonRef = (moveNumber: number, node: HTMLButtonElement | null) => {
+    if (!node) {
+      moveButtonRefs.current.delete(moveNumber);
+      return;
+    }
+
+    moveButtonRefs.current.set(moveNumber, node);
+  };
 
   const handleScrubPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (totalPlies <= 0) {
@@ -245,7 +295,13 @@ export function MatchHistoryPanel({
                 <span className="match-history__header-cell">Black</span>
               </div>
 
-              <div className="match-history__score">
+              <div
+                ref={scoreContainerRef}
+                className="match-history__score"
+                onPointerDown={() => {
+                  isScrollDragActiveRef.current = true;
+                }}
+              >
                 {movePairs.map((movePair) => (
                   <article key={movePair.moveNumber} className="match-history__row">
                     <span className="match-history__move-number">{movePair.moveNumber}.</span>
@@ -254,6 +310,7 @@ export function MatchHistoryPanel({
                       className={getMoveButtonClassName(movePair.white, selectedPly === movePair.white.moveNumber)}
                       aria-current={selectedPly === movePair.white.moveNumber ? "step" : undefined}
                       onClick={() => onSelectPly(movePair.white.moveNumber)}
+                      ref={(node) => setMoveButtonRef(movePair.white.moveNumber, node)}
                     >
                       <span
                         className={`match-history__piece-icon match-history__piece-icon--${movePair.white.side}`}
@@ -279,6 +336,11 @@ export function MatchHistoryPanel({
                         onClick={() => {
                           if (movePair.black) {
                             onSelectPly(movePair.black.moveNumber);
+                          }
+                        }}
+                        ref={(node) => {
+                          if (movePair.black) {
+                            setMoveButtonRef(movePair.black.moveNumber, node);
                           }
                         }}
                       >
