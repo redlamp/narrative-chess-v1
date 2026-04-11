@@ -41,6 +41,7 @@ type BoardProps = {
   animationResetKey?: number;
   animatedPieces?: AnimatedPieceFrame[];
   showActiveSquareLabel?: boolean;
+  showSquareLabels?: boolean;
   showPieces?: boolean;
   onSquareClick: (square: Square) => void;
   onSquareHover: (square: Square) => void;
@@ -79,6 +80,7 @@ export function Board({
   animationResetKey = 0,
   animatedPieces,
   showActiveSquareLabel = false,
+  showSquareLabels = false,
   showPieces = true,
   onSquareClick,
   onSquareHover,
@@ -262,7 +264,7 @@ export function Board({
             const isHovered = hoveredSquare === square;
             const isInspected = inspectedSquare === square;
             const isLegalTarget = legalMoves.includes(square);
-            const showSquareLabel = showActiveSquareLabel && (isSelected || isHovered || isInspected);
+            const showSquareLabel = showSquareLabels || (showActiveSquareLabel && (isSelected || isHovered || isInspected));
 
             return (
               <button
@@ -304,7 +306,16 @@ export function Board({
                 }}
               >
                 {showSquareLabel ? (
-                  <span className="board-square__square-label">{square}</span>
+                  <span
+                    className={[
+                      "board-square__square-label",
+                      cell?.isLight ? "board-square__square-label--light" : "board-square__square-label--dark"
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    {square}
+                  </span>
                 ) : null}
                 {showCoordinates ? (
                   <>

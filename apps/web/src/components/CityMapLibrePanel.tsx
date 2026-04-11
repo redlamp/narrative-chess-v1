@@ -570,7 +570,7 @@ export function CityMapLibrePanel({
         </div>
         <Button asChild type="button" size="sm" variant="outline">
           <a href={openUrl} target="_blank" rel="noreferrer">
-            Open In OpenStreetMap
+            Source
             <ExternalLink />
           </a>
         </Button>

@@ -81,6 +81,15 @@ function parseSquare(square: string) {
   return { file, rank };
 }
 
+export function getSquareTone(square: string) {
+  const parsedSquare = parseSquare(square);
+  if (!parsedSquare) {
+    return "dark" as const;
+  }
+
+  return (parsedSquare.file + parsedSquare.rank) % 2 === 0 ? ("dark" as const) : ("light" as const);
+}
+
 export function getBoardSquareCenter(cityBoard: CityBoard, square: string): [number, number] {
   const parsedSquare = parseSquare(square);
   const bounds = getCityBounds(cityBoard);
@@ -277,6 +286,7 @@ export function createDistrictMarkerGeoJson(input: {
           square: district.square,
           name: district.name,
           locality: district.locality,
+          squareTone: getSquareTone(district.square),
           isActive: district.square === activeSquare ? 1 : 0
         }
       };
@@ -333,6 +343,7 @@ export function createDistrictRadiusGeoJson(input: {
         properties: {
           id: district.id,
           square: district.square,
+          squareTone: getSquareTone(district.square),
           isActive: district.id === activeDistrictId ? 1 : 0,
           radiusMeters
         }

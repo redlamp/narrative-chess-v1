@@ -19,7 +19,6 @@ import {
   FilePenLine,
   FolderTree,
   FolderOpen,
-  LocateFixed,
   Move,
   OctagonAlert,
   Bot,
@@ -101,7 +100,8 @@ const reviewStatusSortOrder = ["empty", "needs review", "reviewed", "approved"] 
 const reviewOptions = ["needs review", "reviewed", "approved"] as const;
 const districtSortOptions = [
   { value: "name", label: "Name" },
-  { value: "square", label: "Square" },
+  { value: "square-file", label: "Square (file)" },
+  { value: "square-rank", label: "Square (rank)" },
   { value: "locality", label: "Locality" },
   { value: "review-status", label: "Review status" },
   { value: "recently-reviewed", label: "Recently reviewed" }
@@ -120,6 +120,23 @@ type StatusMeta = {
 
 const initialCityDefinition = cityBoardDefinitions[0] ?? null;
 const initialCityId = initialCityDefinition?.id ?? "edinburgh";
+const minimumDistrictRadiusMeters = 50;
+const maximumDistrictRadiusMeters = 2000;
+const radiusSliderMarkerValues = [
+  50,
+  100,
+  200,
+  300,
+  400,
+  500,
+  700,
+  1000,
+  1250,
+  1500,
+  1750,
+  2000,
+] as const;
+const radiusSliderCurveExponent = 1.6;
 
 function createInitialCityDraft() {
   const fallbackDefinition = initialCityDefinition ?? cityBoardDefinitions[0] ?? null;
@@ -352,8 +369,22 @@ function districtMatchesSearch(district: DistrictCell, query: string) {
 }
 
 function compareDistricts(left: DistrictCell, right: DistrictCell, sortMode: DistrictSortMode) {
-  if (sortMode === "square") {
-    return left.square.localeCompare(right.square);
+  if (sortMode === "square-file") {
+    const fileDelta = left.square[0]!.localeCompare(right.square[0]!);
+    if (fileDelta !== 0) {
+      return fileDelta;
+    }
+
+    return left.square[1]!.localeCompare(right.square[1]!);
+  }
+
+  if (sortMode === "square-rank") {
+    const rankDelta = Number(right.square[1]) - Number(left.square[1]);
+    if (rankDelta !== 0) {
+      return rankDelta;
+    }
+
+    return left.square[0]!.localeCompare(right.square[0]!);
   }
 
   if (sortMode === "locality") {
@@ -381,6 +412,30 @@ function compareDistricts(left: DistrictCell, right: DistrictCell, sortMode: Dis
   }
 
   return left.name.localeCompare(right.name);
+}
+
+function clampRadiusMeters(radiusMeters: number) {
+  return Math.min(
+    Math.max(Math.round(radiusMeters / 50) * 50, minimumDistrictRadiusMeters),
+    maximumDistrictRadiusMeters
+  );
+}
+
+function getCurvedRadiusSliderValue(radiusMeters: number) {
+  const safeRadius = clampRadiusMeters(radiusMeters);
+  const normalized =
+    (safeRadius - minimumDistrictRadiusMeters) /
+    (maximumDistrictRadiusMeters - minimumDistrictRadiusMeters);
+  return Math.pow(normalized, 1 / radiusSliderCurveExponent) * 100;
+}
+
+function getRadiusMetersFromSliderValue(sliderValue: number) {
+  const normalized = Math.min(Math.max(sliderValue, 0), 100) / 100;
+  const radius =
+    minimumDistrictRadiusMeters +
+    (maximumDistrictRadiusMeters - minimumDistrictRadiusMeters) *
+      Math.pow(normalized, radiusSliderCurveExponent);
+  return clampRadiusMeters(radius);
 }
 
 function getContentStatusMeta(status: DistrictCell["contentStatus"] | CityBoard["contentStatus"]): StatusMeta {
@@ -666,10 +721,7 @@ export function EdinburghReviewPage({
   const [selectedCityTab, setSelectedCityTabState] = useState<CityEditorTab>("basics");
   const [selectedDistrictTab, setSelectedDistrictTabState] = useState<DistrictEditorTab>("basics");
   const [isMapImportArmed, setIsMapImportArmed] = useState(false);
-  const [mapPlacementSearchRequest, setMapPlacementSearchRequest] = useState<{
-    token: number;
-    query: string;
-  } | null>(null);
+  const mapPlacementSearchContainerRef = useRef<HTMLDivElement | null>(null);
   const selectedCityDefinition =
     getCityBoardDefinition(selectedCityId) ?? initialCityDefinition ?? cityBoardDefinitions[0] ?? null;
   const validation = useMemo(() => buildCityBoardValidation(draft), [draft]);
@@ -805,6 +857,9 @@ export function EdinburghReviewPage({
       latitude
     };
   }, [draft, editorDistrict]);
+  const editorDistrictRadiusMeters = editorDistrict
+    ? clampRadiusMeters(getDistrictRadiusMeters(editorDistrict))
+    : minimumDistrictRadiusMeters;
   const isBulkCitySelection = selectedCityIds.length > 1;
   const isBulkDistrictSelection = selectedDistrictIds.length > 1;
   const setSelectedCityTab = (nextTab: CityEditorTab) => {
@@ -1072,8 +1127,8 @@ export function EdinburghReviewPage({
         index: "Cities",
         secondary: "Districts",
         detail: "District detail",
-        tertiary: "Board placement",
-        quaternary: "Map placement"
+        tertiary: "Board",
+        quaternary: "Map"
       }}
       showLayoutGrid={showLayoutGrid}
       onToggleLayoutMode={onToggleLayoutMode}
@@ -1391,9 +1446,9 @@ export function EdinburghReviewPage({
                       onBlur={() => setHoveredDistrictId(null)}
                       selected={selectedDistrictIdSet.has(district.id)}
                       className={highlightedDistrict?.id === district.id ? "cities-page__list-item--hovered" : undefined}
-                      title={<h4 className="cities-page__district-title">{district.name}</h4>}
-                      meta={
-                        <>
+                      title={
+                        <h4 className="cities-page__district-title">
+                          <span className="cities-page__district-title-text">{district.name}</span>
                           {dirtyDistrictIdSet.has(district.id) ? (
                             <span
                               className="cities-page__dirty-indicator"
@@ -1403,6 +1458,10 @@ export function EdinburghReviewPage({
                               <Asterisk />
                             </span>
                           ) : null}
+                        </h4>
+                      }
+                      meta={
+                        <>
                           <Badge variant="outline" className="cities-page__district-square-badge">
                             {district.square}
                           </Badge>
@@ -1902,30 +1961,51 @@ export function EdinburghReviewPage({
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-sm font-medium">Radius</span>
                           <span className="text-xs text-muted-foreground">
-                            {getDistrictRadiusMeters(editorDistrict).toLocaleString()} m
+                            {editorDistrictRadiusMeters.toLocaleString()} m
                           </span>
                         </div>
                         <Slider
-                          min={100}
-                          max={3000}
-                          step={50}
-                          value={[getDistrictRadiusMeters(editorDistrict)]}
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={[getCurvedRadiusSliderValue(editorDistrictRadiusMeters)]}
                           disabled={!canEditEditorDistrict}
-                          onValueChange={([radiusMeters]) => {
-                            if (typeof radiusMeters !== "number") {
+                          onValueChange={([sliderValue]) => {
+                            if (typeof sliderValue !== "number") {
                               return;
                             }
 
                             updateSelectedDistricts((district) => ({
                               ...district,
-                              radiusMeters
+                              radiusMeters: getRadiusMetersFromSliderValue(sliderValue)
                             }));
                           }}
                         />
+                        <div className="cities-page__radius-slider-markers" aria-hidden="true">
+                          {radiusSliderMarkerValues.map((markerValue, index) => {
+                            const leftPercent =
+                              getCurvedRadiusSliderValue(markerValue);
+                            const transform =
+                              index === 0 ? "translateX(0)" : index === radiusSliderMarkerValues.length - 1 ? "translateX(-100%)" : "translateX(-50%)";
+
+                            return (
+                              <span
+                                key={markerValue}
+                                className="cities-page__radius-slider-marker"
+                                style={{
+                                  left: `${leftPercent}%`,
+                                  transform
+                                }}
+                              >
+                                {markerValue.toLocaleString()} m
+                              </span>
+                            );
+                          })}
+                        </div>
                       </div>
                       <div className="cities-page__coordinate-row lg:col-span-2">
                         <div className="grid gap-2 justify-items-start">
-                          <span className="text-sm font-medium">Pin Location</span>
+                          <span className="text-sm font-medium">Pin</span>
                           <TooltipProvider delayDuration={150}>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -2001,26 +2081,6 @@ export function EdinburghReviewPage({
                             )
                           }
                         />
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="self-end"
-                          disabled={!editorDistrict}
-                          onClick={() => {
-                            if (!editorDistrict) {
-                              return;
-                            }
-
-                            setMapPlacementSearchRequest((current) => ({
-                              token: (current?.token ?? 0) + 1,
-                              query: `${editorDistrict.name}, ${draft.name}, ${draft.country}`
-                            }));
-                          }}
-                        >
-                          <LocateFixed />
-                          Find on Map
-                        </Button>
                       </div>
                     </div>
                   </TabsContent>
@@ -2035,7 +2095,7 @@ export function EdinburghReviewPage({
         <Card className="page-card page-card--detail">
           <CardHeader className="gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <CardTitle>Board placement</CardTitle>
+              <CardTitle>Board</CardTitle>
               {selectedDistrict && !isBulkDistrictSelection ? (
                 <Badge variant="secondary">{selectedDistrict.square}</Badge>
               ) : null}
@@ -2071,13 +2131,9 @@ export function EdinburghReviewPage({
       quaternary={
         <Card className="page-card page-card--detail">
           <CardHeader className="gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <CardTitle>Map placement</CardTitle>
-              {selectedDistrict ? (
-                <Badge variant="outline">
-                  {selectedDistrict.mapAnchor ? "Reviewed anchor" : "Generated anchor"}
-                </Badge>
-              ) : null}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle>Map</CardTitle>
+              <div ref={mapPlacementSearchContainerRef} className="city-placement-editor__geocoder-host" />
             </div>
           </CardHeader>
           <CardContent className="page-card__content page-card__content--map-placement">
@@ -2086,7 +2142,7 @@ export function EdinburghReviewPage({
                 cityBoard={draft}
                 selectedDistrict={selectedDistrict}
                 highlightedDistrict={highlightedDistrict}
-                locationSearchRequest={mapPlacementSearchRequest}
+                searchContainerRef={mapPlacementSearchContainerRef}
                 onHighlightedDistrictChange={setHoveredDistrictId}
                 onSelectDistrict={selectDistrictById}
                 importModeArmed={isMapImportArmed}
@@ -2105,7 +2161,7 @@ export function EdinburghReviewPage({
                 cityBoard={draft}
                 selectedDistrict={null}
                 highlightedDistrict={highlightedDistrict}
-                locationSearchRequest={mapPlacementSearchRequest}
+                searchContainerRef={mapPlacementSearchContainerRef}
                 onHighlightedDistrictChange={setHoveredDistrictId}
                 onSelectDistrict={selectDistrictById}
                 importModeArmed={false}

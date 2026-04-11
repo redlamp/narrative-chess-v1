@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import MaplibreGeocoder from "@maplibre/maplibre-gl-geocoder";
+import "@maplibre/maplibre-gl-geocoder/dist/maplibre-gl-geocoder.css";
 import { ExternalLink, Map as MapIcon, MapPinOff, Satellite } from "lucide-react";
 import { createSnapshotFromFen, getBoardSquares } from "@narrative-chess/game-core";
 import type { CityBoard, DistrictCell, Square } from "@narrative-chess/content-schema";
@@ -31,10 +33,7 @@ type CityDistrictMapEditorProps = {
   cityBoard: CityBoard;
   selectedDistrict: DistrictCell | null;
   highlightedDistrict: DistrictCell | null;
-  locationSearchRequest: {
-    token: number;
-    query: string;
-  } | null;
+  searchContainerRef: MutableRefObject<HTMLDivElement | null>;
   onMapAnchorChange: (anchor: DistrictCell["mapAnchor"]) => void;
   onHighlightedDistrictChange: (districtId: string | null) => void;
   onSelectDistrict: (districtId: string) => void;
@@ -50,50 +49,123 @@ const markerLabelLayerId = "city-review-district-markers-label-layer";
 const radiusSourceId = "city-review-district-radius";
 const radiusFillLayerId = "city-review-district-radius-fill";
 const radiusStrokeLayerId = "city-review-district-radius-stroke";
-const radiusStrokeColor = "#4b5563";
+const interactiveLayerIds = [
+  markerLayerId,
+  markerActiveLayerId,
+  markerLabelLayerId,
+  radiusFillLayerId,
+  radiusStrokeLayerId
+] as const;
 
 type NominatimSearchResult = {
-  lat: string;
-  lon: string;
-  display_name: string;
+  type: "Feature";
+  geometry: GeoJSON.Point;
+  properties: {
+    display_name: string;
+    name?: string;
+    category?: string;
+    type?: string;
+    addresstype?: string;
+    place_id?: string | number;
+  };
+  bbox?: [number, number, number, number];
 };
 
-async function searchLocationByName(input: {
-  query: string;
-  viewbox: [[number, number], [number, number]];
-  signal: AbortSignal;
-}) {
-  const params = new URLSearchParams({
-    q: input.query,
-    format: "jsonv2",
-    limit: "1",
-    addressdetails: "1",
-    "accept-language": "en"
-  });
-  const [[west, south], [east, north]] = input.viewbox;
-  params.set("viewbox", `${west},${south},${east},${north}`);
+type GeocoderFeature = GeoJSON.Feature<GeoJSON.Point> & {
+  text: string;
+  place_name: string;
+  place_type: string[];
+  center: [number, number];
+  bbox?: [number, number, number, number];
+};
 
-  const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
-    signal: input.signal,
-    headers: {
-      Accept: "application/json"
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Search failed with status ${response.status}`);
-  }
-
-  const results = (await response.json()) as NominatimSearchResult[];
-  const match = results[0];
-  if (!match) {
-    return null;
-  }
-
+function createNominatimGeocoderApi() {
   return {
-    center: [Number(match.lon), Number(match.lat)] as [number, number],
-    label: match.display_name
+    forwardGeocode: async (config: {
+      query?: string | number[];
+      bbox?: number[];
+      limit?: number;
+      language?: string;
+    }) => {
+      if (typeof config.query !== "string" || config.query.trim().length === 0) {
+        return {
+          type: "FeatureCollection" as const,
+          features: [] as GeocoderFeature[]
+        };
+      }
+
+      const params = new URLSearchParams({
+        q: config.query.trim(),
+        format: "geojson",
+        addressdetails: "1",
+        "accept-language": config.language ?? "en",
+        limit: `${Math.min(Math.max(config.limit ?? 5, 1), 10)}`
+      });
+
+      if (Array.isArray(config.bbox) && config.bbox.length === 4) {
+        const [west, south, east, north] = config.bbox;
+        params.set("viewbox", `${west},${south},${east},${north}`);
+        params.set("bounded", "1");
+      }
+
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+        headers: {
+          Accept: "application/json"
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Search failed with status ${response.status}`);
+      }
+
+      const results = (await response.json()) as {
+        type: "FeatureCollection";
+        features: NominatimSearchResult[];
+      };
+      const features = results.features
+        .filter((result) => result.geometry?.type === "Point" && Array.isArray(result.geometry.coordinates))
+        .map<GeocoderFeature>((result) => {
+        const [longitude, latitude] = result.geometry.coordinates;
+        return {
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [longitude, latitude]
+          },
+          properties: {
+            category: result.properties.category,
+            type: result.properties.type,
+            addresstype: result.properties.addresstype,
+            place_id: result.properties.place_id
+          },
+          text:
+            result.properties.name ??
+            result.properties.display_name.split(",")[0]?.trim() ??
+            result.properties.display_name,
+          place_name: result.properties.display_name,
+          place_type: [
+            result.properties.addresstype ?? result.properties.type ?? result.properties.category ?? "place"
+          ],
+          center: [longitude, latitude],
+          bbox: result.bbox
+        };
+      });
+
+      return {
+        type: "FeatureCollection" as const,
+        features
+      };
+    }
   };
+}
+
+function getFeatureCenter(feature: GeocoderFeature) {
+  if (feature.center) {
+    return feature.center;
+  }
+
+  const [longitude, latitude] = feature.geometry.coordinates;
+  return [longitude, latitude] as [number, number];
 }
 
 function getDistrictRadiusBounds(cityBoard: CityBoard, district: DistrictCell) {
@@ -134,12 +206,12 @@ function syncDistrictMarkerLayers(
       type: "fill",
       source: radiusSourceId,
       paint: {
-        "fill-color": "#f0abfc",
-        "fill-opacity": [
-          "case",
-          ["==", ["get", "isActive"], 1],
-          0.22,
-          0.07
+        "fill-color": [
+          "match",
+          ["get", "squareTone"],
+          "light",
+          "rgba(156,163,175,0.1)",
+          "rgba(17,24,39,0.1)"
         ]
       }
     });
@@ -149,18 +221,18 @@ function syncDistrictMarkerLayers(
       type: "line",
       source: radiusSourceId,
       paint: {
-        "line-color": radiusStrokeColor,
-        "line-opacity": [
-          "case",
-          ["==", ["get", "isActive"], 1],
-          0.78,
-          0.26
+        "line-color": [
+          "match",
+          ["get", "squareTone"],
+          "light",
+          "rgba(156,163,175,0.6)",
+          "rgba(17,24,39,0.6)"
         ],
         "line-width": [
           "case",
           ["==", ["get", "isActive"], 1],
-          1.75,
-          1
+          2,
+          1.25
         ]
       }
     });
@@ -192,14 +264,26 @@ function syncDistrictMarkerLayers(
         ["linear"],
         ["zoom"],
         9,
-        3,
+        9,
         14,
-        5
+        12
       ],
-      "circle-color": "#111827",
+      "circle-color": [
+        "match",
+        ["get", "squareTone"],
+        "light",
+        "#ffffff",
+        "#111827"
+      ],
       "circle-stroke-width": 1.5,
-      "circle-stroke-color": "#ffffff",
-      "circle-opacity": 0.9
+      "circle-stroke-color": [
+        "match",
+        ["get", "squareTone"],
+        "light",
+        "#111827",
+        "#f8fafc"
+      ],
+      "circle-opacity": 0.96
     }
   });
 
@@ -214,13 +298,19 @@ function syncDistrictMarkerLayers(
         ["linear"],
         ["zoom"],
         9,
-        6,
+        11,
         14,
-        9
+        15
       ],
-      "circle-color": "#ffffff",
-      "circle-stroke-width": 2,
-      "circle-stroke-color": "#111827",
+      "circle-color": [
+        "match",
+        ["get", "squareTone"],
+        "light",
+        "#ffffff",
+        "#111827"
+      ],
+      "circle-stroke-width": 2.5,
+      "circle-stroke-color": "#2563eb",
       "circle-opacity": 0.95
     }
   });
@@ -232,17 +322,28 @@ function syncDistrictMarkerLayers(
     layout: {
       "text-field": ["get", "square"],
       "text-size": 10,
-      "text-font": ["Arial Unicode MS Regular"],
-      "text-offset": [0, 1.4],
-      "text-anchor": "top",
-      "text-allow-overlap": false
+      "text-font": ["Arial Unicode MS Bold"],
+      "text-anchor": "center",
+      "text-allow-overlap": true,
+      "text-ignore-placement": true
     },
     paint: {
-      "text-color": "#111827",
-      "text-halo-color": "rgba(255,255,255,0.95)",
-      "text-halo-width": 1.25
-    },
-    minzoom: 10.5
+      "text-color": [
+        "match",
+        ["get", "squareTone"],
+        "light",
+        "#111827",
+        "#f8fafc"
+      ],
+      "text-halo-color": [
+        "match",
+        ["get", "squareTone"],
+        "light",
+        "rgba(255,255,255,0.7)",
+        "rgba(17,24,39,0.7)"
+      ],
+      "text-halo-width": 0.7
+    }
   });
 }
 
@@ -277,6 +378,7 @@ export function CityDistrictBoardEditor({
         showCoordinates={false}
         showDistrictLabels={false}
         showActiveSquareLabel
+        showSquareLabels
         showPieces={false}
         onSquareClick={(square) => {
           if (selectedDistrict) {
@@ -300,7 +402,7 @@ export function CityDistrictMapEditor({
   cityBoard,
   selectedDistrict,
   highlightedDistrict,
-  locationSearchRequest,
+  searchContainerRef,
   onMapAnchorChange,
   onHighlightedDistrictChange,
   onSelectDistrict,
@@ -311,6 +413,7 @@ export function CityDistrictMapEditor({
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const searchMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const geocoderRef = useRef<MaplibreGeocoder | null>(null);
   const hasHydratedCamera = useRef(false);
   const lastCameraDistrictIdRef = useRef<string | null>(selectedDistrict?.id ?? null);
   const markerBounds = useMemo(() => getCityBoardMarkerBounds(cityBoard), [cityBoard]);
@@ -344,6 +447,12 @@ export function CityDistrictMapEditor({
       ),
     [activeDistrict, cameraCenter, cityBoard, selectedDistrict]
   );
+
+  useEffect(() => {
+    geocoderRef.current?.clear();
+    searchMarkerRef.current?.remove();
+    searchMarkerRef.current = null;
+  }, [cityBoard.id]);
 
   useEffect(() => {
     selectedDistrictRef.current = selectedDistrict;
@@ -385,7 +494,7 @@ export function CityDistrictMapEditor({
     map.on("click", (event) => {
       const markerFeature = map
         .queryRenderedFeatures(event.point, {
-          layers: [markerLayerId, markerActiveLayerId]
+          layers: [...interactiveLayerIds]
         })
         .find((feature) => typeof feature.properties?.square === "string");
 
@@ -412,31 +521,21 @@ export function CityDistrictMapEditor({
       });
       onImportModeConsumedRef.current();
     });
-    map.on("mousemove", markerLayerId, (event) => {
-      map.getCanvas().style.cursor = "pointer";
-      const markerSquare =
-        typeof event.features?.[0]?.properties?.square === "string"
-          ? (event.features[0].properties.square as string)
+    map.on("mousemove", (event) => {
+      const hoveredFeature = map
+        .queryRenderedFeatures(event.point, {
+          layers: [...interactiveLayerIds]
+        })
+        .find((feature) => typeof feature.properties?.square === "string");
+
+      const hoveredSquare =
+        typeof hoveredFeature?.properties?.square === "string"
+          ? (hoveredFeature.properties.square as Square)
           : null;
-      const district = markerSquare ? districtsBySquareRef.current.get(markerSquare as Square) ?? null : null;
+      const district = hoveredSquare ? districtsBySquareRef.current.get(hoveredSquare) ?? null : null;
+
+      map.getCanvas().style.cursor = district ? "pointer" : "crosshair";
       onHighlightedDistrictChangeRef.current(district?.id ?? null);
-    });
-    map.on("mousemove", markerActiveLayerId, (event) => {
-      map.getCanvas().style.cursor = "pointer";
-      const markerSquare =
-        typeof event.features?.[0]?.properties?.square === "string"
-          ? (event.features[0].properties.square as string)
-          : null;
-      const district = markerSquare ? districtsBySquareRef.current.get(markerSquare as Square) ?? null : null;
-      onHighlightedDistrictChangeRef.current(district?.id ?? null);
-    });
-    map.on("mouseleave", markerLayerId, () => {
-      map.getCanvas().style.cursor = "crosshair";
-      onHighlightedDistrictChangeRef.current(null);
-    });
-    map.on("mouseleave", markerActiveLayerId, () => {
-      map.getCanvas().style.cursor = "crosshair";
-      onHighlightedDistrictChangeRef.current(null);
     });
     mapRef.current = map;
     hasHydratedCamera.current = false;
@@ -444,6 +543,8 @@ export function CityDistrictMapEditor({
     return () => {
       searchMarkerRef.current?.remove();
       searchMarkerRef.current = null;
+      geocoderRef.current?.onRemove();
+      geocoderRef.current = null;
       map.remove();
       mapRef.current = null;
       hasHydratedCamera.current = false;
@@ -461,7 +562,7 @@ export function CityDistrictMapEditor({
       syncDistrictMarkerLayers(map, cityBoard, activeDistrict);
       map.resize();
     });
-  }, [activeDistrict, cityBoard, viewMode]);
+  }, [viewMode]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -557,74 +658,107 @@ export function CityDistrictMapEditor({
   }, [cameraCenter, cityBoard, markerBounds, selectedDistrict]);
 
   useEffect(() => {
-    if (!locationSearchRequest) {
+    const container = searchContainerRef.current;
+    if (!container || geocoderRef.current) {
       return;
     }
 
-    const map = mapRef.current;
-    if (!map) {
-      return;
-    }
+    const geocoder = new MaplibreGeocoder(createNominatimGeocoderApi(), {
+      maplibregl,
+      flyTo: false,
+      marker: false,
+      showResultMarkers: false,
+      enableEventLogging: false,
+      minLength: 2,
+      limit: 5,
+      showResultsWhileTyping: true,
+      debounceSearch: 250,
+      placeholder: "Search Places",
+      bbox: [markerBounds[0][0], markerBounds[0][1], markerBounds[1][0], markerBounds[1][1]]
+    });
 
-    const controller = new AbortController();
+    geocoder.on("result", ({ result }) => {
+      const map = mapRef.current;
+      if (!map) {
+        return;
+      }
 
-    void (async () => {
-      try {
-        const searchResult = await searchLocationByName({
-          query: locationSearchRequest.query,
-          viewbox: markerBounds,
-          signal: controller.signal
-        });
-        if (!searchResult || controller.signal.aborted) {
-          return;
-        }
+      const markerElement = searchMarkerRef.current?.getElement() ?? document.createElement("div");
+      markerElement.className = "city-placement-editor__search-marker";
 
-        const markerElement = searchMarkerRef.current?.getElement() ?? document.createElement("div");
-        markerElement.className = "city-placement-editor__search-marker";
+      if (!searchMarkerRef.current) {
+        searchMarkerRef.current = new maplibregl.Marker({
+          element: markerElement,
+          anchor: "center"
+        }).addTo(map);
+      }
 
-        if (!searchMarkerRef.current) {
-          searchMarkerRef.current = new maplibregl.Marker({
-            element: markerElement,
-            anchor: "center"
-          }).addTo(map);
-        }
+      const feature = result as GeocoderFeature;
+      const geometryCoordinates = feature.geometry?.coordinates;
+      const center =
+        Array.isArray(geometryCoordinates) &&
+        geometryCoordinates.length >= 2 &&
+        Number.isFinite(geometryCoordinates[0]) &&
+        Number.isFinite(geometryCoordinates[1])
+          ? [geometryCoordinates[0], geometryCoordinates[1]] as [number, number]
+          : getFeatureCenter(feature);
+      searchMarkerRef.current.setLngLat(center);
 
-        searchMarkerRef.current.setLngLat(searchResult.center);
-
-        const selectedCenter = selectedDistrict ? getDistrictMapCenter(cityBoard, selectedDistrict) : null;
-        map.stop();
-
-        if (selectedCenter) {
-          const bounds = new maplibregl.LngLatBounds(selectedCenter, selectedCenter);
-          bounds.extend(searchResult.center);
-          map.fitBounds(bounds, {
-            padding: 64,
+      map.stop();
+      if (feature.bbox) {
+        map.fitBounds(
+          [
+            [feature.bbox[0], feature.bbox[1]],
+            [feature.bbox[2], feature.bbox[3]]
+          ],
+          {
+            padding: 48,
             duration: 1000,
             essential: true,
             maxZoom: 14
-          });
-          return;
-        }
-
-        map.flyTo({
-          center: searchResult.center,
-          zoom: 14,
-          duration: 1000,
-          essential: true,
-          curve: 0.5,
-          speed: 1
-        });
-      } catch (error) {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
-          console.warn("Unable to find location on map", error);
-        }
+          }
+        );
+        return;
       }
-    })();
+
+      map.flyTo({
+        center,
+        zoom: 14,
+        duration: 1000,
+        essential: true,
+        curve: 0.5,
+        speed: 1
+      });
+    });
+
+    geocoder.on("loading", () => {
+      searchMarkerRef.current?.remove();
+      searchMarkerRef.current = null;
+    });
+
+    geocoder.on("clear", () => {
+      searchMarkerRef.current?.remove();
+      searchMarkerRef.current = null;
+    });
+
+    geocoder.on("error", ({ error }) => {
+      console.warn("Unable to search map location", error);
+    });
+
+    container.replaceChildren();
+    geocoder.addTo(container);
+    geocoderRef.current = geocoder;
 
     return () => {
-      controller.abort();
+      geocoder.onRemove();
+      geocoderRef.current = null;
     };
-  }, [cityBoard, locationSearchRequest, markerBounds, selectedDistrict]);
+  }, [markerBounds, searchContainerRef]);
+
+  useEffect(() => {
+    geocoderRef.current?.setBbox([markerBounds[0][0], markerBounds[0][1], markerBounds[1][0], markerBounds[1][1]]);
+    geocoderRef.current?.setGeocoderApi(createNominatimGeocoderApi());
+  }, [markerBounds]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -645,6 +779,10 @@ export function CityDistrictMapEditor({
 
   return (
     <div className="city-placement-editor__map">
+      <div className="city-placement-editor__map-frame">
+        <div ref={mapContainerRef} className="city-placement-editor__map-canvas" />
+      </div>
+
       <div className="city-placement-editor__toolbar">
         <div className="city-placement-editor__toggle-group" role="group" aria-label="Map imagery">
           <Button
@@ -685,10 +823,6 @@ export function CityDistrictMapEditor({
             </a>
           </Button>
         </div>
-      </div>
-
-      <div className="city-placement-editor__map-frame">
-        <div ref={mapContainerRef} className="city-placement-editor__map-canvas" />
       </div>
     </div>
   );

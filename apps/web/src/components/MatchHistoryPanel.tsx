@@ -189,15 +189,14 @@ export function MatchHistoryPanel({
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
-                className="match-history__play-toggle"
+                size="icon-sm"
+                className="match-history__nav-button match-history__play-toggle"
                 onClick={onTogglePlayback}
                 disabled={totalPlies <= 0}
                 aria-label={isPlaying ? "Pause move playback" : "Play move playback"}
                 aria-pressed={isPlaying}
               >
                 {isPlaying ? <Pause /> : <Play />}
-                <span>{isPlaying ? "Pause" : "Play"}</span>
               </Button>
               <Button
                 type="button"
