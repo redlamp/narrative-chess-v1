@@ -381,11 +381,7 @@ export function Board({
                   }}
                 >
                   {showCaptureImpact ? (
-                    <span className="board-animated-piece__capture-cloud capture-impact-cloud">
-                      <span className="board-animated-piece__capture-puff board-animated-piece__capture-puff--left" />
-                      <span className="board-animated-piece__capture-puff board-animated-piece__capture-puff--center" />
-                      <span className="board-animated-piece__capture-puff board-animated-piece__capture-puff--right" />
-                    </span>
+                    <span className="board-animated-piece__capture-burst capture-impact-burst" />
                   ) : null}
                   <PieceArt
                     side={piece.side}

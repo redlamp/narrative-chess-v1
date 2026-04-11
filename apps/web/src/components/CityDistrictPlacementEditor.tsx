@@ -10,12 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Board } from "./Board";
 import {
   buildOpenStreetMapUrl,
-  createDistrictRadiusGeoJson,
-  createDistrictMarkerGeoJson,
   createMapLibreRasterStyle,
   getCityBoardMarkerBounds,
   getDistrictMapCenter,
   getDistrictRadiusMeters,
+  syncDistrictMapLayers,
   type MapViewMode
 } from "./cityMapShared";
 
@@ -187,164 +186,18 @@ function syncDistrictMarkerLayers(
   cityBoard: CityBoard,
   activeDistrict: DistrictCell | null
 ) {
-  const activeSquare = activeDistrict?.square ?? null;
-  const radiusData = createDistrictRadiusGeoJson({
+  syncDistrictMapLayers({
+    map,
     cityBoard,
-    districts: cityBoard.districts,
-    activeDistrictId: activeDistrict?.id ?? null
-  });
-  const existingRadiusSource = map.getSource(radiusSourceId) as GeoJSONSource | undefined;
-
-  if (existingRadiusSource) {
-    existingRadiusSource.setData(radiusData);
-  } else {
-    map.addSource(radiusSourceId, {
-      type: "geojson",
-      data: radiusData
-    });
-
-    map.addLayer({
-      id: radiusFillLayerId,
-      type: "fill",
-      source: radiusSourceId,
-      paint: {
-        "fill-color": [
-          "match",
-          ["get", "squareTone"],
-          "light",
-          "rgba(156,163,175,0.1)",
-          "rgba(17,24,39,0.1)"
-        ]
-      }
-    });
-
-    map.addLayer({
-      id: radiusStrokeLayerId,
-      type: "line",
-      source: radiusSourceId,
-      paint: {
-        "line-color": [
-          "match",
-          ["get", "squareTone"],
-          "light",
-          "rgba(156,163,175,0.6)",
-          "rgba(17,24,39,0.6)"
-        ],
-        "line-width": [
-          "case",
-          ["==", ["get", "isActive"], 1],
-          2,
-          1.25
-        ]
-      }
-    });
-  }
-
-  const markerData = createDistrictMarkerGeoJson({
-    cityBoard,
-    activeSquare
-  });
-  const existingSource = map.getSource(markerSourceId) as GeoJSONSource | undefined;
-
-  if (existingSource) {
-    existingSource.setData(markerData);
-    return;
-  }
-
-  map.addSource(markerSourceId, {
-    type: "geojson",
-    data: markerData
-  });
-
-  map.addLayer({
-    id: markerLayerId,
-    type: "circle",
-    source: markerSourceId,
-    paint: {
-      "circle-radius": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        9,
-        9,
-        14,
-        12
-      ],
-      "circle-color": [
-        "match",
-        ["get", "squareTone"],
-        "light",
-        "#ffffff",
-        "#111827"
-      ],
-      "circle-stroke-width": 1.5,
-      "circle-stroke-color": [
-        "match",
-        ["get", "squareTone"],
-        "light",
-        "#111827",
-        "#f8fafc"
-      ],
-      "circle-opacity": 0.96
-    }
-  });
-
-  map.addLayer({
-    id: markerActiveLayerId,
-    type: "circle",
-    source: markerSourceId,
-    filter: ["==", ["get", "isActive"], 1],
-    paint: {
-      "circle-radius": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        9,
-        11,
-        14,
-        15
-      ],
-      "circle-color": [
-        "match",
-        ["get", "squareTone"],
-        "light",
-        "#ffffff",
-        "#111827"
-      ],
-      "circle-stroke-width": 2.5,
-      "circle-stroke-color": "#2563eb",
-      "circle-opacity": 0.95
-    }
-  });
-
-  map.addLayer({
-    id: markerLabelLayerId,
-    type: "symbol",
-    source: markerSourceId,
-    layout: {
-      "text-field": ["get", "square"],
-      "text-size": 10,
-      "text-font": ["Arial Unicode MS Bold"],
-      "text-anchor": "center",
-      "text-allow-overlap": true,
-      "text-ignore-placement": true
-    },
-    paint: {
-      "text-color": [
-        "match",
-        ["get", "squareTone"],
-        "light",
-        "#111827",
-        "#f8fafc"
-      ],
-      "text-halo-color": [
-        "match",
-        ["get", "squareTone"],
-        "light",
-        "rgba(255,255,255,0.7)",
-        "rgba(17,24,39,0.7)"
-      ],
-      "text-halo-width": 0.7
+    activeDistrict,
+    layerIds: {
+      markerSourceId,
+      markerLayerId,
+      markerActiveLayerId,
+      markerLabelLayerId,
+      radiusSourceId,
+      radiusFillLayerId,
+      radiusStrokeLayerId
     }
   });
 }

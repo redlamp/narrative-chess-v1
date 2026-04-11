@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import maplibregl, {
-  type GeoJSONSource,
-  type Map as MapLibreMap
-} from "maplibre-gl";
+import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { ExternalLink, Map as MapIcon, Satellite } from "lucide-react";
 import type { CityBoard, DistrictCell, MoveRecord, PieceState } from "@narrative-chess/content-schema";
@@ -12,14 +9,13 @@ import { useCaptureImpact } from "@/hooks/useCaptureImpact";
 import { PieceArt } from "./PieceArt";
 import {
   buildOpenStreetMapUrl,
-  createDistrictRadiusGeoJson,
-  createDistrictMarkerGeoJson,
   createMapLibreRasterStyle,
   getActiveCityMapLocation,
   getCityBoardMarkerBounds,
   getDistanceMeters,
   getDistrictMapCenter,
   getDistrictRadiusMeters,
+  syncDistrictMapLayers,
   type MapViewMode
 } from "./cityMapShared";
 
@@ -52,7 +48,6 @@ type ProjectedPieceMarker = {
 const districtRadiusSourceId = "district-radius";
 const districtRadiusFillLayerId = "district-radius-fill-layer";
 const districtRadiusStrokeLayerId = "district-radius-stroke-layer";
-const districtRadiusStrokeColor = "#4b5563";
 const districtMarkerSourceId = "district-markers";
 const districtMarkerLayerId = "district-markers-layer";
 const districtMarkerActiveLayerId = "district-markers-active-layer";
@@ -151,120 +146,20 @@ function createProjectedPieceMarkers(input: {
 
 function ensureDistrictMarkerLayers(map: MapLibreMap, cityBoard: CityBoard, activeSquare: string | null) {
   const activeDistrict = cityBoard.districts.find((district) => district.square === activeSquare) ?? null;
-  const radiusData = createDistrictRadiusGeoJson({
+
+  syncDistrictMapLayers({
+    map,
     cityBoard,
-    districts: activeDistrict ? [activeDistrict] : []
-  });
-  const existingRadiusSource = map.getSource(districtRadiusSourceId) as GeoJSONSource | undefined;
-
-  if (existingRadiusSource) {
-    existingRadiusSource.setData(radiusData);
-  } else {
-    map.addSource(districtRadiusSourceId, {
-      type: "geojson",
-      data: radiusData
-    });
-
-    map.addLayer({
-      id: districtRadiusFillLayerId,
-      type: "fill",
-      source: districtRadiusSourceId,
-      paint: {
-        "fill-color": "#f0abfc",
-        "fill-opacity": 0.16
-      }
-    });
-
-    map.addLayer({
-      id: districtRadiusStrokeLayerId,
-      type: "line",
-      source: districtRadiusSourceId,
-      paint: {
-        "line-color": districtRadiusStrokeColor,
-        "line-opacity": 0.72,
-        "line-width": 1.5
-      }
-    });
-  }
-
-  const markerData = createDistrictMarkerGeoJson({
-    cityBoard,
-    activeSquare
-  });
-  const existingSource = map.getSource(districtMarkerSourceId) as GeoJSONSource | undefined;
-
-  if (existingSource) {
-    existingSource.setData(markerData);
-    return;
-  }
-
-  map.addSource(districtMarkerSourceId, {
-    type: "geojson",
-    data: markerData
-  });
-
-  map.addLayer({
-    id: districtMarkerLayerId,
-    type: "circle",
-    source: districtMarkerSourceId,
-    paint: {
-      "circle-radius": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        10,
-        3,
-        14,
-        5
-      ],
-      "circle-color": "#111827",
-      "circle-stroke-width": 1.5,
-      "circle-stroke-color": "#ffffff",
-      "circle-opacity": 0.85
+    activeDistrict,
+    layerIds: {
+      markerSourceId: districtMarkerSourceId,
+      markerLayerId: districtMarkerLayerId,
+      markerActiveLayerId: districtMarkerActiveLayerId,
+      markerLabelLayerId: districtMarkerLabelLayerId,
+      radiusSourceId: districtRadiusSourceId,
+      radiusFillLayerId: districtRadiusFillLayerId,
+      radiusStrokeLayerId: districtRadiusStrokeLayerId
     }
-  });
-
-  map.addLayer({
-    id: districtMarkerActiveLayerId,
-    type: "circle",
-    source: districtMarkerSourceId,
-    filter: ["==", ["get", "isActive"], 1],
-    paint: {
-      "circle-radius": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        10,
-        6,
-        14,
-        9
-      ],
-      "circle-color": "#696969",
-      "circle-stroke-width": 2,
-      "circle-stroke-color": "#111827",
-      "circle-opacity": 0.95
-    }
-  });
-
-  map.addLayer({
-    id: districtMarkerLabelLayerId,
-    type: "symbol",
-    source: districtMarkerSourceId,
-    layout: {
-      "text-field": ["get", "square"],
-      "text-size": 10,
-      "text-font": ["Arial Unicode MS Regular"],
-      "text-offset": [0, 1.5],
-      "text-anchor": "top",
-      "text-allow-overlap": false,
-      "text-ignore-placement": false
-    },
-    paint: {
-      "text-color": "#111827",
-      "text-halo-color": "rgba(255,255,255,0.95)",
-      "text-halo-width": 1.25
-    },
-    minzoom: 11
   });
 }
 
@@ -527,11 +422,7 @@ export function CityMapLibrePanel({
                   onBlur={() => onPieceSquareHoverRef.current?.(null)}
                 >
                   {showCaptureImpact ? (
-                    <span className="city-map-piece-marker__capture-cloud capture-impact-cloud">
-                      <span className="city-map-piece-marker__capture-puff city-map-piece-marker__capture-puff--left" />
-                      <span className="city-map-piece-marker__capture-puff city-map-piece-marker__capture-puff--center" />
-                      <span className="city-map-piece-marker__capture-puff city-map-piece-marker__capture-puff--right" />
-                    </span>
+                    <span className="city-map-piece-marker__capture-burst capture-impact-burst" />
                   ) : null}
                   <span className="city-map-piece-marker__disc">
                     <PieceArt

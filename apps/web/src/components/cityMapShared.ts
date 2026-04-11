@@ -1,5 +1,5 @@
 import type { CityBoard, DistrictCell, MoveRecord } from "@narrative-chess/content-schema";
-import type { StyleSpecification } from "maplibre-gl";
+import type { GeoJSONSource, Map as MapLibreMap, StyleSpecification } from "maplibre-gl";
 
 export type MapViewMode = "map" | "satellite";
 
@@ -10,6 +10,16 @@ export type ActiveCityMapLocation = {
   zoom: number;
   title: string;
   squareLabel: string | null;
+};
+
+export type DistrictMapLayerIds = {
+  markerSourceId: string;
+  markerLayerId: string;
+  markerActiveLayerId: string;
+  markerLabelLayerId: string;
+  radiusSourceId: string;
+  radiusFillLayerId: string;
+  radiusStrokeLayerId: string;
 };
 
 type CityBounds = {
@@ -350,6 +360,175 @@ export function createDistrictRadiusGeoJson(input: {
       };
     })
   };
+}
+
+export function syncDistrictMapLayers(input: {
+  map: MapLibreMap;
+  cityBoard: CityBoard;
+  activeDistrict: DistrictCell | null;
+  layerIds: DistrictMapLayerIds;
+}) {
+  const { map, cityBoard, activeDistrict, layerIds } = input;
+  const activeSquare = activeDistrict?.square ?? null;
+  const radiusData = createDistrictRadiusGeoJson({
+    cityBoard,
+    districts: cityBoard.districts,
+    activeDistrictId: activeDistrict?.id ?? null
+  });
+  const existingRadiusSource = map.getSource(layerIds.radiusSourceId) as GeoJSONSource | undefined;
+
+  if (existingRadiusSource) {
+    existingRadiusSource.setData(radiusData);
+  } else {
+    map.addSource(layerIds.radiusSourceId, {
+      type: "geojson",
+      data: radiusData
+    });
+
+    map.addLayer({
+      id: layerIds.radiusFillLayerId,
+      type: "fill",
+      source: layerIds.radiusSourceId,
+      paint: {
+        "fill-color": [
+          "match",
+          ["get", "squareTone"],
+          "light",
+          "rgba(156,163,175,0.1)",
+          "rgba(17,24,39,0.1)"
+        ]
+      }
+    });
+
+    map.addLayer({
+      id: layerIds.radiusStrokeLayerId,
+      type: "line",
+      source: layerIds.radiusSourceId,
+      paint: {
+        "line-color": [
+          "match",
+          ["get", "squareTone"],
+          "light",
+          "rgba(156,163,175,0.6)",
+          "rgba(17,24,39,0.6)"
+        ],
+        "line-width": [
+          "case",
+          ["==", ["get", "isActive"], 1],
+          2,
+          1.25
+        ]
+      }
+    });
+  }
+
+  const markerData = createDistrictMarkerGeoJson({
+    cityBoard,
+    activeSquare
+  });
+  const existingMarkerSource = map.getSource(layerIds.markerSourceId) as GeoJSONSource | undefined;
+
+  if (existingMarkerSource) {
+    existingMarkerSource.setData(markerData);
+    return;
+  }
+
+  map.addSource(layerIds.markerSourceId, {
+    type: "geojson",
+    data: markerData
+  });
+
+  map.addLayer({
+    id: layerIds.markerLayerId,
+    type: "circle",
+    source: layerIds.markerSourceId,
+    paint: {
+      "circle-radius": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        9,
+        9,
+        14,
+        12
+      ],
+      "circle-color": [
+        "match",
+        ["get", "squareTone"],
+        "light",
+        "#ffffff",
+        "#111827"
+      ],
+      "circle-stroke-width": 1.5,
+      "circle-stroke-color": [
+        "match",
+        ["get", "squareTone"],
+        "light",
+        "#111827",
+        "#f8fafc"
+      ],
+      "circle-opacity": 0.96
+    }
+  });
+
+  map.addLayer({
+    id: layerIds.markerActiveLayerId,
+    type: "circle",
+    source: layerIds.markerSourceId,
+    filter: ["==", ["get", "isActive"], 1],
+    paint: {
+      "circle-radius": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        9,
+        11,
+        14,
+        15
+      ],
+      "circle-color": [
+        "match",
+        ["get", "squareTone"],
+        "light",
+        "#ffffff",
+        "#111827"
+      ],
+      "circle-stroke-width": 2.5,
+      "circle-stroke-color": "#2563eb",
+      "circle-opacity": 0.95
+    }
+  });
+
+  map.addLayer({
+    id: layerIds.markerLabelLayerId,
+    type: "symbol",
+    source: layerIds.markerSourceId,
+    layout: {
+      "text-field": ["get", "square"],
+      "text-size": 10,
+      "text-font": ["Arial Unicode MS Bold"],
+      "text-anchor": "center",
+      "text-allow-overlap": true,
+      "text-ignore-placement": true
+    },
+    paint: {
+      "text-color": [
+        "match",
+        ["get", "squareTone"],
+        "light",
+        "#111827",
+        "#f8fafc"
+      ],
+      "text-halo-color": [
+        "match",
+        ["get", "squareTone"],
+        "light",
+        "rgba(255,255,255,0.7)",
+        "rgba(17,24,39,0.7)"
+      ],
+      "text-halo-width": 0.7
+    }
+  });
 }
 
 export function getCityBoardMarkerBounds(cityBoard: CityBoard) {

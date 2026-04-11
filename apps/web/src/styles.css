@@ -1966,6 +1966,7 @@ select {
   height: 100%;
   min-height: 0;
   overflow: hidden;
+  container-type: inline-size;
 }
 
 .match-history__nav,
@@ -1976,6 +1977,9 @@ select {
 }
 
 .match-history__playhead {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
   justify-content: flex-start;
 }
 
@@ -1984,19 +1988,21 @@ select {
 }
 
 .match-history__nav-button {
-  width: 2.5rem;
+  flex: 0 0 2.75rem;
+  width: 2.75rem;
 }
 
 .match-history__play-toggle {
-  min-width: 4.75rem;
+  flex-basis: 2.75rem;
+  min-width: 2.75rem;
 }
 
 .match-history__scrubber {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 1 1 5rem;
-  min-width: 4.75rem;
+  flex: 1 1 auto;
+  min-width: 0;
   height: 2rem;
   border: 1px solid var(--border);
   border-radius: calc(var(--radius) + 0.05rem);
@@ -2009,6 +2015,11 @@ select {
   cursor: grab;
   user-select: none;
   touch-action: none;
+}
+
+.match-history__scrubber-current,
+.match-history__scrubber-total {
+  display: inline-flex;
 }
 
 .match-history__scrubber:hover,
@@ -2083,11 +2094,17 @@ select {
 }
 
 .match-history__move-button {
+  --match-history-move-base-background: var(--background);
+  --match-history-move-background: var(--match-history-move-base-background);
+  --match-history-move-border: var(--border);
+  --match-history-move-foreground: var(--foreground);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  background: var(--background);
+  border-color: var(--match-history-move-border);
+  background: var(--match-history-move-background);
+  color: var(--match-history-move-foreground);
   text-align: left;
   font-size: 0.9rem;
   line-height: 1.25;
@@ -2097,17 +2114,53 @@ select {
     box-shadow 120ms ease;
 }
 
+.match-history__move-button--white {
+  --match-history-move-base-background: var(--card);
+  --match-history-move-foreground: var(--card-foreground);
+}
+
+.match-history__move-button--black {
+  --match-history-move-base-background: color-mix(in srgb, var(--secondary) 84%, var(--muted-foreground) 16%);
+  --match-history-move-foreground: var(--secondary-foreground);
+}
+
+.match-history__move-button--capture {
+  --match-history-move-border: color-mix(in srgb, var(--piece-attacked) 72%, var(--border) 28%);
+}
+
+.match-history__move-button--check {
+  --match-history-move-background: color-mix(
+    in srgb,
+    var(--king-check) 46%,
+    var(--match-history-move-base-background) 54%
+  );
+}
+
+.match-history__move-button--checkmate {
+  --match-history-move-background: color-mix(
+    in srgb,
+    var(--king-checkmate) 48%,
+    var(--match-history-move-base-background) 52%
+  );
+}
+
 .match-history__move-button:hover,
 .match-history__move-button:focus-visible {
-  background: var(--muted);
+  background: color-mix(in srgb, var(--match-history-move-background) 84%, var(--muted) 16%);
   border-color: color-mix(in srgb, var(--ring) 26%, var(--border) 74%);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 22%, transparent 78%);
   outline: 0;
 }
 
+.match-history__move-button--capture:hover,
+.match-history__move-button--capture:focus-visible {
+  border-color: color-mix(in srgb, var(--piece-attacked) 72%, var(--ring) 28%);
+}
+
 .match-history__move-button--active {
-  background: color-mix(in srgb, var(--secondary) 82%, var(--background) 18%);
-  border-color: color-mix(in srgb, var(--ring) 32%, var(--border) 68%);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--ring) 24%, transparent 76%),
+    inset 0 0 0 1px color-mix(in srgb, var(--ring) 30%, transparent 70%);
 }
 
 .match-history__move-san {
@@ -2119,7 +2172,7 @@ select {
   align-items: center;
   gap: 0.35rem;
   justify-self: end;
-  color: var(--muted-foreground);
+  color: color-mix(in srgb, currentColor 72%, var(--muted-foreground) 28%);
   font-size: 0.78rem;
   white-space: nowrap;
 }
@@ -2145,6 +2198,76 @@ select {
 
 .match-history__piece-icon--black {
   color: #111827;
+}
+
+.dark .match-history__move-button--white {
+  --match-history-move-base-background: color-mix(in srgb, var(--card) 68%, white 32%);
+}
+
+.dark .match-history__move-button--black {
+  --match-history-move-base-background: color-mix(in srgb, var(--secondary) 86%, black 14%);
+}
+
+@container (max-width: 22rem) {
+  .match-history__nav {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-areas:
+      "start back forward end"
+      "scrubber scrubber scrubber play";
+    gap: var(--space-2);
+  }
+
+  .match-history__nav-button {
+    width: 100%;
+  }
+
+  .match-history__nav-button--start {
+    grid-area: start;
+  }
+
+  .match-history__nav-button--back {
+    grid-area: back;
+  }
+
+  .match-history__nav-button--forward {
+    grid-area: forward;
+  }
+
+  .match-history__nav-button--end {
+    grid-area: end;
+  }
+
+  .match-history__nav-button--play,
+  .match-history__play-toggle {
+    grid-area: play;
+  }
+
+  .match-history__scrubber {
+    grid-area: scrubber;
+  }
+
+  .match-history__scrubber-total {
+    display: none;
+  }
+
+  .match-history__header-row {
+    display: none;
+  }
+
+  .match-history__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .match-history__move-number {
+    display: none;
+  }
+}
+
+@container (max-width: 16rem) {
+  .match-history__capture-kind {
+    display: none;
+  }
 }
 
 .board-panel {
@@ -2354,107 +2477,87 @@ select {
   align-items: end;
 }
 
-.board-animated-piece__capture-cloud {
+.board-animated-piece__capture-burst,
+.city-map-piece-marker__capture-burst {
   position: absolute;
   left: 50%;
-  top: 44%;
-  width: 176%;
-  height: 132%;
+  top: 48%;
+  width: 182%;
+  height: 182%;
   pointer-events: none;
   z-index: 0;
 }
 
-.capture-impact-cloud {
+.capture-impact-burst {
   opacity: 0;
-  transform: translate(-50%, -50%) scale(0.72);
-  animation: capture-impact-cloud 280ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform: translate(-50%, -50%) scale(0.42) rotate(-16deg);
+  animation: capture-impact-burst 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.board-animated-piece__capture-cloud::before,
-.city-map-piece-marker__capture-cloud::before,
-.board-animated-piece__capture-cloud::after,
-.city-map-piece-marker__capture-cloud::after {
+.board-animated-piece__capture-burst::before,
+.board-animated-piece__capture-burst::after,
+.city-map-piece-marker__capture-burst::before,
+.city-map-piece-marker__capture-burst::after {
   content: "";
   position: absolute;
-  inset: auto 12% 4%;
-  display: block;
-  border-radius: 999px;
+  inset: 0;
   pointer-events: none;
 }
 
-.board-animated-piece__capture-cloud::before,
-.city-map-piece-marker__capture-cloud::before {
-  height: 54%;
+.board-animated-piece__capture-burst::before,
+.city-map-piece-marker__capture-burst::before {
+  border-radius: 999px;
   background:
-    radial-gradient(circle at 22% 70%, rgba(214, 211, 209, 0.92) 0 18%, transparent 19%),
-    radial-gradient(circle at 48% 48%, rgba(231, 229, 228, 0.94) 0 22%, transparent 23%),
-    radial-gradient(circle at 72% 72%, rgba(214, 211, 209, 0.88) 0 17%, transparent 18%),
-    radial-gradient(circle at 58% 78%, rgba(168, 162, 158, 0.28) 0 36%, transparent 37%);
-  filter: blur(3px);
+    radial-gradient(circle at center, rgba(255, 251, 235, 0.98) 0 14%, transparent 15%),
+    radial-gradient(circle at center, rgba(251, 191, 36, 0.92) 0 28%, transparent 29%),
+    radial-gradient(circle at center, rgba(239, 68, 68, 0.82) 0 42%, transparent 43%),
+    conic-gradient(
+      from 0deg,
+      transparent 0deg 12deg,
+      rgba(251, 191, 36, 0.96) 12deg 28deg,
+      transparent 28deg 54deg,
+      rgba(248, 113, 113, 0.94) 54deg 72deg,
+      transparent 72deg 108deg,
+      rgba(251, 191, 36, 0.96) 108deg 126deg,
+      transparent 126deg 168deg,
+      rgba(248, 113, 113, 0.94) 168deg 186deg,
+      transparent 186deg 232deg,
+      rgba(251, 191, 36, 0.96) 232deg 250deg,
+      transparent 250deg 296deg,
+      rgba(248, 113, 113, 0.94) 296deg 314deg,
+      transparent 314deg 360deg
+    );
+  filter: drop-shadow(0 6px 14px rgba(185, 28, 28, 0.22));
 }
 
-.board-animated-piece__capture-cloud::after,
-.city-map-piece-marker__capture-cloud::after {
-  left: 20%;
-  right: 20%;
-  bottom: 0;
-  height: 24%;
-  background: rgba(168, 162, 158, 0.26);
-  filter: blur(5px);
+.board-animated-piece__capture-burst::after,
+.city-map-piece-marker__capture-burst::after {
+  inset: 22%;
+  border-radius: 999px;
+  background: radial-gradient(circle at center, rgba(127, 29, 29, 0.22) 0 36%, transparent 72%);
+  filter: blur(7px);
 }
 
-@keyframes capture-impact-cloud {
+@keyframes capture-impact-burst {
   0% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.72);
+    transform: translate(-50%, -50%) scale(0.42) rotate(-16deg);
   }
 
-  18% {
-    opacity: 0.95;
-    transform: translate(-50%, -50%) scale(1.18);
+  16% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.96) rotate(-4deg);
   }
 
-  58% {
-    opacity: 0.82;
-    transform: translate(-50%, -50%) scale(1.5);
+  54% {
+    opacity: 0.92;
+    transform: translate(-50%, -50%) scale(1.3) rotate(8deg);
   }
 
   100% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(1.92);
+    transform: translate(-50%, -50%) scale(1.78) rotate(18deg);
   }
-}
-
-.board-animated-piece__capture-puff,
-.city-map-piece-marker__capture-puff {
-  position: absolute;
-  bottom: 8%;
-  display: block;
-  border-radius: 999px;
-  background: rgba(231, 229, 228, 0.94);
-  box-shadow: 0 8px 18px rgba(120, 113, 108, 0.26);
-  filter: blur(0.4px);
-}
-
-.board-animated-piece__capture-puff--left,
-.city-map-piece-marker__capture-puff--left {
-  left: 8%;
-  width: 42%;
-  height: 56%;
-}
-
-.board-animated-piece__capture-puff--center,
-.city-map-piece-marker__capture-puff--center {
-  left: 28%;
-  width: 46%;
-  height: 78%;
-}
-
-.board-animated-piece__capture-puff--right,
-.city-map-piece-marker__capture-puff--right {
-  right: 8%;
-  width: 38%;
-  height: 52%;
 }
 
 .board-animated-piece > .board-piece-art--board {
@@ -3520,16 +3623,6 @@ select {
     border-color 120ms ease,
     box-shadow 120ms ease,
     background-color 120ms ease;
-}
-
-.city-map-piece-marker__capture-cloud {
-  position: absolute;
-  left: 50%;
-  top: 46%;
-  width: 176%;
-  height: 132%;
-  pointer-events: none;
-  z-index: 0;
 }
 
 .city-map-piece-marker:hover .city-map-piece-marker__disc,

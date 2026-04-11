@@ -29,6 +29,19 @@ type MovePair = {
   black: MoveRecord | null;
 };
 
+function getMoveButtonClassName(move: MoveRecord, isActive: boolean) {
+  return [
+    "match-history__move-button",
+    `match-history__move-button--${move.side}`,
+    move.capturedPieceId ? "match-history__move-button--capture" : "",
+    move.isCheckmate ? "match-history__move-button--checkmate" : "",
+    !move.isCheckmate && move.isCheck ? "match-history__move-button--check" : "",
+    isActive ? "match-history__move-button--active" : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 function buildMovePairs(moves: MoveRecord[]): MovePair[] {
   const pairs: MovePair[] = [];
 
@@ -139,7 +152,7 @@ export function MatchHistoryPanel({
   return (
     <TooltipProvider delayDuration={150}>
       <Panel
-        title="History (PGN)"
+        title="History"
         collapsed={collapsed}
         onToggleCollapse={onToggleCollapse}
         action={headerAction}
@@ -151,7 +164,7 @@ export function MatchHistoryPanel({
                 type="button"
                 variant="outline"
                 size="icon-sm"
-                className="match-history__nav-button"
+                className="match-history__nav-button match-history__nav-button--start"
                 onClick={onJumpToStart}
                 disabled={selectedPly === 0}
                 aria-label="Jump to the start position"
@@ -162,7 +175,7 @@ export function MatchHistoryPanel({
                 type="button"
                 variant="outline"
                 size="icon-sm"
-                className="match-history__nav-button"
+                className="match-history__nav-button match-history__nav-button--back"
                 onClick={onStepBackward}
                 disabled={selectedPly === 0}
                 aria-label="Step backward one move"
@@ -181,7 +194,8 @@ export function MatchHistoryPanel({
                     onPointerCancel={handleScrubPointerEnd}
                     aria-label={`Move ${scrubLabel}`}
                   >
-                    {scrubLabel}
+                    <span className="match-history__scrubber-current">{clampedSelectedPly}</span>
+                    <span className="match-history__scrubber-total"> / {totalPlies}</span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>Drag to scrub</TooltipContent>
@@ -190,7 +204,7 @@ export function MatchHistoryPanel({
                 type="button"
                 variant="outline"
                 size="icon-sm"
-                className="match-history__nav-button match-history__play-toggle"
+                className="match-history__nav-button match-history__nav-button--play match-history__play-toggle"
                 onClick={onTogglePlayback}
                 disabled={totalPlies <= 0}
                 aria-label={isPlaying ? "Pause move playback" : "Play move playback"}
@@ -202,7 +216,7 @@ export function MatchHistoryPanel({
                 type="button"
                 variant="outline"
                 size="icon-sm"
-                className="match-history__nav-button"
+                className="match-history__nav-button match-history__nav-button--forward"
                 onClick={onStepForward}
                 disabled={selectedPly >= totalPlies}
                 aria-label="Step forward one move"
@@ -213,7 +227,7 @@ export function MatchHistoryPanel({
                 type="button"
                 variant="outline"
                 size="icon-sm"
-                className="match-history__nav-button"
+                className="match-history__nav-button match-history__nav-button--end"
                 onClick={onJumpToEnd}
                 disabled={selectedPly >= totalPlies}
                 aria-label="Jump to the latest position"
@@ -237,12 +251,7 @@ export function MatchHistoryPanel({
                     <span className="match-history__move-number">{movePair.moveNumber}.</span>
                     <button
                       type="button"
-                      className={[
-                        "match-history__move-button",
-                        selectedPly === movePair.white.moveNumber ? "match-history__move-button--active" : ""
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
+                      className={getMoveButtonClassName(movePair.white, selectedPly === movePair.white.moveNumber)}
                       aria-current={selectedPly === movePair.white.moveNumber ? "step" : undefined}
                       onClick={() => onSelectPly(movePair.white.moveNumber)}
                     >
@@ -262,12 +271,10 @@ export function MatchHistoryPanel({
                     {movePair.black ? (
                       <button
                         type="button"
-                        className={[
-                          "match-history__move-button",
-                          selectedPly === movePair.black?.moveNumber ? "match-history__move-button--active" : ""
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
+                        className={getMoveButtonClassName(
+                          movePair.black,
+                          selectedPly === movePair.black?.moveNumber
+                        )}
                         aria-current={selectedPly === movePair.black?.moveNumber ? "step" : undefined}
                         onClick={() => {
                           if (movePair.black) {
@@ -296,7 +303,7 @@ export function MatchHistoryPanel({
               </div>
             </>
           ) : (
-            <p className="muted">The PGN log will appear here as soon as the first move lands.</p>
+            <p className="muted">Move log appears after first move lands.</p>
           )}
         </div>
       </Panel>
