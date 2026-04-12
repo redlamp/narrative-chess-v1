@@ -690,11 +690,11 @@ select {
 
 .page-card__content--map-placement {
   display: grid;
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   flex: 1 1 auto;
-  gap: 0;
+  gap: var(--space-3);
   min-height: 0;
-  padding: 0 var(--space-4);
+  padding: var(--space-2) var(--space-4) var(--space-4);
 }
 
 .page-card__content--scroll {
@@ -1031,7 +1031,6 @@ select {
 }
 
 .district-badge--header {
-  margin-left: auto;
   max-width: min(100%, 20rem);
 }
 
@@ -3692,7 +3691,7 @@ select {
 
 .city-map-panel {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: 1fr auto;
   gap: var(--space-3);
   min-height: 0;
   height: 100%;
@@ -4194,14 +4193,14 @@ select {
 }
 
 .cities-page__list-item--square-dark {
-  background: color-mix(in srgb, var(--board-dark-square) 78%, #111827 22%);
+  background: color-mix(in srgb, var(--board-dark-square) 86%, #1f2937 14%);
   color: #f8fafc;
 }
 
 .cities-page__list-item--square-dark:hover,
 .cities-page__list-item--square-dark:focus-visible,
 .cities-page__list-item--square-dark.cities-page__list-item--hovered {
-  background: color-mix(in srgb, var(--board-dark-square) 88%, #0f172a 12%);
+  background: color-mix(in srgb, var(--board-dark-square) 92%, #1f2937 8%);
   box-shadow: inset 0 0 0 1px rgb(248 250 252 / 0.18);
 }
 
@@ -4227,13 +4226,15 @@ select {
 }
 
 .cities-page__district-square-pill--light {
-  background: color-mix(in srgb, white 88%, var(--board-light-square) 12%);
+  background: var(--board-light-square);
   color: #111827;
+  border-color: color-mix(in srgb, #111827 20%, transparent 80%);
 }
 
 .cities-page__district-square-pill--dark {
-  background: color-mix(in srgb, #0f172a 86%, var(--board-dark-square) 14%);
+  background: var(--board-dark-square);
   color: #f8fafc;
+  border-color: color-mix(in srgb, #f8fafc 20%, transparent 80%);
 }
 
 .cities-page__dirty-indicator {
@@ -4537,12 +4538,16 @@ select {
   gap: var(--space-2);
 }
 
-.city-placement-editor__map-header-action {
+.city-placement-editor__panel-header {
+  align-items: flex-start;
+}
+
+.city-placement-editor__header-action {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
   gap: var(--space-3);
-  flex: 1 1 18rem;
+  min-width: 0;
 }
 
 .city-placement-editor__geocoder-host {
@@ -4555,6 +4560,8 @@ select {
 
 .city-placement-editor__geocoder-host .maplibregl-ctrl-geocoder {
   width: 100%;
+  max-width: none;
+  margin: 0;
   min-width: 0;
   border: 1px solid var(--border);
   border-radius: min(var(--radius-md), 12px);
@@ -4653,12 +4660,93 @@ select {
   margin: auto;
 }
 
+.city-placement-editor__detail-content {
+  display: grid;
+  gap: var(--space-4);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.city-placement-editor__editor-heading {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.city-placement-editor__detail-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.city-placement-editor__detail-footer-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .city-placement-editor__board .board-grid {
   margin: auto;
+  overflow: visible;
 }
 
 .city-placement-editor__board .board-square__square-label {
   opacity: 0.6;
+}
+
+.city-placement-editor__board .board-square {
+  overflow: visible;
+}
+
+.city-placement-editor__board .board-square__district--board {
+  top: 50%;
+  right: auto;
+  left: 50%;
+  inline-size: calc(100% + 0.9rem);
+  max-inline-size: 8rem;
+  transform: translate(-50%, -50%) rotate(-30deg);
+  transform-origin: center;
+  text-align: center;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.city-placement-editor__board-card {
+  position: relative;
+}
+
+.city-placement-editor__board-panel-content {
+  padding-bottom: var(--space-8);
+}
+
+.city-placement-editor__board-names-toggle {
+  position: absolute;
+  left: auto;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1_5) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card) 92%, transparent 8%);
+  box-shadow: var(--shadow-sm);
+  transform: rotate(90deg);
+  transform-origin: bottom right;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--foreground);
+  user-select: none;
+}
+
+.city-placement-editor__board-names-toggle input {
+  margin: 0;
+  accent-color: var(--selection);
 }
 
 .city-placement-editor__map-canvas {

@@ -20,6 +20,8 @@ import { useCaptureImpact } from "../hooks/useCaptureImpact";
 
 const pieceMoveAnimationDuration = 420;
 const pieceMoveAnimationEase = "power1.inOut";
+const boardRankLabelGutterPx = 24;
+const boardFileLabelGutterPx = 24;
 
 type BoardCell = {
   square: Square;
@@ -48,22 +50,16 @@ type BoardProps = {
   onSquareLeave: () => void;
 };
 
-function formatDistrictLabel(name: string, viewMode: "board" | "map") {
-  if (viewMode === "map" || name.length <= 10) {
-    return name;
-  }
-
-  return `${name.slice(0, 9)}...`;
+function formatDistrictLabel(name: string) {
+  return name;
 }
 
 function shouldShowDistrictLabel({
-  showDistrictLabels,
-  viewMode
+  showDistrictLabels
 }: {
   showDistrictLabels: boolean;
-  viewMode: "board" | "map";
 }) {
-  return showDistrictLabels && viewMode === "map";
+  return showDistrictLabels;
 }
 
 export function Board({
@@ -114,7 +110,9 @@ export function Board({
     }
 
     const updateBoardSize = () => {
-      const nextSize = Math.max(0, Math.floor(Math.min(shell.clientWidth, shell.clientHeight || shell.clientWidth)));
+      const availableWidth = shell.clientWidth - (showCoordinates ? boardRankLabelGutterPx : 0);
+      const availableHeight = (shell.clientHeight || shell.clientWidth) - (showCoordinates ? boardFileLabelGutterPx : 0);
+      const nextSize = Math.max(0, Math.floor(Math.min(availableWidth, availableHeight)));
       setBoardSize(nextSize || null);
     };
 
@@ -129,7 +127,7 @@ export function Board({
     return () => {
       observer.disconnect();
     };
-  }, []);
+  }, [showCoordinates]);
 
   useEffect(() => {
     activePieceTweenRefs.current.forEach((tween) => tween.kill());
@@ -247,150 +245,166 @@ export function Board({
   return (
     <div className="board-shell" ref={shellRef}>
       <div
-        className={["board-grid", viewMode === "map" ? "board-grid--map" : ""].filter(Boolean).join(" ")}
-        role="grid"
-        aria-label="Chess board"
-        aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Home End"
-        style={boardStyle}
+        className={[
+          "board-shell__frame",
+          showCoordinates ? "board-shell__frame--coordinates" : ""
+        ]
+          .filter(Boolean)
+          .join(" ")}
       >
-        {ranks.map((rank) =>
-          files.map((file) => {
-            const square = squareName(file, rank);
-            const cell = cellMap.get(square);
-            const labelPiece = showPieces ? cell?.occupant ?? getPieceAtSquare(snapshot, square) : null;
-            const piece = animatedPieces ? null : labelPiece;
-            const district = districtsBySquare.get(square) ?? null;
-            const isSelected = selectedSquare === square;
-            const isHovered = hoveredSquare === square;
-            const isInspected = inspectedSquare === square;
-            const isLegalTarget = legalMoves.includes(square);
-            const showSquareLabel = showSquareLabels || (showActiveSquareLabel && (isSelected || isHovered || isInspected));
-
-            return (
-              <button
-                key={square}
-                type="button"
-                className={[
-                  "board-square",
-                  cell?.isLight ? "board-square--light" : "board-square--dark",
-                  viewMode === "map" ? "board-square--map" : "",
-                  isSelected ? "board-square--selected" : "",
-                  isHovered ? "board-square--hovered" : "",
-                  isInspected ? "board-square--inspected" : "",
-                  isLegalTarget ? "board-square--target" : ""
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                data-square={square}
-                aria-pressed={isSelected}
-                aria-colindex={files.indexOf(file) + 1}
-                aria-label={`${square}${labelPiece ? `, ${getPieceDisplayName(labelPiece)}` : ""}${district ? `, ${district.name}` : ""}`}
-                aria-rowindex={ranks.indexOf(rank) + 1}
-                tabIndex={activeSquare === square ? 0 : -1}
-                onClick={handleClick}
-                onMouseEnter={() => onSquareHover(square)}
-                onMouseLeave={onSquareLeave}
-                onFocus={() => {
-                  setActiveSquare(square);
-                  onSquareHover(square);
-                }}
-                onBlur={onSquareLeave}
-                onKeyDown={handleKeyDown}
-                ref={(node) => {
-                  if (!node) {
-                    buttonRefs.current.delete(square);
-                    return;
-                  }
-
-                  buttonRefs.current.set(square, node);
-                }}
-              >
-                {showSquareLabel ? (
-                  <span
-                    className={[
-                      "board-square__square-label",
-                      cell?.isLight ? "board-square__square-label--light" : "board-square__square-label--dark"
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  >
-                    {square}
-                  </span>
-                ) : null}
-                {showCoordinates ? (
-                  <>
-                    <span className="board-square__coordinate board-square__coordinate--top">
-                      {file === "a" ? rank : ""}
-                    </span>
-                    <span className="board-square__coordinate board-square__coordinate--bottom">
-                      {rank === "1" ? file : ""}
-                    </span>
-                  </>
-                ) : null}
-                {district &&
-                shouldShowDistrictLabel({
-                  showDistrictLabels,
-                  viewMode
-                }) ? (
-                  <span className={`board-square__district board-square__district--${viewMode}`}>
-                    {formatDistrictLabel(district.name, viewMode)}
-                  </span>
-                ) : null}
-                <span className={`board-square__piece ${piece ? `is-${piece.side}` : "is-empty"} ${viewMode === "map" ? "is-map" : ""}`}>
-                  {piece ? (
-                    <span className="board-square__piece-motion" data-piece-id={piece.pieceId}>
-                      <PieceArt
-                        side={piece.side}
-                        kind={piece.kind}
-                        className="board-piece-art board-piece-art--board"
-                      />
-                    </span>
-                  ) : null}
-                </span>
-                {isLegalTarget ? <span className="board-square__target-dot" /> : null}
-              </button>
-            );
-          })
-        )}
-        {showPieces && animatedPieces?.length ? (
-          <div className="board-animated-pieces" aria-hidden="true">
-            {animatedPieces.map((piece) => {
-              const position = getAnimatedBoardPosition(piece);
-              if (!position) {
-                return null;
-              }
-              const showCaptureImpact =
-                activeCaptureImpact?.moveId === animatedCaptureMove?.id &&
-                activeCaptureImpact?.pieceId === piece.pieceId;
+        {showCoordinates ? (
+          <div className="board-shell__ranks" aria-hidden="true" style={{ height: boardStyle?.height }}>
+            {ranks.map((rank) => (
+              <span key={rank} className="board-shell__coordinate board-shell__coordinate--rank">
+                {rank}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <div
+          className={["board-grid", viewMode === "map" ? "board-grid--map" : ""].filter(Boolean).join(" ")}
+          role="grid"
+          aria-label="Chess board"
+          aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Home End"
+          style={boardStyle}
+        >
+          {ranks.map((rank) =>
+            files.map((file) => {
+              const square = squareName(file, rank);
+              const cell = cellMap.get(square);
+              const labelPiece = showPieces ? cell?.occupant ?? getPieceAtSquare(snapshot, square) : null;
+              const piece = animatedPieces ? null : labelPiece;
+              const district = districtsBySquare.get(square) ?? null;
+              const isSelected = selectedSquare === square;
+              const isHovered = hoveredSquare === square;
+              const isInspected = inspectedSquare === square;
+              const isLegalTarget = legalMoves.includes(square);
+              const showSquareLabel = showSquareLabels || (showActiveSquareLabel && (isSelected || isHovered || isInspected));
 
               return (
-                <span
-                  key={piece.pieceId}
+                <button
+                  key={square}
+                  type="button"
                   className={[
-                    "board-animated-piece",
-                    `is-${piece.side}`,
-                    viewMode === "map" ? "is-map" : ""
+                    "board-square",
+                    cell?.isLight ? "board-square--light" : "board-square--dark",
+                    viewMode === "map" ? "board-square--map" : "",
+                    isSelected ? "board-square--selected" : "",
+                    isHovered ? "board-square--hovered" : "",
+                    isInspected ? "board-square--inspected" : "",
+                    isLegalTarget ? "board-square--target" : ""
                   ]
                     .filter(Boolean)
                     .join(" ")}
-                  style={{
-                    left: `${(position.x / 8) * 100}%`,
-                    top: `${(position.y / 8) * 100}%`,
-                    opacity: piece.opacity,
-                    zIndex: 10 + piece.zIndex
+                  data-square={square}
+                  aria-pressed={isSelected}
+                  aria-colindex={files.indexOf(file) + 1}
+                  aria-label={`${square}${labelPiece ? `, ${getPieceDisplayName(labelPiece)}` : ""}${district ? `, ${district.name}` : ""}`}
+                  aria-rowindex={ranks.indexOf(rank) + 1}
+                  tabIndex={activeSquare === square ? 0 : -1}
+                  onClick={handleClick}
+                  onMouseEnter={() => onSquareHover(square)}
+                  onMouseLeave={onSquareLeave}
+                  onFocus={() => {
+                    setActiveSquare(square);
+                    onSquareHover(square);
+                  }}
+                  onBlur={onSquareLeave}
+                  onKeyDown={handleKeyDown}
+                  ref={(node) => {
+                    if (!node) {
+                      buttonRefs.current.delete(square);
+                      return;
+                    }
+
+                    buttonRefs.current.set(square, node);
                   }}
                 >
-                  {showCaptureImpact ? (
-                    <span className="board-animated-piece__capture-burst capture-impact-burst" />
+                  {showSquareLabel ? (
+                    <span
+                      className={[
+                        "board-square__square-label",
+                        cell?.isLight ? "board-square__square-label--light" : "board-square__square-label--dark"
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
+                      {square}
+                    </span>
                   ) : null}
-                  <PieceArt
-                    side={piece.side}
-                    kind={piece.kind}
-                    className="board-piece-art board-piece-art--board"
-                  />
-                </span>
+                  {district &&
+                  shouldShowDistrictLabel({
+                    showDistrictLabels
+                  }) ? (
+                    <span className={`board-square__district board-square__district--${viewMode}`}>
+                      {formatDistrictLabel(district.name)}
+                    </span>
+                  ) : null}
+                  <span className={`board-square__piece ${piece ? `is-${piece.side}` : "is-empty"} ${viewMode === "map" ? "is-map" : ""}`}>
+                    {piece ? (
+                      <span className="board-square__piece-motion" data-piece-id={piece.pieceId}>
+                        <PieceArt
+                          side={piece.side}
+                          kind={piece.kind}
+                          className="board-piece-art board-piece-art--board"
+                        />
+                      </span>
+                    ) : null}
+                  </span>
+                  {isLegalTarget ? <span className="board-square__target-dot" /> : null}
+                </button>
               );
-            })}
+            })
+          )}
+          {showPieces && animatedPieces?.length ? (
+            <div className="board-animated-pieces" aria-hidden="true">
+              {animatedPieces.map((piece) => {
+                const position = getAnimatedBoardPosition(piece);
+                if (!position) {
+                  return null;
+                }
+                const showCaptureImpact =
+                  activeCaptureImpact?.moveId === animatedCaptureMove?.id &&
+                  activeCaptureImpact?.pieceId === piece.pieceId;
+
+                return (
+                  <span
+                    key={piece.pieceId}
+                    className={[
+                      "board-animated-piece",
+                      `is-${piece.side}`,
+                      viewMode === "map" ? "is-map" : ""
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    style={{
+                      left: `${(position.x / 8) * 100}%`,
+                      top: `${(position.y / 8) * 100}%`,
+                      opacity: piece.opacity,
+                      zIndex: 10 + piece.zIndex
+                    }}
+                  >
+                    {showCaptureImpact ? (
+                      <span className="board-animated-piece__capture-burst capture-impact-burst" />
+                    ) : null}
+                    <PieceArt
+                      side={piece.side}
+                      kind={piece.kind}
+                      className="board-piece-art board-piece-art--board"
+                    />
+                  </span>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+        {showCoordinates ? (
+          <div className="board-shell__files" aria-hidden="true" style={{ width: boardStyle?.width }}>
+            {files.map((file) => (
+              <span key={file} className="board-shell__coordinate board-shell__coordinate--file">
+                {file}
+              </span>
+            ))}
           </div>
         ) : null}
       </div>

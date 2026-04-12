@@ -33,8 +33,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  CardAction,
   Card,
   CardContent,
+  CardFooter,
   CardHeader,
   CardTitle
 } from "@/components/ui/card";
@@ -769,6 +771,7 @@ export function EdinburghReviewPage({
   const [districtSortDirection, setDistrictSortDirection] = useState<DistrictSortDirection>("asc");
   const [expandedDistrictGroups, setExpandedDistrictGroups] = useState<Record<string, boolean>>({});
   const [showDistrictSquareColors, setShowDistrictSquareColors] = useState(true);
+  const [showCityBoardNames, setShowCityBoardNames] = useState(true);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<SaveNotice | null>(null);
   const [isDirectorySupported, setIsDirectorySupported] = useState(false);
@@ -1755,10 +1758,10 @@ export function EdinburghReviewPage({
         <div className="page-card-stack">
           {selectedDistrictIds.length === 0 && !editorDistrict ? (
           <Card className="page-card page-card--detail">
-            <CardHeader className="gap-3">
-              <div className="flex items-start justify-between gap-3">
+            <CardHeader className="panel__header city-placement-editor__panel-header gap-3">
+              <div className="panel__heading">
                 <div className="grid min-w-0 gap-2">
-                  <CardTitle>City Editor</CardTitle>
+                  <CardTitle className="panel__title">City Editor</CardTitle>
                   <div className="flex flex-wrap items-center gap-2">
                     {isBulkCitySelection ? (
                       <Badge variant="secondary">{selectedCityIds.length} selected</Badge>
@@ -1767,43 +1770,9 @@ export function EdinburghReviewPage({
                     ) : null}
                   </div>
                 </div>
-                <TooltipProvider delayDuration={150}>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          size="icon-sm"
-                          variant="outline"
-                          className="workspace-header-actions-reset-button"
-                          onClick={handleResetCityDraft}
-                          aria-label="Reset all city data"
-                        >
-                          <RotateCcw />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Reset all city data</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          size="icon-sm"
-                          variant="outline"
-                          onClick={handleSaveCityDraft}
-                          disabled={busyAction !== null}
-                          aria-label="Save all city data"
-                        >
-                          <Save />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Save all city data</TooltipContent>
-                    </Tooltip>
-                  </div>
-                </TooltipProvider>
               </div>
             </CardHeader>
-            <CardContent className="page-card__content grid gap-4">
+            <CardContent className="page-card__content city-placement-editor__detail-content">
               <Tabs value={selectedCityTab} onValueChange={(value) => setSelectedCityTab(value as CityEditorTab)}>
                 <TabsList className="detail-editor-tabs-list">
                   <TabsTrigger value="basics">Basics</TabsTrigger>
@@ -1919,80 +1888,77 @@ export function EdinburghReviewPage({
                 </TabsContent>
               </Tabs>
             </CardContent>
+            <CardFooter className="city-placement-editor__detail-footer">
+              <TooltipProvider delayDuration={150}>
+                <div className="city-placement-editor__detail-footer-actions">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="outline"
+                        className="workspace-header-actions-reset-button"
+                        onClick={handleResetCityDraft}
+                        aria-label="Reset all city data"
+                      >
+                        <RotateCcw />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Reset all city data</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="outline"
+                        onClick={handleSaveCityDraft}
+                        disabled={busyAction !== null}
+                        aria-label="Save all city data"
+                      >
+                        <Save />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Save all city data</TooltipContent>
+                  </Tooltip>
+                </div>
+              </TooltipProvider>
+            </CardFooter>
           </Card>
           ) : null}
 
           {editorDistrict ? (
           <>
             <Card className="page-card page-card--detail">
-              <CardHeader className="gap-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="grid min-w-0 gap-2">
-                    <CardTitle>District Editor</CardTitle>
+              <CardHeader className="panel__header city-placement-editor__panel-header gap-3">
+                <div className="panel__heading">
+                  <div className="city-placement-editor__editor-heading">
+                    <CardTitle className="panel__title">District Editor</CardTitle>
                     <div className="flex flex-wrap items-center gap-2">
                       {selectedCity ? <Badge variant="outline">{selectedCity.name}</Badge> : null}
                       {isBulkDistrictSelection && !isDistrictHoverPreview ? (
                         <Badge variant="secondary">{selectedDistrictIds.length} selected</Badge>
-                      ) : (
-                        <>
-                          {isEditorDistrictDirty ? (
-                            <span
-                              className="cities-page__dirty-indicator"
-                              aria-label="District has unsaved edits"
-                              title="District has unsaved edits"
-                            >
-                              <Asterisk />
-                            </span>
-                          ) : null}
-                          <Badge variant="secondary">{editorDistrict.name}</Badge>
-                          <Badge variant="outline">{editorDistrict.square}</Badge>
-                        </>
-                      )}
+                      ) : isEditorDistrictDirty ? (
+                        <span
+                          className="cities-page__dirty-indicator"
+                          aria-label="District has unsaved edits"
+                          title="District has unsaved edits"
+                        >
+                          <Asterisk />
+                        </span>
+                      ) : null}
                     </div>
                   </div>
-                  <TooltipProvider delayDuration={150}>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            size="icon-sm"
-                            variant="outline"
-                            className="workspace-header-actions-reset-button"
-                            onClick={handleResetEditorDistrict}
-                            disabled={isBulkDistrictSelection || !canEditEditorDistrict || !isEditorDistrictDirty}
-                            aria-label="Reset district"
-                          >
-                            <RotateCcw />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Reset district</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            size="icon-sm"
-                            variant="outline"
-                            onClick={handleSaveEditorDistrict}
-                            disabled={
-                              busyAction !== null ||
-                              isBulkDistrictSelection ||
-                              !canEditEditorDistrict ||
-                              !isEditorDistrictDirty
-                            }
-                            aria-label="Save district"
-                          >
-                            <Save />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Save district</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </TooltipProvider>
                 </div>
+                <CardAction className="panel__action city-placement-editor__header-action">
+                  <DistrictBadge
+                    name={isBulkDistrictSelection && !isDistrictHoverPreview ? null : editorDistrict.name}
+                    square={isBulkDistrictSelection && !isDistrictHoverPreview ? null : editorDistrict.square}
+                    className="district-badge--header"
+                  />
+                </CardAction>
               </CardHeader>
-              <CardContent className="page-card__content grid gap-4">
+              <CardContent className="page-card__content city-placement-editor__detail-content">
                 <Tabs value={selectedDistrictTab} onValueChange={(value) => setSelectedDistrictTab(value as DistrictEditorTab)}>
                   <TabsList className="detail-editor-tabs-list">
                     <TabsTrigger value="basics">Basics</TabsTrigger>
@@ -2343,32 +2309,75 @@ export function EdinburghReviewPage({
                   </TabsContent>
                 </Tabs>
               </CardContent>
+              <CardFooter className="city-placement-editor__detail-footer">
+                <TooltipProvider delayDuration={150}>
+                  <div className="city-placement-editor__detail-footer-actions">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon-sm"
+                          variant="outline"
+                          className="workspace-header-actions-reset-button"
+                          onClick={handleResetEditorDistrict}
+                          disabled={isBulkDistrictSelection || !canEditEditorDistrict || !isEditorDistrictDirty}
+                          aria-label="Reset district"
+                        >
+                          <RotateCcw />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Reset district</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon-sm"
+                          variant="outline"
+                          onClick={handleSaveEditorDistrict}
+                          disabled={
+                            busyAction !== null ||
+                            isBulkDistrictSelection ||
+                            !canEditEditorDistrict ||
+                            !isEditorDistrictDirty
+                          }
+                          aria-label="Save district"
+                        >
+                          <Save />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Save district</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TooltipProvider>
+              </CardFooter>
             </Card>
           </>
           ) : null}
         </div>
       }
       tertiary={
-        <Card className="page-card page-card--detail">
-          <CardHeader className="panel__header">
+        <Card className="page-card page-card--detail city-placement-editor__board-card">
+          <CardHeader className="panel__header city-placement-editor__panel-header">
             <div className="panel__heading">
               <CardTitle className="panel__title">Board</CardTitle>
             </div>
-            <div className="panel__action">
+            <CardAction className="panel__action city-placement-editor__header-action">
               <DistrictBadge
                 name={(highlightedDistrict ?? selectedDistrict)?.name ?? null}
                 square={(highlightedDistrict ?? selectedDistrict)?.square ?? null}
                 className="district-badge--header"
               />
-            </div>
+            </CardAction>
           </CardHeader>
-          <CardContent className="page-card__content grid gap-4">
+          <CardContent className="page-card__content grid gap-4 city-placement-editor__board-panel-content">
             {selectedDistrict ? (
               <CityDistrictBoardEditor
                 cityBoard={draft}
                 selectedDistrict={selectedDistrict}
                 highlightedDistrict={highlightedDistrict}
                 hoveredSquare={highlightedDistrict?.square ?? hoveredBoardSquare}
+                showDistrictLabels={showCityBoardNames}
                 onHoveredSquareChange={setHoveredBoardSquare}
                 onSelectDistrict={selectDistrictById}
                 onSquareChange={(square) => {
@@ -2381,30 +2390,41 @@ export function EdinburghReviewPage({
                 selectedDistrict={null}
                 highlightedDistrict={highlightedDistrict}
                 hoveredSquare={highlightedDistrict?.square ?? hoveredBoardSquare}
+                showDistrictLabels={showCityBoardNames}
                 onHoveredSquareChange={setHoveredBoardSquare}
                 onSelectDistrict={selectDistrictById}
                 onSquareChange={() => {}}
               />
             )}
           </CardContent>
+          {!layoutMode ? (
+            <label className="city-placement-editor__board-names-toggle">
+              <input
+                type="checkbox"
+                checked={showCityBoardNames}
+                onChange={(event) => setShowCityBoardNames(event.currentTarget.checked)}
+              />
+              <span>Show names</span>
+            </label>
+          ) : null}
         </Card>
       }
       quaternary={
         <Card className="page-card page-card--detail">
-          <CardHeader className="panel__header">
+          <CardHeader className="panel__header city-placement-editor__panel-header">
             <div className="panel__heading">
               <CardTitle className="panel__title">Map</CardTitle>
             </div>
-            <div className="panel__action city-placement-editor__map-header-action">
-              <div ref={mapPlacementSearchContainerRef} className="city-placement-editor__geocoder-host" />
+            <CardAction className="panel__action city-placement-editor__header-action">
               <DistrictBadge
                 name={(highlightedDistrict ?? selectedDistrict)?.name ?? null}
                 square={(highlightedDistrict ?? selectedDistrict)?.square ?? null}
                 className="district-badge--header"
               />
-            </div>
+            </CardAction>
           </CardHeader>
           <CardContent className="page-card__content page-card__content--map-placement">
+            <div ref={mapPlacementSearchContainerRef} className="city-placement-editor__geocoder-host" />
             {selectedDistrict ? (
               <CityDistrictMapEditor
                 cityBoard={draft}

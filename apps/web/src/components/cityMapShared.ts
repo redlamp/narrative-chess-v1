@@ -81,6 +81,28 @@ function getCityBounds(cityBoard: CityBoard): CityBounds {
   return edinburghBounds;
 }
 
+function readBoardSquarePalette() {
+  if (typeof window === "undefined") {
+    return {
+      lightSquare: "#f5f5f4",
+      darkSquare: "#78716c",
+      lightText: "#111827",
+      darkText: "#f8fafc"
+    };
+  }
+
+  const computedStyle = window.getComputedStyle(document.documentElement);
+  const lightSquare = computedStyle.getPropertyValue("--board-light-square").trim() || "#f5f5f4";
+  const darkSquare = computedStyle.getPropertyValue("--board-dark-square").trim() || "#78716c";
+
+  return {
+    lightSquare,
+    darkSquare,
+    lightText: "#111827",
+    darkText: "#f8fafc"
+  };
+}
+
 function parseSquare(square: string) {
   const file = square.charCodeAt(0) - "a".charCodeAt(0);
   const rank = Number.parseInt(square.slice(1), 10) - 1;
@@ -369,6 +391,7 @@ export function syncDistrictMapLayers(input: {
   layerIds: DistrictMapLayerIds;
 }) {
   const { map, cityBoard, activeDistrict, layerIds } = input;
+  const palette = readBoardSquarePalette();
   const activeSquare = activeDistrict?.square ?? null;
   const radiusData = createDistrictRadiusGeoJson({
     cityBoard,
@@ -394,8 +417,8 @@ export function syncDistrictMapLayers(input: {
           "match",
           ["get", "squareTone"],
           "light",
-          "rgba(156,163,175,0.1)",
-          "rgba(17,24,39,0.1)"
+          `${palette.lightSquare}1a`,
+          `${palette.darkSquare}1a`
         ]
       }
     });
@@ -409,8 +432,8 @@ export function syncDistrictMapLayers(input: {
           "match",
           ["get", "squareTone"],
           "light",
-          "rgba(156,163,175,0.6)",
-          "rgba(17,24,39,0.6)"
+          `${palette.lightSquare}99`,
+          `${palette.darkSquare}99`
         ],
         "line-width": [
           "case",
@@ -456,16 +479,16 @@ export function syncDistrictMapLayers(input: {
         "match",
         ["get", "squareTone"],
         "light",
-        "#ffffff",
-        "#111827"
+        palette.lightSquare,
+        palette.darkSquare
       ],
       "circle-stroke-width": 1.5,
       "circle-stroke-color": [
         "match",
         ["get", "squareTone"],
         "light",
-        "#111827",
-        "#f8fafc"
+        palette.lightText,
+        palette.darkText
       ],
       "circle-opacity": 0.96
     }
@@ -490,8 +513,8 @@ export function syncDistrictMapLayers(input: {
         "match",
         ["get", "squareTone"],
         "light",
-        "#ffffff",
-        "#111827"
+        palette.lightSquare,
+        palette.darkSquare
       ],
       "circle-stroke-width": 2.5,
       "circle-stroke-color": "#2563eb",
@@ -516,15 +539,15 @@ export function syncDistrictMapLayers(input: {
         "match",
         ["get", "squareTone"],
         "light",
-        "#111827",
-        "#f8fafc"
+        palette.lightText,
+        palette.darkText
       ],
       "text-halo-color": [
         "match",
         ["get", "squareTone"],
         "light",
-        "rgba(255,255,255,0.7)",
-        "rgba(17,24,39,0.7)"
+        `${palette.lightSquare}b3`,
+        `${palette.darkSquare}b3`
       ],
       "text-halo-width": 0.7
     }

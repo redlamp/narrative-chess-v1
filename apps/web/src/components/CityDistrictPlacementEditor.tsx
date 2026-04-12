@@ -23,6 +23,7 @@ type CityDistrictBoardEditorProps = {
   selectedDistrict: DistrictCell | null;
   highlightedDistrict: DistrictCell | null;
   hoveredSquare: Square | null;
+  showDistrictLabels?: boolean;
   onHoveredSquareChange: (square: Square | null) => void;
   onSquareChange: (square: Square) => void;
   onSelectDistrict: (districtId: string) => void;
@@ -257,6 +258,7 @@ export function CityDistrictBoardEditor({
   selectedDistrict,
   highlightedDistrict,
   hoveredSquare,
+  showDistrictLabels = true,
   onHoveredSquareChange,
   onSquareChange,
   onSelectDistrict
@@ -280,10 +282,10 @@ export function CityDistrictBoardEditor({
         legalMoves={[]}
         viewMode="board"
         districtsBySquare={districtsBySquare}
-        showCoordinates={false}
-        showDistrictLabels={false}
-        showActiveSquareLabel
-        showSquareLabels
+        showCoordinates={true}
+        showDistrictLabels={showDistrictLabels}
+        showActiveSquareLabel={false}
+        showSquareLabels={false}
         showPieces={false}
         onSquareClick={(square) => {
           if (selectedDistrict) {

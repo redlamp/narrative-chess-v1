@@ -12,6 +12,8 @@ type FloatingActionNoticeProps = {
   notice: FloatingActionNoticeState | null;
   className?: string;
   notificationTimeMs?: number;
+  isPaused?: boolean;
+  onDismiss?: () => void;
 };
 
 const DEFAULT_NOTIFICATION_TIME_MS = 10_000;
@@ -20,11 +22,14 @@ const NOTIFICATION_EXIT_TIME_MS = 160;
 export function FloatingActionNotice({
   notice,
   className,
-  notificationTimeMs = DEFAULT_NOTIFICATION_TIME_MS
+  notificationTimeMs = DEFAULT_NOTIFICATION_TIME_MS,
+  isPaused = false,
+  onDismiss
 }: FloatingActionNoticeProps) {
   const [visibility, setVisibility] = useState<"hidden" | "visible" | "leaving">(
     notice ? "visible" : "hidden"
   );
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     if (!notice) {
@@ -33,12 +38,19 @@ export function FloatingActionNotice({
     }
 
     setVisibility("visible");
+  }, [notice]);
+
+  useEffect(() => {
+    if (!notice || isPaused || isHovered) {
+      return;
+    }
+
     const timeoutId = window.setTimeout(() => {
       setVisibility("leaving");
     }, notificationTimeMs);
 
     return () => window.clearTimeout(timeoutId);
-  }, [notice, notificationTimeMs]);
+  }, [isHovered, isPaused, notice, notificationTimeMs]);
 
   useEffect(() => {
     if (visibility !== "leaving") {
@@ -47,19 +59,26 @@ export function FloatingActionNotice({
 
     const timeoutId = window.setTimeout(() => {
       setVisibility("hidden");
+      onDismiss?.();
     }, NOTIFICATION_EXIT_TIME_MS);
 
     return () => window.clearTimeout(timeoutId);
-  }, [visibility]);
+  }, [onDismiss, visibility]);
 
   if (!notice || visibility === "hidden") {
     return null;
   }
 
+  const handleDismiss = () => {
+    setVisibility("leaving");
+  };
+
   return (
     <div
       aria-live="polite"
       role="status"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className={cn(
         "floating-action-notice",
         notice.tone === "error"
@@ -77,7 +96,7 @@ export function FloatingActionNotice({
         variant="ghost"
         size="icon-sm"
         className="floating-action-notice__close"
-        onClick={() => setVisibility("leaving")}
+        onClick={handleDismiss}
         aria-label="Dismiss notification"
       >
         <X />

@@ -13,6 +13,7 @@ export const workspacePanelIds = [
 ] as const;
 
 export const collapsibleWorkspacePanelIds = [
+  "board",
   "moves",
   "city-map",
   "city-map-maplibre",
@@ -96,6 +97,7 @@ const bundledFallbackLayoutState: WorkspaceLayoutState = {
     "recent-games": { x: 1, y: 1, w: 3, h: 8 }
   },
   collapsed: {
+    board: false,
     moves: false,
     "city-map": false,
     "city-map-maplibre": false,
@@ -508,10 +510,6 @@ export function getWorkspacePanelRenderHeight(
   const panel = layoutState.panels[panelId];
   if (!panel) {
     return 0;
-  }
-
-  if (panelId === "board") {
-    return panel.h;
   }
 
   return layoutState.collapsed[panelId] ? collapsedPanelHeight : panel.h;
