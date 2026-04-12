@@ -24,6 +24,7 @@ type CityDistrictBoardEditorProps = {
   highlightedDistrict: DistrictCell | null;
   hoveredSquare: Square | null;
   showDistrictLabels?: boolean;
+  showPieces?: boolean;
   onHoveredSquareChange: (square: Square | null) => void;
   onSquareChange: (square: Square) => void;
   onSelectDistrict: (districtId: string) => void;
@@ -259,6 +260,7 @@ export function CityDistrictBoardEditor({
   highlightedDistrict,
   hoveredSquare,
   showDistrictLabels = true,
+  showPieces = false,
   onHoveredSquareChange,
   onSquareChange,
   onSelectDistrict
@@ -272,36 +274,34 @@ export function CityDistrictBoardEditor({
   const activeDistrict = highlightedDistrict ?? selectedDistrict;
 
   return (
-    <div className="city-placement-editor__board">
-      <Board
-        snapshot={previewSnapshot}
-        cells={previewCells}
-        selectedSquare={selectedDistrict?.square ?? null}
-        hoveredSquare={hoveredSquare}
-        inspectedSquare={activeDistrict?.square ?? null}
-        legalMoves={[]}
-        viewMode="board"
-        districtsBySquare={districtsBySquare}
-        showCoordinates={true}
-        showDistrictLabels={showDistrictLabels}
-        showActiveSquareLabel={false}
-        showSquareLabels={false}
-        showPieces={false}
-        onSquareClick={(square) => {
-          if (selectedDistrict) {
-            onSquareChange(square);
-            return;
-          }
+    <Board
+      snapshot={previewSnapshot}
+      cells={previewCells}
+      selectedSquare={selectedDistrict?.square ?? null}
+      hoveredSquare={hoveredSquare}
+      inspectedSquare={activeDistrict?.square ?? null}
+      legalMoves={[]}
+      viewMode="board"
+      districtsBySquare={districtsBySquare}
+      showCoordinates={true}
+      showDistrictLabels={showDistrictLabels}
+      showActiveSquareLabel={false}
+      showSquareLabels={false}
+      showPieces={showPieces}
+      onSquareClick={(square) => {
+        if (selectedDistrict) {
+          onSquareChange(square);
+          return;
+        }
 
-          const district = districtsBySquare.get(square);
-          if (district) {
-            onSelectDistrict(district.id);
-          }
-        }}
-        onSquareHover={(square) => onHoveredSquareChange(square)}
-        onSquareLeave={() => onHoveredSquareChange(null)}
-      />
-    </div>
+        const district = districtsBySquare.get(square);
+        if (district) {
+          onSelectDistrict(district.id);
+        }
+      }}
+      onSquareHover={(square) => onHoveredSquareChange(square)}
+      onSquareLeave={() => onHoveredSquareChange(null)}
+    />
   );
 }
 

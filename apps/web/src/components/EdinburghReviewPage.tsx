@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -83,6 +82,7 @@ import { WorkspaceIntroCard } from "./WorkspaceIntroCard";
 import { WorkspaceListItem } from "./WorkspaceListItem";
 import { WorkspaceNoticeCard } from "./WorkspaceNoticeCard";
 import { ClearableSearchField } from "./ClearableSearchField";
+import { BoardPanel } from "./BoardPanel";
 import { DistrictBadge } from "./DistrictBadge";
 import {
   CityDistrictBoardEditor,
@@ -775,6 +775,7 @@ export function EdinburghReviewPage({
   const [expandedDistrictGroups, setExpandedDistrictGroups] = useState<Record<string, boolean>>({});
   const [showDistrictSquareColors, setShowDistrictSquareColors] = useState(false);
   const [showCityBoardNames, setShowCityBoardNames] = useState(true);
+  const [showBoardPieces, setShowBoardPieces] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<SaveNotice | null>(null);
   const [isDirectorySupported, setIsDirectorySupported] = useState(false);
@@ -782,8 +783,6 @@ export function EdinburghReviewPage({
   const [selectedCityTab, setSelectedCityTabState] = useState<CityEditorTab>("basics");
   const [selectedDistrictTab, setSelectedDistrictTabState] = useState<DistrictEditorTab>("basics");
   const [isMapImportArmed, setIsMapImportArmed] = useState(false);
-  const [cityBoardIsLandscape, setCityBoardIsLandscape] = useState(false);
-  const cityBoardCardRef = useRef<HTMLDivElement | null>(null);
   const mapPlacementSearchContainerRef = useRef<HTMLDivElement | null>(null);
   const selectedCityDefinition =
     getCityBoardDefinition(selectedCityId) ?? initialCityDefinition ?? cityBoardDefinitions[0] ?? null;
@@ -935,24 +934,6 @@ export function EdinburghReviewPage({
       return changed ? next : current;
     });
   }, [groupedDistricts]);
-
-  useLayoutEffect(() => {
-    const el = cityBoardCardRef.current;
-    if (!el) return;
-    const { width, height } = el.getBoundingClientRect();
-    setCityBoardIsLandscape(width > height);
-  }, []);
-
-  useEffect(() => {
-    const el = cityBoardCardRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect;
-      setCityBoardIsLandscape(width > height);
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
 
   const selectedDistrictIdSet = useMemo(() => new Set(selectedDistrictIds), [selectedDistrictIds]);
   const selectedDistrict =
@@ -2394,57 +2375,44 @@ export function EdinburghReviewPage({
         </div>
       }
       tertiary={
-        <Card ref={cityBoardCardRef} data-landscape={cityBoardIsLandscape} className="page-card page-card--detail city-placement-editor__board-card">
-          <CardHeader className="panel__header city-placement-editor__panel-header">
-            <div className="panel__heading">
-              <CardTitle className="panel__title">Board</CardTitle>
-            </div>
-            <CardAction className="panel__action city-placement-editor__header-action">
-              <DistrictBadge
-                name={(highlightedDistrict ?? selectedDistrict)?.name ?? null}
-                square={(highlightedDistrict ?? selectedDistrict)?.square ?? null}
-                className="district-badge--header"
-              />
-            </CardAction>
-          </CardHeader>
-          <CardContent className="page-card__content grid gap-4 city-placement-editor__board-panel-content">
-            {selectedDistrict ? (
-              <CityDistrictBoardEditor
-                cityBoard={draft}
-                selectedDistrict={selectedDistrict}
-                highlightedDistrict={highlightedDistrict}
-                hoveredSquare={highlightedDistrict?.square ?? hoveredBoardSquare}
-                showDistrictLabels={showCityBoardNames}
-                onHoveredSquareChange={setHoveredBoardSquare}
-                onSelectDistrict={selectDistrictById}
-                onSquareChange={(square) => {
-                  setDraft((current) => reassignDistrictSquare(current, selectedDistrict.id, square));
-                }}
-              />
-            ) : (
-              <CityDistrictBoardEditor
-                cityBoard={draft}
-                selectedDistrict={null}
-                highlightedDistrict={highlightedDistrict}
-                hoveredSquare={highlightedDistrict?.square ?? hoveredBoardSquare}
-                showDistrictLabels={showCityBoardNames}
-                onHoveredSquareChange={setHoveredBoardSquare}
-                onSelectDistrict={selectDistrictById}
-                onSquareChange={() => {}}
-              />
-            )}
-          </CardContent>
-          {!layoutMode ? (
-            <label className="city-placement-editor__board-names-toggle">
-              <input
-                type="checkbox"
-                checked={showCityBoardNames}
-                onChange={(event) => setShowCityBoardNames(event.currentTarget.checked)}
-              />
-              <span>Districts</span>
-            </label>
-          ) : null}
-        </Card>
+        <BoardPanel
+          className="page-card page-card--detail city-placement-editor__board-card"
+          districtName={(highlightedDistrict ?? selectedDistrict)?.name ?? null}
+          districtSquare={(highlightedDistrict ?? selectedDistrict)?.square ?? null}
+          showDistrictLabels={showCityBoardNames}
+          onShowDistrictLabelsChange={setShowCityBoardNames}
+          showPieces={showBoardPieces}
+          onShowPiecesChange={setShowBoardPieces}
+          layoutMode={layoutMode}
+        >
+          {selectedDistrict ? (
+            <CityDistrictBoardEditor
+              cityBoard={draft}
+              selectedDistrict={selectedDistrict}
+              highlightedDistrict={highlightedDistrict}
+              hoveredSquare={highlightedDistrict?.square ?? hoveredBoardSquare}
+              showDistrictLabels={showCityBoardNames}
+              showPieces={showBoardPieces}
+              onHoveredSquareChange={setHoveredBoardSquare}
+              onSelectDistrict={selectDistrictById}
+              onSquareChange={(square) => {
+                setDraft((current) => reassignDistrictSquare(current, selectedDistrict.id, square));
+              }}
+            />
+          ) : (
+            <CityDistrictBoardEditor
+              cityBoard={draft}
+              selectedDistrict={null}
+              highlightedDistrict={highlightedDistrict}
+              hoveredSquare={highlightedDistrict?.square ?? hoveredBoardSquare}
+              showDistrictLabels={showCityBoardNames}
+              showPieces={showBoardPieces}
+              onHoveredSquareChange={setHoveredBoardSquare}
+              onSelectDistrict={selectDistrictById}
+              onSquareChange={() => {}}
+            />
+          )}
+        </BoardPanel>
       }
       quaternary={
         <Card className="page-card page-card--detail">

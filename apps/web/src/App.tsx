@@ -101,6 +101,7 @@ import { getAnimatedPieceFrames } from "./chessMotion";
 import { listPageLayoutState, savePageLayoutState, type PageLayoutPanelId, type PageLayoutVariant } from "./pageLayoutState";
 import { getBundledPageLayout, getBundledWorkspaceLayout } from "./bundledLayouts";
 import { Board } from "./components/Board";
+import { BoardPanel } from "./components/BoardPanel";
 import { CityMapLibrePanel } from "./components/CityMapLibrePanel";
 import { CityMapPanel } from "./components/CityMapPanel";
 import { Panel } from "./components/Panel";
@@ -2164,21 +2165,14 @@ export default function App() {
                 useFreeformWorkspaceLayout
               )}
             >
-              <Panel
-                className="board-panel"
-                bodyClassName="board-panel__content"
-                title="Board"
-                action={renderPlayHeaderDistrictBadge()}
-                footer={!effectiveLayoutMode ? (
-                  <label className="board-panel__names-toggle">
-                    <input
-                      type="checkbox"
-                      checked={settings.showDistrictLabels}
-                      onChange={(event) => handleBooleanSettingChange("showDistrictLabels", event.currentTarget.checked)}
-                    />
-                    <span>Districts</span>
-                  </label>
-                ) : null}
+              <BoardPanel
+                districtName={playHeaderDistrict?.name ?? null}
+                districtSquare={playHeaderDistrict?.square ?? null}
+                showDistrictLabels={settings.showDistrictLabels}
+                onShowDistrictLabelsChange={(v) => handleBooleanSettingChange("showDistrictLabels", v)}
+                showPieces={true}
+                onShowPiecesChange={null}
+                layoutMode={!!effectiveLayoutMode}
               >
                 <Board
                   snapshot={snapshot}
@@ -2196,7 +2190,7 @@ export default function App() {
                   onSquareHover={setHoveredSquare}
                   onSquareLeave={() => setHoveredSquare(null)}
                 />
-              </Panel>
+              </BoardPanel>
 
               {renderMoveSurface("board")}
               {renderResizeHandle("board")}

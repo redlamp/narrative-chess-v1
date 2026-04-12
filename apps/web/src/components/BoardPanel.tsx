@@ -1,0 +1,79 @@
+import type { ReactNode } from "react";
+import type { Square } from "@narrative-chess/content-schema";
+import { DistrictBadge } from "./DistrictBadge";
+import { Panel } from "./Panel";
+
+type BoardPanelProps = {
+  // Toggle state (for footer)
+  showDistrictLabels: boolean;
+  onShowDistrictLabelsChange?: ((value: boolean) => void) | null;
+  showPieces?: boolean;
+  onShowPiecesChange?: ((value: boolean) => void) | null;
+  // Header badge
+  districtName?: string | null;
+  districtSquare?: Square | null;
+  // Layout
+  layoutMode?: boolean;
+  className?: string;
+  // Content (should be <Board> or a component that renders <Board> without a wrapper div)
+  children: ReactNode;
+};
+
+export function BoardPanel({
+  showDistrictLabels,
+  onShowDistrictLabelsChange,
+  showPieces = true,
+  onShowPiecesChange,
+  districtName,
+  districtSquare,
+  layoutMode = false,
+  className,
+  children,
+}: BoardPanelProps) {
+  const hasToggles =
+    !layoutMode &&
+    (onShowDistrictLabelsChange != null || onShowPiecesChange != null);
+
+  const footer: ReactNode = hasToggles ? (
+    <div className="board-panel__footer-toggles">
+      {onShowPiecesChange != null ? (
+        <label className="board-panel__footer-toggle">
+          <input
+            type="checkbox"
+            checked={showPieces}
+            onChange={(e) => onShowPiecesChange(e.currentTarget.checked)}
+          />
+          <span>Pieces</span>
+        </label>
+      ) : null}
+      {onShowDistrictLabelsChange != null ? (
+        <label className="board-panel__footer-toggle">
+          <input
+            type="checkbox"
+            checked={showDistrictLabels}
+            onChange={(e) => onShowDistrictLabelsChange(e.currentTarget.checked)}
+          />
+          <span>Districts</span>
+        </label>
+      ) : null}
+    </div>
+  ) : null;
+
+  return (
+    <Panel
+      className={["board-panel", className].filter(Boolean).join(" ")}
+      bodyClassName="board-panel__content"
+      title="Board"
+      action={
+        <DistrictBadge
+          name={districtName ?? null}
+          square={districtSquare ?? null}
+          className="district-badge--header"
+        />
+      }
+      footer={footer}
+    >
+      {children}
+    </Panel>
+  );
+}
