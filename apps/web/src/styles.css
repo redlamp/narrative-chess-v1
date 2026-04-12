@@ -3603,7 +3603,7 @@ select {
 }
 
 .recent-games-list-row[data-selected="true"] {
-  background: var(--muted);
+  background: var(--selection-surface);
 }
 
 .recent-games-list-row__main {

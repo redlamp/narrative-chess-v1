@@ -773,7 +773,7 @@ export function EdinburghReviewPage({
   const [districtSortMode, setDistrictSortMode] = useState<DistrictSortMode>("name");
   const [districtSortDirection, setDistrictSortDirection] = useState<DistrictSortDirection>("asc");
   const [expandedDistrictGroups, setExpandedDistrictGroups] = useState<Record<string, boolean>>({});
-  const [showDistrictSquareColors, setShowDistrictSquareColors] = useState(true);
+  const [showDistrictSquareColors, setShowDistrictSquareColors] = useState(false);
   const [showCityBoardNames, setShowCityBoardNames] = useState(true);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<SaveNotice | null>(null);

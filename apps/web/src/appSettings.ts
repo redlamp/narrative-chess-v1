@@ -1,4 +1,4 @@
-export type HighlightColor = "red" | "orange" | "green" | "blue" | "purple" | "grey";
+export type HighlightColor = "red" | "yellow" | "orange" | "green" | "blue" | "purple" | "grey";
 
 export type HighlightColorOption = {
   id: HighlightColor;
@@ -8,6 +8,7 @@ export type HighlightColorOption = {
 
 export const highlightColorOptions: HighlightColorOption[] = [
   { id: "red",    label: "Red",    hex: "#dc2626" },
+  { id: "yellow", label: "Yellow", hex: "#ca8a04" },
   { id: "orange", label: "Orange", hex: "#ea580c" },
   { id: "green",  label: "Green",  hex: "#16a34a" },
   { id: "blue",   label: "Blue",   hex: "#2563eb" },
@@ -84,7 +85,7 @@ export function normalizeAppSettings(value: unknown): AppSettings {
 }
 
 export function normalizeHighlightColor(value: unknown): HighlightColor {
-  const valid: HighlightColor[] = ["red", "orange", "green", "blue", "purple", "grey"];
+  const valid: HighlightColor[] = ["red", "yellow", "orange", "green", "blue", "purple", "grey"];
   return valid.includes(value as HighlightColor) ? (value as HighlightColor) : "blue";
 }
 
