@@ -9,6 +9,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { FloatingActionNotice, type FloatingActionNoticeState } from "./FloatingActionNotice";
+import { highlightColorOptions, type HighlightColor } from "../appSettings";
 
 type AppMenuProps = {
   isOpen: boolean;
@@ -19,6 +20,8 @@ type AppMenuProps = {
   isLoadingEverything: boolean;
   saveEverythingNotice: FloatingActionNoticeState | null;
   onDismissSaveEverythingNotice: () => void;
+  highlightColor: HighlightColor;
+  onHighlightColorChange: (color: HighlightColor) => void;
 };
 
 export function AppMenu({
@@ -29,7 +32,9 @@ export function AppMenu({
   isSavingEverything,
   isLoadingEverything,
   saveEverythingNotice,
-  onDismissSaveEverythingNotice
+  onDismissSaveEverythingNotice,
+  highlightColor,
+  onHighlightColorChange
 }: AppMenuProps) {
   const panelId = useId();
   const titleId = useId();
@@ -140,6 +145,27 @@ export function AppMenu({
                 <Download data-icon="inline-start" />
                 {isLoadingEverything ? "Loading..." : "Load"}
               </Button>
+            </div>
+
+            <div className="app-menu__panel-section">
+              <h3 className="app-menu__panel-title">Highlight color</h3>
+            </div>
+
+            <div className="app-menu__color-swatches" role="group" aria-label="Highlight color">
+              {highlightColorOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={[
+                    "app-menu__color-swatch",
+                    highlightColor === option.id ? "app-menu__color-swatch--active" : ""
+                  ].filter(Boolean).join(" ")}
+                  style={{ backgroundColor: option.hex }}
+                  onClick={() => onHighlightColorChange(option.id)}
+                  aria-label={option.label}
+                  aria-pressed={highlightColor === option.id}
+                />
+              ))}
             </div>
 
             <div className="app-menu__panel-section">

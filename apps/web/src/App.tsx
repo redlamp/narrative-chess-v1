@@ -39,9 +39,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   applyAppTheme,
+  applyHighlightColor,
   listAppSettings,
   saveAppSettings,
-  type AppSettings
+  type AppSettings,
+  type HighlightColor
 } from "./appSettings";
 import { edinburghBoard } from "./edinburghBoard";
 import {
@@ -787,6 +789,10 @@ export default function App() {
   useEffect(() => {
     applyAppTheme(settings.theme);
   }, [settings.theme]);
+
+  useEffect(() => {
+    applyHighlightColor(settings.highlightColor);
+  }, [settings.highlightColor]);
 
   useEffect(() => {
     applyPieceStyleSheet(pieceStyleSheet);
@@ -1928,6 +1934,10 @@ export default function App() {
               isLoadingEverything={isLoadingEverything}
               saveEverythingNotice={saveEverythingNotice}
               onDismissSaveEverythingNotice={() => setSaveEverythingNotice(null)}
+              highlightColor={settings.highlightColor}
+              onHighlightColorChange={(color: HighlightColor) =>
+                setSettings((s) => ({ ...s, highlightColor: color }))
+              }
             />
           </div>
 

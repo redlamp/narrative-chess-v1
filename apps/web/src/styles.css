@@ -4207,6 +4207,35 @@ select {
   gap: var(--space-2);
 }
 
+.app-menu__color-swatches {
+  display: flex;
+  gap: var(--space-1_5);
+  flex-wrap: wrap;
+}
+
+.app-menu__color-swatch {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+  transition: transform 80ms ease, box-shadow 80ms ease;
+}
+
+.app-menu__color-swatch:hover {
+  transform: scale(1.15);
+}
+
+.app-menu__color-swatch:focus-visible {
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--foreground);
+}
+
+.app-menu__color-swatch--active {
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--foreground);
+}
+
 .app-menu__floating-notice {
   position: fixed;
   top: var(--space-4);
