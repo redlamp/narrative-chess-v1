@@ -17,7 +17,7 @@
   "districts": [
     {
       "id": "edinburgh-cramond",
-      "square": "a8",
+      "square": "h3",
       "name": "Cramond",
       "locality": "North West",
       "descriptors": [
@@ -783,6 +783,7 @@
         "adjacent",
         "compact"
       ],
+      "radiusMeters": 700,
       "contentStatus": "procedural",
       "reviewStatus": "needs review",
       "reviewNotes": null,
@@ -1158,7 +1159,7 @@
     },
     {
       "id": "edinburgh-portobello",
-      "square": "h3",
+      "square": "a8",
       "name": "Portobello",
       "locality": "East",
       "descriptors": [
