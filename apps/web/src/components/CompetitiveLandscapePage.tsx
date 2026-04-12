@@ -37,12 +37,6 @@ export function CompetitiveLandscapePage() {
           <CardTitle className="text-3xl tracking-tight">
             Chess product references worth studying
           </CardTitle>
-          <CardDescription className="max-w-3xl text-sm leading-6">
-            This page captures live product references and a few practical takeaways for
-            Narrative Chess. The notes are intentionally surface-level: they focus on how
-            each product frames analysis, learning, and ongoing use rather than trying to
-            reproduce every feature.
-          </CardDescription>
         </CardHeader>
       </Card>
 

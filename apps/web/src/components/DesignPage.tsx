@@ -299,7 +299,6 @@ export function DesignPage({
           <CardHeader className="gap-4">
             <div className="grid gap-2">
               <CardTitle>Design sections</CardTitle>
-              <CardDescription>Choose a section, then review or edit it in the detail pane.</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="page-card__content page-card__content--scroll pt-0">
@@ -309,7 +308,6 @@ export function DesignPage({
                 onClick={() => setActiveSection("art-assets")}
                 selected={activeSection === "art-assets"}
                 title="Art assets"
-                description="Review the live piece glyphs, markup hooks, and current asset presentation."
                 meta={<Badge variant="outline">Reference</Badge>}
               />
               <WorkspaceListItem
@@ -317,7 +315,6 @@ export function DesignPage({
                 onClick={() => setActiveSection("style-reference")}
                 selected={activeSection === "style-reference"}
                 title="Style reference"
-                description="Edit the shared piece stylesheet and save it back to the project folder."
                 meta={<Badge variant="outline">Editable</Badge>}
               />
               <WorkspaceListItem
@@ -325,7 +322,6 @@ export function DesignPage({
                 onClick={() => setActiveSection("typography-zoo")}
                 selected={activeSection === "typography-zoo"}
                 title="Typography zoo"
-                description="Explore scale, rhythm, labels, and code-like copy for the Design page."
                 meta={<Badge variant="outline">New</Badge>}
               />
             </ul>
@@ -334,20 +330,28 @@ export function DesignPage({
       }
       detail={
         activeSection === "art-assets" ? (
-          <PieceAssetsPage />
+          <Card className="page-card page-card--detail">
+            <CardContent className="page-card__content page-card__content--scroll">
+              <PieceAssetsPage />
+            </CardContent>
+          </Card>
         ) : activeSection === "style-reference" ? (
-          <PieceStyleReferencePage
-            pieceStyleSheet={pieceStyleSheet}
-            pieceStyleDirectoryName={pieceStyleDirectoryName}
-            isPieceStyleDirectorySupported={isPieceStyleDirectorySupported}
-            pieceStyleFileBusyAction={pieceStyleFileBusyAction}
-            pieceStyleFileNotice={pieceStyleFileNotice}
-            onPieceStyleSheetChange={onPieceStyleSheetChange}
-            onConnectPieceStyleDirectory={onConnectPieceStyleDirectory}
-            onLoadPieceStyleSheetFromDirectory={onLoadPieceStyleSheetFromDirectory}
-            onSavePieceStyleSheetToDirectory={onSavePieceStyleSheetToDirectory}
-            onResetPieceStyleSheet={onResetPieceStyleSheet}
-          />
+          <Card className="page-card page-card--detail">
+            <CardContent className="page-card__content page-card__content--scroll">
+              <PieceStyleReferencePage
+                pieceStyleSheet={pieceStyleSheet}
+                pieceStyleDirectoryName={pieceStyleDirectoryName}
+                isPieceStyleDirectorySupported={isPieceStyleDirectorySupported}
+                pieceStyleFileBusyAction={pieceStyleFileBusyAction}
+                pieceStyleFileNotice={pieceStyleFileNotice}
+                onPieceStyleSheetChange={onPieceStyleSheetChange}
+                onConnectPieceStyleDirectory={onConnectPieceStyleDirectory}
+                onLoadPieceStyleSheetFromDirectory={onLoadPieceStyleSheetFromDirectory}
+                onSavePieceStyleSheetToDirectory={onSavePieceStyleSheetToDirectory}
+                onResetPieceStyleSheet={onResetPieceStyleSheet}
+              />
+            </CardContent>
+          </Card>
         ) : (
           <TypographyZooPage />
         )

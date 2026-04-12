@@ -595,7 +595,7 @@ export function ClassicGamesLibraryPage({
               </div>
             ) : null}
           </CardHeader>
-          <CardContent className="page-card__content grid gap-5">
+          <CardContent className="page-card__content page-card__content--scroll grid gap-5">
             {selectedGame ? (
               <>
                 <div className="grid gap-4 lg:grid-cols-2">

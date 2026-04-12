@@ -16,11 +16,6 @@ export function PieceAssetsPage() {
             <Badge variant="outline">Piece glyph reference</Badge>
           </div>
           <CardTitle className="text-3xl tracking-tight">Chess piece art and markup</CardTitle>
-          <CardDescription className="max-w-3xl text-sm leading-6">
-            These are the live piece assets used by the app right now. The cards below show the
-            rendered glyphs, the state classes that drive styling, and the main HTML hooks the app
-            exposes for future refinements.
-          </CardDescription>
         </CardHeader>
       </Card>
 
@@ -55,10 +50,6 @@ export function PieceAssetsPage() {
                   .board-square__piece.is-white, .board-square__piece.is-black,
                   .piece-badge__icon--white, .piece-badge__icon--black
                 </code>
-                <p className="text-muted-foreground">
-                  The board square glyph and the inspector badge both share the same piece state
-                  classes so one CSS sheet can style the whole app.
-                </p>
               </div>
             </CardContent>
           </Card>

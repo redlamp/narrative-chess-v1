@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CompetitiveLandscapePage } from "./CompetitiveLandscapePage";
 import { IndexedWorkspace } from "./IndexedWorkspace";
 import { WorkspaceIntroCard } from "./WorkspaceIntroCard";
@@ -42,21 +42,22 @@ export function ResearchPage({
           <CardHeader className="gap-4">
             <div className="grid gap-2">
               <CardTitle>Competitive analysis</CardTitle>
-              <CardDescription>Use this page for market references and direct product comparisons.</CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="page-card__content pt-0">
+          <CardContent className="page-card__content page-card__content--scroll pt-0">
             <div className="grid gap-3">
               <Badge variant="secondary" className="w-fit">Competition</Badge>
-              <p className="text-sm text-muted-foreground">
-                This section tracks comparable chess products, screenshots, and notes about how
-                they frame study, analysis, onboarding, and long-term retention.
-              </p>
             </div>
           </CardContent>
         </Card>
       }
-      detail={<CompetitiveLandscapePage />}
+      detail={
+        <Card className="page-card page-card--detail">
+          <CardContent className="page-card__content page-card__content--scroll">
+            <CompetitiveLandscapePage />
+          </CardContent>
+        </Card>
+      }
     />
   );
 }

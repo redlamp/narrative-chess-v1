@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle
 } from "@/components/ui/card";
@@ -339,9 +338,6 @@ export function RoleCatalogPage({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="grid gap-2">
                 <CardTitle>Pieces</CardTitle>
-                <CardDescription>
-                  Choose the chess piece family first, then pick a role from the next column.
-                </CardDescription>
               </div>
               <Button type="button" variant="outline" onClick={() => onRoleCatalogAdd(selectedPieceKind)}>
                 Add role
@@ -389,9 +385,6 @@ export function RoleCatalogPage({
                 <Badge variant="outline">{getPieceKindLabel(selectedPieceKind)}</Badge>
                 <Badge variant="outline">{selectedPieceRoles.length} visible</Badge>
               </div>
-              <CardDescription>
-                Search within the catalog, then choose a specific role to edit.
-              </CardDescription>
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_11rem]">
                 <ClearableSearchField
                   label="Search roles"
@@ -458,12 +451,8 @@ export function RoleCatalogPage({
               <CardTitle>Role detail editor</CardTitle>
               {selectedRole ? <Badge variant="outline">{getPieceKindLabel(selectedRole.pieceKind)}</Badge> : null}
             </div>
-            <CardDescription>
-              Edit the selected role record and keep the roster grounded in readable, reusable
-              character prompts.
-            </CardDescription>
           </CardHeader>
-          <CardContent className="page-card__content grid gap-4">
+          <CardContent className="page-card__content page-card__content--scroll grid gap-4">
             {selectedRole ? (
               <>
                 <div className="flex flex-wrap gap-2">
