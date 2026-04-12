@@ -3,24 +3,24 @@
   "layoutKey": "classics-page",
   "layoutVariant": "two-pane",
   "name": "classics",
-  "savedAt": "2026-04-11T17:19:21.828Z",
+  "savedAt": "2026-04-12T14:43:00.142Z",
   "layoutState": {
     "version": 2,
-    "columnCount": 12,
-    "columnGap": 16,
-    "rowHeight": 44,
+    "columnCount": 14,
+    "columnGap": 8,
+    "rowHeight": 64,
     "panels": {
       "intro": {
         "x": 1,
         "y": 1,
-        "w": 12,
-        "h": 2
+        "w": 14,
+        "h": 1
       },
       "index": {
         "x": 1,
-        "y": 3,
-        "w": 4,
-        "h": 16
+        "y": 2,
+        "w": 6,
+        "h": 14
       },
       "secondary": {
         "x": 5,
@@ -29,10 +29,10 @@
         "h": 15
       },
       "detail": {
-        "x": 5,
-        "y": 3,
+        "x": 7,
+        "y": 2,
         "w": 8,
-        "h": 16
+        "h": 14
       },
       "tertiary": {
         "x": 5,

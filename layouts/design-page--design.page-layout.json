@@ -3,24 +3,24 @@
   "layoutKey": "design-page",
   "layoutVariant": "two-pane",
   "name": "design",
-  "savedAt": "2026-04-11T17:19:21.972Z",
+  "savedAt": "2026-04-12T14:43:00.251Z",
   "layoutState": {
     "version": 2,
-    "columnCount": 12,
-    "columnGap": 16,
+    "columnCount": 14,
+    "columnGap": 8,
     "rowHeight": 64,
     "panels": {
       "intro": {
         "x": 1,
         "y": 1,
-        "w": 12,
+        "w": 14,
         "h": 1
       },
       "index": {
         "x": 1,
         "y": 2,
-        "w": 4,
-        "h": 12
+        "w": 3,
+        "h": 15
       },
       "secondary": {
         "x": 5,
@@ -29,10 +29,10 @@
         "h": 15
       },
       "detail": {
-        "x": 5,
+        "x": 4,
         "y": 2,
-        "w": 8,
-        "h": 12
+        "w": 11,
+        "h": 23
       },
       "tertiary": {
         "x": 5,
