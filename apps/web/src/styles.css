@@ -2425,9 +2425,11 @@ select {
   bottom: var(--space-3);
   z-index: 3;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-direction: row;
+  align-items: center;
   gap: var(--space-1);
+  transform: rotate(-90deg);
+  transform-origin: right bottom;
 }
 
 .board-panel__footer-toggle {
@@ -2443,12 +2445,6 @@ select {
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
-}
-
-.board-panel[data-landscape="true"] .board-panel__footer-toggles {
-  flex-direction: column;
-  right: var(--space-3);
-  bottom: var(--space-3);
 }
 
 .board-panel__content {

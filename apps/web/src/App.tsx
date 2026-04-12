@@ -2389,20 +2389,16 @@ export default function App() {
                 useFreeformWorkspaceLayout
               )}
             >
-              <Panel
-                title="Character"
+              <CharacterDetailPanel
+                focusedSquare={storyFocusedSquare}
+                focusedPiece={focusedPiece}
+                focusedCharacter={focusedCharacter}
+                focusedCharacterMoments={focusedCharacterMoments}
+                moveHistory={moveHistory}
+                showRecentCharacterActions={settings.showRecentCharacterActions}
                 collapsed={workspaceLayout.collapsed["story-character"]}
                 onToggleCollapse={() => handleTogglePanelCollapse("story-character")}
-              >
-                <CharacterDetailPanel
-                  focusedSquare={storyFocusedSquare}
-                  focusedPiece={focusedPiece}
-                  focusedCharacter={focusedCharacter}
-                  focusedCharacterMoments={focusedCharacterMoments}
-                  moveHistory={moveHistory}
-                  showRecentCharacterActions={settings.showRecentCharacterActions}
-                />
-              </Panel>
+              />
               {renderMoveSurface("story-character")}
               {renderResizeHandle("story-character")}
               {renderConstraintHandle("story-character")}

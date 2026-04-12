@@ -17,6 +17,8 @@ type CharacterDetailPanelProps = {
   focusedCharacterMoments: NarrativeEvent[];
   moveHistory: MoveRecord[];
   showRecentCharacterActions: boolean;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 };
 
 export function CharacterDetailPanel({
@@ -25,7 +27,9 @@ export function CharacterDetailPanel({
   focusedCharacter,
   focusedCharacterMoments,
   moveHistory,
-  showRecentCharacterActions
+  showRecentCharacterActions,
+  collapsed,
+  onToggleCollapse
 }: CharacterDetailPanelProps) {
   const hasCharacter = Boolean(focusedCharacter && focusedPiece);
   const blankValue = "\u00A0";
@@ -76,7 +80,7 @@ export function CharacterDetailPanel({
   );
 
   return (
-    <Panel title={detailName} eyebrow={detailRole} action={pieceAction}>
+    <Panel title={detailName} eyebrow={detailRole} action={pieceAction} collapsed={collapsed} onToggleCollapse={onToggleCollapse}>
       <Tabs defaultValue="details" className="character-tabs">
         <TabsList className="character-tabs-list">
           <TabsTrigger value="details">Details</TabsTrigger>
