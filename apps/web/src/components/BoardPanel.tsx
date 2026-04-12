@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Square } from "@narrative-chess/content-schema";
 import { DistrictBadge } from "./DistrictBadge";
 import { Panel } from "./Panel";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type BoardPanelProps = {
   // Toggle state (for footer)
@@ -38,20 +39,18 @@ export function BoardPanel({
     <div className="board-panel__footer-toggles">
       {onShowPiecesChange != null ? (
         <label className="board-panel__footer-toggle">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={showPieces}
-            onChange={(e) => onShowPiecesChange(e.currentTarget.checked)}
+            onCheckedChange={(checked) => onShowPiecesChange(checked === true)}
           />
           <span>Pieces</span>
         </label>
       ) : null}
       {onShowDistrictLabelsChange != null ? (
         <label className="board-panel__footer-toggle">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={showDistrictLabels}
-            onChange={(e) => onShowDistrictLabelsChange(e.currentTarget.checked)}
+            onCheckedChange={(checked) => onShowDistrictLabelsChange(checked === true)}
           />
           <span>Districts</span>
         </label>
