@@ -37,22 +37,22 @@ export function BoardPanel({
 
   const footer: ReactNode = hasToggles ? (
     <div className="board-panel__footer-toggles">
-      {onShowPiecesChange != null ? (
-        <label className="board-panel__footer-toggle">
-          <Checkbox
-            checked={showPieces}
-            onCheckedChange={(checked) => onShowPiecesChange(checked === true)}
-          />
-          <span>Pieces</span>
-        </label>
-      ) : null}
       {onShowDistrictLabelsChange != null ? (
         <label className="board-panel__footer-toggle">
+          <span className="board-panel__footer-toggle-text">Districts</span>
           <Checkbox
             checked={showDistrictLabels}
             onCheckedChange={(checked) => onShowDistrictLabelsChange(checked === true)}
           />
-          <span>Districts</span>
+        </label>
+      ) : null}
+      {onShowPiecesChange != null ? (
+        <label className="board-panel__footer-toggle">
+          <span className="board-panel__footer-toggle-text">Pieces</span>
+          <Checkbox
+            checked={showPieces}
+            onCheckedChange={(checked) => onShowPiecesChange(checked === true)}
+          />
         </label>
       ) : null}
     </div>

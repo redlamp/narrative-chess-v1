@@ -569,7 +569,7 @@ function StatusDropdownField<Value extends string>({
   const ActiveIcon = activeMeta.icon;
 
   return (
-    <label className="grid gap-2">
+    <label className="grid gap-1">
       <span className="text-sm font-medium">{label}</span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -626,7 +626,7 @@ function CoordinateStepperField({
   onChange
 }: CoordinateStepperFieldProps) {
   return (
-    <label className={className ? `grid gap-2 ${className}` : "grid gap-2"}>
+    <label className={className ? `grid gap-1 ${className}` : "grid gap-1"}>
       <span className="text-sm font-medium">{label}</span>
       <div className="coordinate-stepper">
         <Input
@@ -1798,9 +1798,9 @@ export function EdinburghReviewPage({
                   <TabsTrigger value="info">Info</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="basics" className="grid gap-4 pt-2">
-                  <div className="grid gap-4 lg:grid-cols-3">
-                    <label className="grid gap-2 lg:col-span-3">
+                <TabsContent value="basics" className="grid gap-2 pt-1">
+                  <div className="grid gap-3 lg:grid-cols-3">
+                    <label className="grid gap-1 lg:col-span-3">
                       <span className="text-sm font-medium">City name</span>
                       <Input
                         name="city-name"
@@ -1823,7 +1823,7 @@ export function EdinburghReviewPage({
                       getMeta={getReviewStatusMeta}
                       onChange={(value) => setCityField("reviewStatus", value as CityBoard["reviewStatus"])}
                     />
-                    <label className="grid gap-2">
+                    <label className="grid gap-1">
                       <span className="text-sm font-medium">Last reviewed</span>
                       <Input
                         name="city-last-reviewed-at"
@@ -1833,7 +1833,7 @@ export function EdinburghReviewPage({
                         onChange={(event) => setCityField("lastReviewedAt", event.currentTarget.value || null)}
                       />
                     </label>
-                    <label className="grid gap-2 lg:col-span-3">
+                    <label className="grid gap-1 lg:col-span-3">
                       <span className="text-sm font-medium">Review notes</span>
                       <Textarea
                         name="city-review-notes"
@@ -1846,9 +1846,9 @@ export function EdinburghReviewPage({
                   </div>
                 </TabsContent>
 
-                <TabsContent value="narrative" className="grid gap-4 pt-2">
+                <TabsContent value="narrative" className="grid gap-2 pt-1">
                   <div className="grid gap-4">
-                    <label className="grid gap-2">
+                    <label className="grid gap-1">
                       <span className="text-sm font-medium">Summary</span>
                       <Textarea
                         name="city-summary"
@@ -1858,7 +1858,7 @@ export function EdinburghReviewPage({
                         rows={4}
                       />
                     </label>
-                    <label className="grid gap-2">
+                    <label className="grid gap-1">
                       <span className="text-sm font-medium">Board orientation</span>
                       <Textarea
                         name="city-board-orientation"
@@ -1871,9 +1871,9 @@ export function EdinburghReviewPage({
                   </div>
                 </TabsContent>
 
-                <TabsContent value="info" className="grid gap-4 pt-2">
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <label className="grid gap-2">
+                <TabsContent value="info" className="grid gap-2 pt-1">
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    <label className="grid gap-1">
                       <span className="text-sm font-medium">Country / region</span>
                       <Input
                         name="city-country"
@@ -1882,7 +1882,7 @@ export function EdinburghReviewPage({
                         onChange={(event) => setCityField("country", event.currentTarget.value)}
                       />
                     </label>
-                    <label className="grid gap-2">
+                    <label className="grid gap-1">
                       <span className="text-sm font-medium">Generation source</span>
                       <Input
                         name="city-generation-source"
@@ -1891,7 +1891,7 @@ export function EdinburghReviewPage({
                         onChange={(event) => setCityField("generationSource", event.currentTarget.value)}
                       />
                     </label>
-                    <label className="grid gap-2 lg:col-span-2">
+                    <label className="grid gap-1 lg:col-span-2">
                       <span className="text-sm font-medium">Source URLs</span>
                       <Textarea
                         name="city-source-urls"
@@ -1984,9 +1984,9 @@ export function EdinburghReviewPage({
                     <TabsTrigger value="location">Location</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="basics" className="grid gap-4 pt-2">
-                    <div className="grid gap-4 lg:grid-cols-3">
-                      <label className="grid gap-2 lg:col-span-3">
+                  <TabsContent value="basics" className="grid gap-2 pt-1">
+                    <div className="grid gap-3 lg:grid-cols-3">
+                      <label className="grid gap-1 lg:col-span-3">
                         <span className="text-sm font-medium">District name</span>
                         <Input
                           name="district-name"
@@ -2028,7 +2028,7 @@ export function EdinburghReviewPage({
                           }))
                         }
                       />
-                      <label className="grid gap-2">
+                      <label className="grid gap-1">
                         <span className="text-sm font-medium">Last reviewed</span>
                         <Input
                           name="district-last-reviewed-at"
@@ -2045,7 +2045,7 @@ export function EdinburghReviewPage({
                           }}
                         />
                       </label>
-                      <label className="grid gap-2 lg:col-span-3">
+                      <label className="grid gap-1 lg:col-span-3">
                         <span className="text-sm font-medium">Review notes</span>
                         <Textarea
                           name="district-review-notes"
@@ -2065,9 +2065,9 @@ export function EdinburghReviewPage({
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="narrative" className="grid gap-4 pt-2">
-                    <div className="grid gap-4 lg:grid-cols-2">
-                      <label className="grid gap-2 lg:col-span-2">
+                  <TabsContent value="narrative" className="grid gap-2 pt-1">
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      <label className="grid gap-1 lg:col-span-2">
                         <span className="text-sm font-medium">Day profile</span>
                         <Textarea
                           name="district-day-profile"
@@ -2084,7 +2084,7 @@ export function EdinburghReviewPage({
                           rows={3}
                         />
                       </label>
-                      <label className="grid gap-2 lg:col-span-2">
+                      <label className="grid gap-1 lg:col-span-2">
                         <span className="text-sm font-medium">Night profile</span>
                         <Textarea
                           name="district-night-profile"
@@ -2101,7 +2101,7 @@ export function EdinburghReviewPage({
                           rows={3}
                         />
                       </label>
-                      <label className="grid gap-2">
+                      <label className="grid gap-1">
                         <span className="text-sm font-medium">Descriptions</span>
                         <Textarea
                           name="district-descriptors"
@@ -2118,7 +2118,7 @@ export function EdinburghReviewPage({
                           rows={5}
                         />
                       </label>
-                      <label className="grid gap-2">
+                      <label className="grid gap-1">
                         <span className="text-sm font-medium">Tone cues</span>
                         <Textarea
                           name="district-tone-cues"
@@ -2138,9 +2138,9 @@ export function EdinburghReviewPage({
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="location" className="grid gap-4 pt-2">
-                    <div className="grid gap-4 lg:grid-cols-2">
-                      <label className="grid gap-2">
+                  <TabsContent value="location" className="grid gap-2 pt-1">
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      <label className="grid gap-1">
                         <span className="text-sm font-medium">Board tile</span>
                         <select
                           name="district-square"
@@ -2165,7 +2165,7 @@ export function EdinburghReviewPage({
                           ))}
                         </select>
                       </label>
-                      <label className="grid gap-2">
+                      <label className="grid gap-1">
                         <span className="text-sm font-medium">Locality</span>
                         <Input
                           name="district-locality"
@@ -2181,7 +2181,7 @@ export function EdinburghReviewPage({
                           }}
                         />
                       </label>
-                      <label className="grid gap-2 lg:col-span-2">
+                      <label className="grid gap-1 lg:col-span-2">
                         <span className="text-sm font-medium">Landmarks</span>
                         <Textarea
                           name="district-landmarks"
@@ -2198,7 +2198,7 @@ export function EdinburghReviewPage({
                           rows={4}
                         />
                       </label>
-                      <div className="grid gap-2 lg:col-span-2">
+                      <div className="grid gap-1 lg:col-span-2">
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-sm font-medium">Radius</span>
                           <span className="text-xs text-muted-foreground">
