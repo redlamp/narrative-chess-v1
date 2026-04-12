@@ -1798,7 +1798,7 @@ export function EdinburghReviewPage({
                   <TabsTrigger value="info">Info</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="basics" className="grid gap-2 pt-1">
+                <TabsContent value="basics" className="grid gap-2">
                   <div className="grid gap-3 lg:grid-cols-3">
                     <label className="grid gap-1 lg:col-span-3">
                       <span className="text-sm font-medium">City name</span>
@@ -1846,7 +1846,7 @@ export function EdinburghReviewPage({
                   </div>
                 </TabsContent>
 
-                <TabsContent value="narrative" className="grid gap-2 pt-1">
+                <TabsContent value="narrative" className="grid gap-2">
                   <div className="grid gap-4">
                     <label className="grid gap-1">
                       <span className="text-sm font-medium">Summary</span>
@@ -1871,7 +1871,7 @@ export function EdinburghReviewPage({
                   </div>
                 </TabsContent>
 
-                <TabsContent value="info" className="grid gap-2 pt-1">
+                <TabsContent value="info" className="grid gap-2">
                   <div className="grid gap-3 lg:grid-cols-2">
                     <label className="grid gap-1">
                       <span className="text-sm font-medium">Country / region</span>
@@ -1984,7 +1984,7 @@ export function EdinburghReviewPage({
                     <TabsTrigger value="location">Location</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="basics" className="grid gap-2 pt-1">
+                  <TabsContent value="basics" className="grid gap-2">
                     <div className="grid gap-3 lg:grid-cols-3">
                       <label className="grid gap-1 lg:col-span-3">
                         <span className="text-sm font-medium">District name</span>
@@ -2065,7 +2065,7 @@ export function EdinburghReviewPage({
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="narrative" className="grid gap-2 pt-1">
+                  <TabsContent value="narrative" className="grid gap-2">
                     <div className="grid gap-3 lg:grid-cols-2">
                       <label className="grid gap-1 lg:col-span-2">
                         <span className="text-sm font-medium">Day profile</span>
@@ -2138,7 +2138,7 @@ export function EdinburghReviewPage({
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="location" className="grid gap-2 pt-1">
+                  <TabsContent value="location" className="grid gap-2">
                     <div className="grid gap-3 lg:grid-cols-2">
                       <label className="grid gap-1">
                         <span className="text-sm font-medium">Board tile</span>

@@ -4801,6 +4801,10 @@ select {
   min-height: 0;
 }
 
+.city-placement-editor__detail-content [data-slot="tabs"] {
+  gap: var(--space-1);
+}
+
 .city-placement-editor__editor-heading {
   display: grid;
   min-width: 0;
