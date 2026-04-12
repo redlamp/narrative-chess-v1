@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -781,6 +782,8 @@ export function EdinburghReviewPage({
   const [selectedCityTab, setSelectedCityTabState] = useState<CityEditorTab>("basics");
   const [selectedDistrictTab, setSelectedDistrictTabState] = useState<DistrictEditorTab>("basics");
   const [isMapImportArmed, setIsMapImportArmed] = useState(false);
+  const [cityBoardIsLandscape, setCityBoardIsLandscape] = useState(false);
+  const cityBoardCardRef = useRef<HTMLDivElement | null>(null);
   const mapPlacementSearchContainerRef = useRef<HTMLDivElement | null>(null);
   const selectedCityDefinition =
     getCityBoardDefinition(selectedCityId) ?? initialCityDefinition ?? cityBoardDefinitions[0] ?? null;
@@ -932,6 +935,25 @@ export function EdinburghReviewPage({
       return changed ? next : current;
     });
   }, [groupedDistricts]);
+
+  useLayoutEffect(() => {
+    const el = cityBoardCardRef.current;
+    if (!el) return;
+    const { width, height } = el.getBoundingClientRect();
+    setCityBoardIsLandscape(width > height);
+  }, []);
+
+  useEffect(() => {
+    const el = cityBoardCardRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setCityBoardIsLandscape(width > height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const selectedDistrictIdSet = useMemo(() => new Set(selectedDistrictIds), [selectedDistrictIds]);
   const selectedDistrict =
     selectedDistrictIds.length === 0
@@ -2372,7 +2394,7 @@ export function EdinburghReviewPage({
         </div>
       }
       tertiary={
-        <Card className="page-card page-card--detail city-placement-editor__board-card">
+        <Card ref={cityBoardCardRef} data-landscape={cityBoardIsLandscape} className="page-card page-card--detail city-placement-editor__board-card">
           <CardHeader className="panel__header city-placement-editor__panel-header">
             <div className="panel__heading">
               <CardTitle className="panel__title">Board</CardTitle>
@@ -2419,7 +2441,7 @@ export function EdinburghReviewPage({
                 checked={showCityBoardNames}
                 onChange={(event) => setShowCityBoardNames(event.currentTarget.checked)}
               />
-              <span>Show names</span>
+              <span>Districts</span>
             </label>
           ) : null}
         </Card>

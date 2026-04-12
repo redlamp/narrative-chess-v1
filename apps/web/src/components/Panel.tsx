@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ type PanelProps = {
   eyebrow?: string;
   leadingAction?: ReactNode;
   action?: ReactNode;
+  footer?: ReactNode;
   className?: string;
   bodyClassName?: string;
   collapsed?: boolean;
@@ -27,6 +28,7 @@ export function Panel({
   eyebrow,
   leadingAction,
   action,
+  footer,
   className,
   bodyClassName,
   collapsed = false,
@@ -36,9 +38,29 @@ export function Panel({
   const panelTitleId = useId();
   const panelBodyId = useId();
   const accessibleTitle = typeof title === "string" ? title : "panel";
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [isLandscape, setIsLandscape] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const { width, height } = el.getBoundingClientRect();
+    setIsLandscape(width > height);
+  }, []);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setIsLandscape(width > height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <Card className={cn("panel", collapsed && "panel--collapsed", className)} size="sm">
+    <Card ref={cardRef} data-landscape={isLandscape} className={cn("panel", collapsed && "panel--collapsed", className)} size="sm">
       <CardHeader className="panel__header">
         <div className="panel__heading">
           {onToggleCollapse ? (
@@ -75,6 +97,7 @@ export function Panel({
           {children}
         </CardContent>
       ) : null}
+      {!collapsed && footer ? footer : null}
     </Card>
   );
 }

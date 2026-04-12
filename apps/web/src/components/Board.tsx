@@ -103,6 +103,20 @@ export function Board({
     }
   }, [hoveredSquare, selectedSquare]);
 
+  // Measure synchronously before first paint so the board never renders at the wrong size.
+  useLayoutEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) {
+      return;
+    }
+
+    const availableWidth = shell.clientWidth - (showCoordinates ? boardRankLabelGutterPx * 2 : 0);
+    const availableHeight = (shell.clientHeight || shell.clientWidth) - (showCoordinates ? boardFileLabelGutterPx : 0);
+    const nextSize = Math.max(0, Math.floor(Math.min(availableWidth, availableHeight)));
+    setBoardSize(nextSize || null);
+  }, [showCoordinates]);
+
+  // ResizeObserver keeps the board sized correctly after layout changes.
   useEffect(() => {
     const shell = shellRef.current;
     if (!shell || typeof ResizeObserver === "undefined") {
@@ -110,13 +124,11 @@ export function Board({
     }
 
     const updateBoardSize = () => {
-      const availableWidth = shell.clientWidth - (showCoordinates ? boardRankLabelGutterPx : 0);
+      const availableWidth = shell.clientWidth - (showCoordinates ? boardRankLabelGutterPx * 2 : 0);
       const availableHeight = (shell.clientHeight || shell.clientWidth) - (showCoordinates ? boardFileLabelGutterPx : 0);
       const nextSize = Math.max(0, Math.floor(Math.min(availableWidth, availableHeight)));
       setBoardSize(nextSize || null);
     };
-
-    updateBoardSize();
 
     const observer = new ResizeObserver(() => {
       updateBoardSize();

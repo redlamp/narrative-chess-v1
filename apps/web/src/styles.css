@@ -1754,6 +1754,9 @@ select {
   height: 100%;
   min-height: 0;
   border-radius: inherit;
+}
+
+.workspace-item > .panel {
   overflow: hidden;
 }
 
@@ -2378,9 +2381,43 @@ select {
 }
 
 .board-panel {
+  position: relative;
   min-height: 100%;
   border-radius: var(--workspace-card-radius);
-  overflow: hidden;
+  overflow: visible; /* allow the toggle to appear outside the card's overflow clip */
+}
+
+.board-panel__names-toggle {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1_5);
+  padding: var(--space-1) var(--space-1_5);
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--foreground);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.board-panel[data-landscape="true"] .board-panel__names-toggle {
+  width: 6rem;
+  bottom: calc(6rem + var(--space-3));
+  transform: rotate(-90deg);
+  transform-origin: right bottom;
+}
+
+.board-panel__names-toggle input[type="checkbox"] {
+  flex-shrink: 0;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--selection);
 }
 
 .board-panel__content {
@@ -2388,6 +2425,8 @@ select {
   min-height: 0;
   flex: 1 1 auto;
   padding-top: 0;
+  overflow: hidden;
+  border-radius: inherit;
 }
 
 .board-panel__content[data-slot="card-content"] {
@@ -2404,6 +2443,32 @@ select {
 
 .board-panel__content .board-grid {
   margin-inline: auto;
+  overflow: visible;
+}
+
+.board-panel__content .board-square {
+  overflow: visible;
+}
+
+.board-panel__content .board-square__square-label {
+  opacity: 0.6;
+}
+
+.board-panel__content .board-square__district--board {
+  top: 50%;
+  right: auto;
+  left: 50%;
+  inline-size: calc(100% + 0.9rem);
+  max-inline-size: 8rem;
+  transform: translate(-50%, -50%) rotate(-30deg);
+  transform-origin: center;
+  text-align: center;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+  overflow: visible;
+  text-overflow: clip;
+  opacity: 0.6;
 }
 
 .board-panel {
@@ -2428,7 +2493,7 @@ select {
 }
 
 .board-shell__frame--coordinates {
-  grid-template-columns: 1.5rem auto;
+  grid-template-columns: 1.5rem auto 1.5rem;
   grid-template-rows: auto 1.5rem;
   column-gap: 0.35rem;
   row-gap: 0.35rem;
@@ -4716,36 +4781,45 @@ select {
 
 .city-placement-editor__board-card {
   position: relative;
+  overflow: visible; /* allow the toggle to appear outside the card's overflow clip */
 }
 
 .city-placement-editor__board-panel-content {
   padding-bottom: var(--space-8);
+  overflow: hidden;
+  border-radius: inherit;
 }
 
 .city-placement-editor__board-names-toggle {
   position: absolute;
-  left: auto;
-  right: calc(var(--space-3) + 2.5rem);
+  right: var(--space-3);
   bottom: var(--space-3);
   z-index: 3;
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1_5) var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--card) 92%, transparent 8%);
-  box-shadow: var(--shadow-sm);
-  transform: rotate(90deg);
-  transform-origin: bottom right;
+  gap: var(--space-1_5);
+  padding: var(--space-1) var(--space-1_5);
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  border-radius: var(--radius-sm);
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--foreground);
+  white-space: nowrap;
+  cursor: pointer;
   user-select: none;
 }
 
-.city-placement-editor__board-names-toggle input {
+.city-placement-editor__board-card[data-landscape="true"] .city-placement-editor__board-names-toggle {
+  width: 6rem;
+  bottom: calc(6rem + var(--space-3));
+  transform: rotate(-90deg);
+  transform-origin: right bottom;
+}
+
+.city-placement-editor__board-names-toggle input[type="checkbox"] {
+  flex-shrink: 0;
   margin: 0;
+  cursor: pointer;
   accent-color: var(--selection);
 }
 

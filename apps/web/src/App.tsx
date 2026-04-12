@@ -2116,6 +2116,16 @@ export default function App() {
                 bodyClassName="board-panel__content"
                 title="Board"
                 action={renderPlayHeaderDistrictBadge()}
+                footer={!effectiveLayoutMode ? (
+                  <label className="board-panel__names-toggle">
+                    <input
+                      type="checkbox"
+                      checked={settings.showDistrictLabels}
+                      onChange={(event) => handleBooleanSettingChange("showDistrictLabels", event.currentTarget.checked)}
+                    />
+                    <span>Districts</span>
+                  </label>
+                ) : null}
               >
                 <Board
                   snapshot={snapshot}
