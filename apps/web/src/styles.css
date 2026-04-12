@@ -215,7 +215,7 @@ select {
   font-size: clamp(2.25rem, 4vw, 3rem);
   line-height: 1;
   letter-spacing: -0.04em;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .app-header__status {
@@ -269,7 +269,7 @@ select {
 }
 
 .app-header__status-value {
-  font-size: 0.92rem;
+  font-size: var(--font-size-sm);
   line-height: 1.15;
   min-width: 0;
   overflow: hidden;
@@ -343,7 +343,7 @@ select {
 }
 
 .workspace-intro-card__title {
-  font-size: 1.45rem;
+  font-size: var(--font-size-2xl);
   line-height: 1.15;
   letter-spacing: -0.03em;
 }
@@ -410,7 +410,7 @@ select {
   box-shadow: 0 16px 48px color-mix(in srgb, black 20%, transparent 80%);
   color: var(--popover-foreground);
   padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
   line-height: 1.35;
   animation: floating-action-notice-in 140ms ease-out;
 }
@@ -524,14 +524,14 @@ select {
 }
 
 .design-typography-zoo__options-count {
-  font-size: 1rem;
+  font-size: var(--font-size-base);
   font-weight: 600;
 }
 
 .design-typography-zoo__options-note {
   margin: 0;
   color: var(--muted-foreground);
-  font-size: 0.92rem;
+  font-size: var(--font-size-sm);
   line-height: 1.6;
 }
 
@@ -554,13 +554,13 @@ select {
   margin: 0;
   max-width: 62ch;
   color: var(--muted-foreground);
-  font-size: 0.95rem;
+  font-size: var(--font-size-sm);
   line-height: 1.7;
 }
 
 .design-typography-zoo__eyebrow {
   color: var(--muted-foreground);
-  font-size: 0.72rem;
+  font-size: var(--font-size-xs);
   line-height: 1;
   text-transform: uppercase;
   letter-spacing: 0.2em;
@@ -628,21 +628,21 @@ select {
 }
 
 .design-typography-zoo__heading-sample--h4 {
-  font-size: 1.32rem;
+  font-size: var(--font-size-xl);
   line-height: 1.14;
   letter-spacing: -0.03em;
   font-weight: 600;
 }
 
 .design-typography-zoo__heading-sample--h5 {
-  font-size: 1.08rem;
+  font-size: var(--font-size-lg);
   line-height: 1.2;
   letter-spacing: -0.02em;
   font-weight: 580;
 }
 
 .design-typography-zoo__heading-sample--h6 {
-  font-size: 0.95rem;
+  font-size: var(--font-size-sm);
   line-height: 1.25;
   letter-spacing: -0.01em;
   font-weight: 580;
@@ -650,7 +650,7 @@ select {
 
 .design-typography-zoo__sample-label {
   color: var(--muted-foreground);
-  font-size: 0.72rem;
+  font-size: var(--font-size-xs);
   line-height: 1.1;
   text-transform: uppercase;
   letter-spacing: 0.18em;
@@ -675,19 +675,19 @@ select {
 }
 
 .design-typography-zoo__sample-value--subhead {
-  font-size: 1.1rem;
+  font-size: var(--font-size-lg);
   line-height: 1.35;
   letter-spacing: -0.02em;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .design-typography-zoo__sample-value--body {
-  font-size: 0.98rem;
+  font-size: var(--font-size-base);
   line-height: 1.7;
 }
 
 .design-typography-zoo__sample-value--label {
-  font-size: 0.82rem;
+  font-size: var(--font-size-xs);
   line-height: 1.3;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -695,14 +695,14 @@ select {
 
 .design-typography-zoo__sample-value--mono {
   font-family: var(--font-mono, "Geist Mono", monospace);
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   line-height: 1.5;
 }
 
 .design-typography-zoo__specimen-note {
   margin: 0;
   color: var(--muted-foreground);
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
   line-height: 1.6;
 }
 
@@ -795,14 +795,14 @@ select {
 .memory-list__label,
 .slider-field__header span {
   color: var(--muted-foreground);
-  font-size: 0.78rem;
+  font-size: var(--font-size-xs);
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
 
 .status-card__value {
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
 }
 
 .page-switcher-tabs {
@@ -1003,8 +1003,8 @@ select {
 
 .panel__header-note {
   color: var(--muted-foreground);
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   line-height: 1.2;
   text-align: right;
   white-space: nowrap;
@@ -1053,8 +1053,8 @@ select {
   margin: 0;
   flex: 0 1 auto;
   min-width: 0;
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
   line-height: 1.3;
   white-space: nowrap;
   overflow: hidden;
@@ -1145,8 +1145,8 @@ select {
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
-  font-size: 0.92rem;
-  font-weight: 500;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
 }
 
 .layout-toolbar__component-toggle input {
@@ -1170,7 +1170,7 @@ select {
   border: 1px solid var(--border);
   border-radius: calc(var(--radius) + 0.1rem);
   padding: var(--space-3) var(--space-3_5);
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
 }
 
 .workspace-notice-card {
@@ -1183,14 +1183,14 @@ select {
 
 .workspace-notice-card__title {
   margin: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
 }
 
 .workspace-notice-card__body {
   display: grid;
   gap: var(--space-2_5);
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
   line-height: 1.5;
 }
 
@@ -1280,14 +1280,14 @@ select {
 }
 
 .workspace-list-item__title {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   line-height: 1.25;
 }
 
 .workspace-list-item__description {
   margin: 0;
   color: var(--muted-foreground);
-  font-size: 0.86rem;
+  font-size: var(--font-size-sm);
   line-height: 1.35;
 }
 
@@ -1341,8 +1341,8 @@ select {
 }
 
 .slider-field__header strong {
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
 }
 
 .stepper-field {
@@ -1395,7 +1395,7 @@ select {
   height: 1rem;
   padding-inline: var(--space-1);
   color: var(--muted-foreground);
-  font-size: 0.72rem;
+  font-size: var(--font-size-xs);
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
@@ -1434,7 +1434,7 @@ select {
 .piece-badge__label,
 .role-card__name,
 .saved-match__title {
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .saved-match__summary {
@@ -1481,7 +1481,7 @@ select {
 
 .saved-match__count {
   color: var(--muted-foreground);
-  font-size: 0.82rem;
+  font-size: var(--font-size-xs);
   white-space: nowrap;
 }
 
@@ -1513,7 +1513,7 @@ select {
 .detail-card__description,
 .timeline__link {
   color: var(--muted-foreground);
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
   line-height: 1.5;
 }
 
@@ -1582,7 +1582,7 @@ select {
   background: var(--background);
   color: var(--foreground);
   padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   line-height: 1;
   cursor: pointer;
   transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
@@ -1634,7 +1634,7 @@ select {
   background: var(--background);
   color: var(--foreground);
   padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   line-height: 1;
   cursor: pointer;
   transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
@@ -1688,7 +1688,7 @@ select {
   border: none;
   background: transparent;
   color: var(--foreground);
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
   cursor: pointer;
   transition: background-color 120ms ease;
 }
@@ -1883,7 +1883,7 @@ select {
 }
 
 .workspace-item__settings-card-title {
-  font-size: 0.92rem;
+  font-size: var(--font-size-sm);
   line-height: 1.25;
 }
 
@@ -1895,7 +1895,7 @@ select {
 .workspace-item__settings-row {
   display: grid;
   gap: var(--space-2);
-  font-size: 0.86rem;
+  font-size: var(--font-size-sm);
 }
 
 .workspace-item__resize-handle span {
@@ -1959,12 +1959,12 @@ select {
 
 .panel__title,
 .board-panel__header h2 {
-  font-size: 1.1rem;
+  font-size: var(--font-size-lg);
   line-height: 1.3;
 }
 
 .workspace-item .panel__title {
-  font-size: 1.1rem;
+  font-size: var(--font-size-lg);
   line-height: 1.3;
 }
 
@@ -2070,7 +2070,7 @@ select {
 
 .classic-games-page__move-side {
   font-size: 0.68rem;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted-foreground);
@@ -2125,7 +2125,7 @@ select {
   background: var(--background);
   color: var(--foreground);
   padding: 0 var(--space-2_5);
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   font-variant-numeric: tabular-nums;
   line-height: 1;
   cursor: grab;
@@ -2190,8 +2190,8 @@ select {
 
 .match-history__header-cell {
   color: var(--muted-foreground);
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -2221,8 +2221,8 @@ select {
   padding-top: var(--space-2);
   padding-right: var(--space-0_5);
   color: var(--muted-foreground);
-  font-weight: 600;
-  font-size: 0.85rem;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
   white-space: nowrap;
 }
 
@@ -2247,7 +2247,7 @@ select {
   background: var(--match-history-move-background);
   color: var(--match-history-move-foreground);
   text-align: left;
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
   line-height: 1.25;
   transition:
     border-color 120ms ease,
@@ -2315,7 +2315,7 @@ select {
   gap: 0.35rem;
   justify-self: end;
   color: color-mix(in srgb, currentColor 72%, var(--muted-foreground) 28%);
-  font-size: 0.78rem;
+  font-size: var(--font-size-xs);
   white-space: nowrap;
 }
 
@@ -2430,8 +2430,8 @@ select {
   padding: var(--space-1) var(--space-1_5);
   background: color-mix(in srgb, var(--card) 82%, transparent);
   border-radius: var(--radius-sm);
-  font-size: 0.82rem;
-  font-weight: 500;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   color: var(--foreground);
   white-space: nowrap;
   cursor: pointer;
@@ -2553,8 +2553,8 @@ select {
 
 .board-shell__coordinate {
   color: var(--muted-foreground);
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   line-height: 1;
   font-variant-numeric: tabular-nums;
   text-transform: lowercase;
@@ -2617,7 +2617,7 @@ select {
   background: color-mix(in srgb, var(--background) 88%, transparent 12%);
   color: var(--foreground);
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   line-height: 1;
   letter-spacing: 0.01em;
 }
@@ -2864,7 +2864,7 @@ select {
   top: var(--space-4);
   right: var(--space-2);
   left: var(--space-2);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   text-align: left;
 }
 
@@ -2872,11 +2872,11 @@ select {
   font-size: 0.64rem;
   line-height: 1.2;
   opacity: 0.92;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .board-square__district--map {
-  font-size: 0.72rem;
+  font-size: var(--font-size-xs);
   line-height: 1.2;
 }
 
@@ -2921,7 +2921,7 @@ select {
 
 .detail-grid dd {
   margin: var(--space-1) 0 0;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .piece-badge {
@@ -3034,7 +3034,7 @@ select {
 .timeline__headline,
 .memory-item__headline {
   margin: 0;
-  font-size: 0.98rem;
+  font-size: var(--font-size-base);
 }
 
 .chip-row {
@@ -3052,7 +3052,7 @@ select {
   border: 1px solid var(--border);
   background: var(--background);
   color: var(--foreground);
-  font-size: 0.78rem;
+  font-size: var(--font-size-xs);
 }
 
 .chip {
@@ -3087,7 +3087,7 @@ select {
 .side-pill--compact {
   text-transform: none;
   letter-spacing: normal;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .side-pill--square {
@@ -3256,7 +3256,7 @@ select {
 .content-outline__heading {
   margin: 0;
   color: var(--foreground);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .content-outline__section-label {
@@ -3625,14 +3625,14 @@ select {
 
 .recent-games-list-row__title {
   color: var(--foreground);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   line-height: 1.25;
 }
 
 .recent-games-list-row__description,
 .recent-games-list-row__meta {
   color: var(--muted-foreground);
-  font-size: 0.78rem;
+  font-size: var(--font-size-xs);
   line-height: 1.2;
 }
 
@@ -3735,7 +3735,7 @@ select {
   margin-left: auto;
   flex: 0 0 auto;
   color: var(--muted-foreground);
-  font-size: 0.86rem;
+  font-size: var(--font-size-sm);
   line-height: 1.2;
   text-align: right;
 }
@@ -3753,8 +3753,8 @@ select {
 
 .recent-games-details h4 {
   margin: 0;
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
 }
 
 .recent-games-details__location-row {
@@ -3772,7 +3772,7 @@ select {
 }
 
 .recent-games-summary {
-  font-size: 0.95rem;
+  font-size: var(--font-size-sm);
   line-height: 1.5;
   color: var(--foreground) !important;
 }
@@ -4033,9 +4033,9 @@ select {
 }
 
 .character-detail-container__piece-text {
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   line-height: 1.2;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   text-align: right;
   color: var(--muted-foreground);
   white-space: nowrap;
@@ -4044,7 +4044,7 @@ select {
 .character-detail-container__piece-icon {
   inline-size: 1.9rem;
   block-size: 1.9rem;
-  font-size: 1.15rem;
+  font-size: var(--font-size-lg);
 }
 
 .character-detail-container__piece-icon--placeholder {
@@ -4075,7 +4075,7 @@ select {
 
 .character-detail-container__detail-value {
   margin: 0.2rem 0 0;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .character-detail-container__stacked-chips {
@@ -4110,16 +4110,16 @@ select {
   display: flex;
   gap: var(--space-1);
   align-items: center;
-  font-size: 0.95rem;
+  font-size: var(--font-size-sm);
 }
 
 .character-action-move strong {
-  font-weight: 600;
-  font-size: 1rem;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
 }
 
 .character-action-type {
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--muted-foreground);
@@ -4127,14 +4127,14 @@ select {
 
 .character-action-headline {
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   line-height: 1.4;
 }
 
 .character-action-detail {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   line-height: 1.5;
   color: var(--muted-foreground);
 }
@@ -4194,8 +4194,8 @@ select {
 
 .app-menu__panel-title {
   margin: 0;
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted-foreground);
@@ -4260,7 +4260,7 @@ select {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   min-width: 0;
 }
 
@@ -4272,7 +4272,7 @@ select {
 
 .cities-page__group-count {
   color: var(--muted-foreground);
-  font-size: 0.82rem;
+  font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -4322,8 +4322,8 @@ select {
   padding: 0.25rem 0.65rem;
   border-radius: 999px;
   border: 1px solid currentColor;
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
@@ -4382,10 +4382,10 @@ select {
 .cities-districts-section-header h3,
 .cities-page__district-title {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--font-size-base);
   line-height: 1.3;
   letter-spacing: -0.02em;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .cities-page__district-title {
@@ -4573,14 +4573,14 @@ select {
 }
 
 .city-placement-editor__title {
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
   line-height: 1.2;
 }
 
 .city-placement-editor__description {
   color: var(--muted-foreground);
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
 }
 
 .city-placement-editor__badges {
@@ -4620,7 +4620,7 @@ select {
   align-items: center;
   gap: var(--space-2);
   color: var(--muted-foreground);
-  font-size: 0.88rem;
+  font-size: var(--font-size-sm);
 }
 
 .city-placement-editor__toolbar {
@@ -4670,7 +4670,7 @@ select {
   border-radius: min(var(--radius-md), 12px);
   background: var(--background);
   box-shadow: none;
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
   line-height: 1.25rem;
 }
 
@@ -4841,8 +4841,8 @@ select {
   padding: var(--space-1) var(--space-1_5);
   background: color-mix(in srgb, var(--card) 82%, transparent);
   border-radius: var(--radius-sm);
-  font-size: 0.82rem;
-  font-weight: 500;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   color: var(--foreground);
   white-space: nowrap;
   cursor: pointer;
@@ -5204,5 +5204,48 @@ select {
 
   html {
     @apply font-sans;
+  }
+}
+
+@layer utilities {
+  /* Eyebrow / kicker label — small uppercase caption above a heading */
+  .text-eyebrow {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted-foreground);
+    line-height: var(--line-height-normal);
+  }
+
+  /* Panel and card title */
+  .text-panel-title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-snug);
+    letter-spacing: -0.01em;
+  }
+
+  /* Intro / hero card title */
+  .text-intro-title {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-snug);
+    letter-spacing: -0.03em;
+  }
+
+  /* Display heading (app header h1) */
+  .text-display {
+    font-size: var(--font-size-display);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-tight);
+    letter-spacing: -0.04em;
+  }
+
+  /* Small body / metadata text */
+  .text-meta {
+    font-size: var(--font-size-sm);
+    color: var(--muted-foreground);
+    line-height: var(--line-height-normal);
   }
 }
