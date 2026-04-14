@@ -338,6 +338,7 @@ Recommended sequence:
 ## 12. Immediate Next Tasks
 
 ### Short-Term
+- add Narrative Tone info button with tooltip (explain feature + per-mode impact)
 - document persistence sources + UI states
 - define "published data" vs "local draft data" in-product
 - reduce Play page polish debt
