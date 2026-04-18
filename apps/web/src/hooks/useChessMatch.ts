@@ -26,9 +26,16 @@ import {
   deleteSavedMatch as deleteSavedMatchRecord,
   getSavedMatch,
   listSavedMatches,
+  replaceSavedMatches,
   saveMatch,
   type SavedMatchRecord
 } from "../savedMatches";
+import {
+  deleteSavedMatchFromSupabase,
+  listSavedMatchesFromSupabase,
+  saveSavedMatchToSupabase
+} from "../savedMatchesCloud";
+import { subscribeToAuthChanges } from "../auth";
 import { getRolePoolsOverride, type RoleCatalog } from "../roleCatalog";
 
 type UseChessMatchOptions = {
@@ -172,6 +179,43 @@ export function useChessMatch({ roleCatalog }: UseChessMatchOptions) {
         : null
     );
   }, [roleCatalog, tonePreset]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncSavedMatches = async () => {
+      try {
+        const remoteMatches = await listSavedMatchesFromSupabase();
+        if (cancelled) {
+          return;
+        }
+
+        if (remoteMatches) {
+          const nextMatches = replaceSavedMatches(remoteMatches);
+          setSavedMatches(nextMatches);
+          return;
+        }
+
+        setSavedMatches(listSavedMatches());
+      } catch (error) {
+        if (!cancelled) {
+          console.warn("[supabase] Could not sync saved matches.", error);
+          setSavedMatches(listSavedMatches());
+        }
+      }
+    };
+
+    void syncSavedMatches();
+
+    const unsubscribe = subscribeToAuthChanges(() => {
+      void syncSavedMatches();
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
 
   const loadStudyReplay = (input: {
     pgn: string;
@@ -356,6 +400,12 @@ export function useChessMatch({ roleCatalog }: UseChessMatchOptions) {
 
     const nextSavedMatches = saveMatch(localSnapshot);
     setSavedMatches(nextSavedMatches);
+    const nextSavedMatch = nextSavedMatches[0] ?? null;
+    if (nextSavedMatch) {
+      void saveSavedMatchToSupabase(nextSavedMatch).catch((error) => {
+        console.warn("[supabase] Could not save match to cloud.", error);
+      });
+    }
     return true;
   };
 
@@ -387,6 +437,9 @@ export function useChessMatch({ roleCatalog }: UseChessMatchOptions) {
 
   const removeSavedMatch = (savedMatchId: string) => {
     setSavedMatches(deleteSavedMatchRecord(savedMatchId));
+    void deleteSavedMatchFromSupabase(savedMatchId).catch((error) => {
+      console.warn("[supabase] Could not delete cloud saved match.", error);
+    });
   };
 
   return {

@@ -97,6 +97,10 @@ export function listSavedMatches(): SavedMatchRecord[] {
   return readSavedMatches();
 }
 
+export function replaceSavedMatches(records: SavedMatchRecord[]) {
+  return writeSavedMatches(parseSavedMatches(records));
+}
+
 export function saveMatch(snapshot: GameSnapshot, name?: string): SavedMatchRecord[] {
   const savedAt = new Date().toISOString();
   const validatedSnapshot = gameSnapshotSchema.parse(snapshot);
