@@ -43,6 +43,7 @@ type AppMenuProps = {
   onSignUpWithPassword: (email: string, password: string) => Promise<string>;
   onSignOut: () => Promise<string>;
   playCitySourceLabel: string;
+  playCityPreviewModeLabel: string;
   playCityEditionLabel: string | null;
   isPlayCityFallbackMatchKnown: boolean;
 };
@@ -79,6 +80,7 @@ export function AppMenu({
   onSignUpWithPassword,
   onSignOut,
   playCitySourceLabel,
+  playCityPreviewModeLabel,
   playCityEditionLabel,
   isPlayCityFallbackMatchKnown
 }: AppMenuProps) {
@@ -422,6 +424,10 @@ export function AppMenu({
             </div>
 
             <div className="grid gap-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[0.82rem] text-muted-foreground">Play city mode</span>
+                <Badge variant="outline">{playCityPreviewModeLabel}</Badge>
+              </div>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-[0.82rem] text-muted-foreground">Play city source</span>
                 <Badge variant="outline">{playCitySourceLabel}</Badge>

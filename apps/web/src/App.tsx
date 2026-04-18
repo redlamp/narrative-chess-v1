@@ -115,6 +115,7 @@ import {
   isSupabasePublishedCitiesEnabled,
   listFallbackPlayableCityOptions,
   listPlayableCityOptions,
+  loadLatestDraftCityBoard,
   loadPublishedCityBoard,
   type PlayableCityOption
 } from "./cityBoards";
@@ -170,7 +171,8 @@ type LayoutFileNotice = {
 
 type SaveEverythingNotice = LayoutFileNotice;
 
-type PlayCitySource = "fallback" | "supabase";
+type PlayCitySource = "fallback" | "supabase-published" | "supabase-draft";
+type PlayCityPreviewMode = "published" | "draft";
 
 type PanelSizeConstraint = {
   minW: number;
@@ -427,6 +429,7 @@ export default function App() {
   const [playCitySource, setPlayCitySource] = useState<PlayCitySource>(
     useSupabasePublishedCities ? "fallback" : "fallback"
   );
+  const [playCityPreviewMode, setPlayCityPreviewMode] = useState<PlayCityPreviewMode>("published");
   const [playCityPublishedEditionId, setPlayCityPublishedEditionId] = useState<string | null>(
     listFallbackPlayableCityOptions()[0]?.publishedEditionId ?? null
   );
@@ -458,7 +461,18 @@ export default function App() {
         : pageOptions,
     [effectiveRole]
   );
-  const playCitySourceLabel = playCitySource === "supabase" ? "Supabase published" : "Bundled fallback";
+  const canPreviewDraftPlayCity =
+    canAccessDraftCities &&
+    useSupabasePublishedCities &&
+    Boolean(selectedPlayCityOption?.publishedEditionId);
+  const effectivePlayCityPreviewMode: PlayCityPreviewMode =
+    canPreviewDraftPlayCity && playCityPreviewMode === "draft" ? "draft" : "published";
+  const playCitySourceLabel =
+    playCitySource === "supabase-draft"
+      ? "Supabase draft"
+      : playCitySource === "supabase-published"
+        ? "Supabase published"
+        : "Bundled fallback";
   const playCityMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [playCityMenuMaxWidth, setPlayCityMenuMaxWidth] = useState<number>(320);
 
@@ -497,6 +511,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (canPreviewDraftPlayCity) {
+      return;
+    }
+
+    setPlayCityPreviewMode("published");
+  }, [canPreviewDraftPlayCity]);
+
+  useEffect(() => {
     if (!selectedPlayCityOption) {
       return;
     }
@@ -529,13 +551,35 @@ export default function App() {
       return;
     }
 
-    void loadPublishedCityBoard(definition, selectedPlayCityOption.publishedEditionId)
+    const loadRemoteBoard =
+      effectivePlayCityPreviewMode === "draft"
+        ? loadLatestDraftCityBoard(definition).then((draftResult) => {
+            if (draftResult) {
+              return {
+                board: draftResult.board,
+                source: "supabase-draft" as const,
+                publishedEditionId: draftResult.cityEditionId,
+                matchesFallback: null
+              };
+            }
+
+            return loadPublishedCityBoard(definition, selectedPlayCityOption.publishedEditionId).then((result) => ({
+              ...result,
+              source: result.source === "supabase" ? ("supabase-published" as const) : "fallback"
+            }));
+          })
+        : loadPublishedCityBoard(definition, selectedPlayCityOption.publishedEditionId).then((result) => ({
+            ...result,
+            source: result.source === "supabase" ? ("supabase-published" as const) : "fallback"
+          }));
+
+    void loadRemoteBoard
       .then((result) => {
         if (cancelled) {
           return;
         }
 
-        if (result.source === "supabase" && result.matchesFallback === false) {
+        if (result.source === "supabase-published" && result.matchesFallback === false) {
           console.warn(
             `[supabase] Published city board for ${selectedPlayCityOption.id} differs from bundled fallback ${definition.boardFileStem}.`
           );
@@ -559,7 +603,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [selectedPlayCityOption, useSupabasePublishedCities]);
+  }, [effectivePlayCityPreviewMode, selectedPlayCityOption, useSupabasePublishedCities]);
 
   useEffect(() => {
     let cancelled = false;
@@ -989,10 +1033,10 @@ export default function App() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex items-center text-muted-foreground" aria-label={playCitySourceLabel}>
-                  {playCitySource === "supabase" ? <Cloud className="size-4" /> : <FileJson className="size-4" />}
+                  {playCitySource === "fallback" ? <FileJson className="size-4" /> : <Cloud className="size-4" />}
                 </span>
               </TooltipTrigger>
-              <TooltipContent>{playCitySource === "supabase" ? "remote" : "local"}</TooltipContent>
+              <TooltipContent>{playCitySource === "fallback" ? "local" : "remote"}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
           <ChevronDown data-icon="inline-end" />
@@ -1023,6 +1067,26 @@ export default function App() {
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
+        {canAccessDraftCities ? (
+          <>
+            <DropdownMenuLabel inset>Preview mode</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={effectivePlayCityPreviewMode}
+              onValueChange={(nextMode) => {
+                if (nextMode === "draft" && !canPreviewDraftPlayCity) {
+                  return;
+                }
+
+                setPlayCityPreviewMode(nextMode === "draft" ? "draft" : "published");
+              }}
+            >
+              <DropdownMenuRadioItem value="published">Published</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="draft" disabled={!canPreviewDraftPlayCity}>
+                Draft preview
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -2311,6 +2375,9 @@ export default function App() {
               onSignUpWithPassword={handleSignUpWithPassword}
               onSignOut={handleSignOut}
               playCitySourceLabel={playCitySourceLabel}
+              playCityPreviewModeLabel={
+                effectivePlayCityPreviewMode === "draft" ? "Draft preview" : "Published"
+              }
               playCityEditionLabel={playCityPublishedEditionId}
               isPlayCityFallbackMatchKnown={playCityMatchesFallback !== null}
             />
