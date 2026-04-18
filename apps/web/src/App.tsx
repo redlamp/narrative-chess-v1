@@ -1092,12 +1092,23 @@ export default function App() {
     </DropdownMenu>
   );
   const playHeaderDistrict = hoveredSquare ? focusedDistrict : selectedDistrict;
+  const renderPlayModeBadge = () => (
+    <Badge variant={effectivePlayCityPreviewMode === "draft" ? "secondary" : "outline"}>
+      {effectivePlayCityPreviewMode === "draft" ? "Draft preview" : "Published"}
+    </Badge>
+  );
   const renderPlayHeaderDistrictBadge = () => (
     <DistrictBadge
       name={playHeaderDistrict?.name ?? null}
       square={playHeaderDistrict?.square ?? null}
       className="district-badge--header"
     />
+  );
+  const renderPlayHeaderActions = () => (
+    <div className="flex items-center gap-2">
+      {renderPlayModeBadge()}
+      {renderPlayHeaderDistrictBadge()}
+    </div>
   );
   const applyResizeConstraints = (
     panelId: WorkspacePanelId,
@@ -2554,7 +2565,7 @@ export default function App() {
               id: "city-map-maplibre",
               label: "Map",
               content: (
-                <Panel title={playMapCityMenu} action={renderPlayHeaderDistrictBadge()}>
+                <Panel title={playMapCityMenu} action={renderPlayHeaderActions()}>
                   <CityMapLibrePanel
                     cityBoard={playCityBoard}
                     pieces={animatedPieces}
