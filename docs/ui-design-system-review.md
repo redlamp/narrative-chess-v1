@@ -22,19 +22,15 @@ Primary target folders:
 
 ## Findings
 
-### A. No `components.json`
+### A. shadcn Config
 
-The repo has local shadcn-style components, but no root `components.json`.
+The repo now has a root `components.json`.
 
-Risk:
+Current status:
 
-1. shadcn CLI cannot reliably add/update components.
-2. Agents may hand-roll components instead of using registry-compatible structure.
-
-Recommendation:
-
-1. Add or restore `components.json` before broad shadcn expansion.
-2. Until then, keep local UI primitives small and consistent with existing `apps/web/src/components/ui`.
+1. `pnpm dlx shadcn@latest info --json` recognizes the project.
+2. Installed local UI primitives are visible to the shadcn CLI.
+3. Framework is detected as `Manual`, which is acceptable for this Vite monorepo layout.
 
 ### B. Global CSS Is Doing Too Much
 
@@ -57,12 +53,12 @@ Recommendation:
 Known remaining native/custom select patterns:
 
 1. `EdinburghReviewPage.tsx`
-2. `RoleCatalogPage.tsx`
-3. `StudyPanel.tsx`
 
 Done:
 
 1. `RecentGamesPanel.tsx` Active invite form now uses `components/ui/select.tsx`.
+2. `StudyPanel.tsx` historic-game selector now uses `components/ui/select.tsx`.
+3. `RoleCatalogPage.tsx` sort, piece type, content status, and review status selectors now use `components/ui/select.tsx`.
 
 Recommendation:
 
@@ -97,11 +93,10 @@ For existing code:
 
 ## Suggested Migration Order
 
-1. Add/restore `components.json`.
-2. Convert native select/dropdown surfaces.
-3. Replace custom notice/callout blocks with `Alert` or a shared local equivalent.
-4. Move simple panel/form layout classes from CSS into Tailwind.
-5. Split `styles.css` only after repeated patterns are stabilized.
+1. Finish `EdinburghReviewPage.tsx` select/dropdown cleanup.
+2. Replace custom notice/callout blocks with `Alert` or a shared local equivalent.
+3. Move simple panel/form layout classes from CSS into Tailwind.
+4. Split `styles.css` only after repeated patterns are stabilized.
 
 ## Guardrails
 
