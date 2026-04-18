@@ -1,230 +1,241 @@
 # Supabase Migration Plan
 
 Last updated: April 18, 2026
-Status: Proposed implementation plan
-Primary milestone target: Milestone 2 completion + Milestone 6 durability
+Status: Proposed plan
+Main target: Milestone 2 + Milestone 6
 
-## Purpose
+## Big Idea
 
-This document defines a pragmatic backend plan for Narrative Chess using Supabase.
+Problem now:
 
-It is written for agents working on current priorities:
+- app save many place
+- browser
+- file save
+- checked-in repo content
+- deployed site
 
-- remove save-state ambiguity
-- make Cities and character/content tools more durable
-- preserve chess correctness and current local-first momentum
-- avoid unnecessary hosting or architecture changes
+These drift. User not know true thing.
 
-This plan assumes:
+Plan:
 
-- frontend hosting remains on GitHub Pages for now
-- Supabase is introduced as the backend system of record
-- browser persistence remains, but only as cache / local draft support
-- file export remains available, but becomes backup/import tooling instead of canonical storage
+- keep frontend on GitHub Pages
+- use Supabase as main truth for shared content and durable saves
+- keep local browser state as working draft or cache
+- keep file save as export / backup / import, not main truth
 
-## Why Supabase Now
+Vercel not needed now.
 
-Current repo pain is not deployment. It is persistence fragmentation.
+## Why Supabase
 
-Today the app uses a mix of:
+Need now is not hosting. Need now is save sanity.
 
-- bundled repo content
-- `localStorage`
-- IndexedDB for File System Access directory handles
-- optional filesystem saves
+Supabase gives:
 
-The PRD identifies the core problem clearly: local edits, file saves, repo-tracked content, and deployed state can drift silently.
+- Postgres as one canonical source
+- auth when editor login needed
+- storage for exports or later assets
+- future path for version history
+- future path for collaboration if project grows
 
-Supabase helps because it gives the project:
+This fits repo pain better than changing host.
 
-- a canonical Postgres data source
-- structured draft vs published records
-- auth if/when editor accounts are needed
-- storage for exports or future media assets
-- a clean future path to collaboration, revision history, and multiplayer support
+## What Stay In Scope
 
-Vercel is not required for this phase. It can be reconsidered later if deployment workflow becomes a bottleneck.
+- make clear what data is canonical
+- add draft vs published rules
+- move important content away from browser/file confusion
+- keep current local-first editing feel
+- do migration in pieces, not giant rewrite
 
-## Scope
-
-### In scope
-
-- define canonical data ownership rules
-- move content entities from browser/file ambiguity to DB-backed persistence
-- support explicit draft and published states
-- support revision history at the record/version level
-- keep existing local editing flows working during migration
-- provide an incremental rollout path instead of a big-bang rewrite
-
-### Out of scope
+## What Stay Out Of Scope
 
 - multiplayer
 - realtime collaboration
-- broad CMS/editor redesign
-- hosting migration away from GitHub Pages
-- replacing all local persistence immediately
-- major schema redesign across packages without a narrow need
+- giant CMS rebuild
+- moving off GitHub Pages
+- replacing every local save right away
+- broad schema redesign with no clear reason
 
-## Decision Summary
+## Main Decisions
 
-Use Supabase as the canonical backend for authored content and durable saved data.
+- Supabase is source of truth for shared authored data
+- GitHub Pages stays host for now
+- DreamHost can handle DNS only if custom subdomain wanted
+- `content/` files become seed/export/backup after migration
 
-Keep GitHub Pages as the frontend host.
+Example:
 
-Use DreamHost only for DNS if a custom subdomain is desired, for example `narrative.example.com` pointing to GitHub Pages.
+- `narrative.example.com` can point to GitHub Pages
+- app can still talk to Supabase
 
-## Canonical Ownership Rules
+## Ownership Rules
 
-These rules should guide all implementation work.
+### Local only for now
 
-### Canonical sources by category
+These can stay local:
 
-- App settings and purely personal workspace preferences:
-  - stay local-only for now
-  - examples: panel layout, view mode, piece-style experiments unless explicitly promoted
-- Authored shared content:
-  - move to Supabase canonical storage
-  - examples: cities, districts, role catalog, character records, reference/classic game library
-- User-save gameplay artifacts:
-  - move to Supabase when signed in
-  - may remain local-only for anonymous users during transition
-- Repo checked-in `content/` files:
-  - become seed / export / backup material
-  - no longer treated as the runtime system of record once the relevant entity is migrated
-- File System Access saves:
-  - become import/export and local backup tools
-  - not canonical
+- panel layouts
+- personal workspace setup
+- view mode
+- local piece-style experiments unless user explicitly promotes them
 
-### Draft and publish semantics
+### Move to Supabase
 
-For migrated content entities, use these states:
+These should become canonical in DB:
+
+- cities
+- districts
+- role catalog
+- authored character overrides
+- reference/classic games
+- durable saved matches for signed-in users
+
+### File saves after migration
+
+File saves still useful, but for:
+
+- export
+- backup
+- import
+- editorial review
+
+Not main truth.
+
+## Draft Words Must Be Clear
+
+Use these words:
 
 - `local_draft`
-  - unsynced browser state only
+  - only in browser
+  - not synced yet
 - `remote_draft`
-  - saved to Supabase, not live/published
+  - saved in Supabase
+  - not live
 - `published`
-  - current public/runtime version used by Play and Cities
+  - live version Play and Cities should use publicly
 
-Agents should not conflate "saved" with "published". Saving a draft must not silently change the live gameplay dataset.
+Important rule:
 
-## Current Save Model to Replace
+- saved does not mean published
 
-Relevant current code paths:
+No silent publish.
 
-- [apps/web/src/cityReviewState.ts](/abs/path/c:/workspace/narrative-chess/apps/web/src/cityReviewState.ts:1)
-- [apps/web/src/fileSystemAccess.ts](/abs/path/c:/workspace/narrative-chess/apps/web/src/fileSystemAccess.ts:1)
-- [apps/web/src/savedMatches.ts](/abs/path/c:/workspace/narrative-chess/apps/web/src/savedMatches.ts:1)
+## Current Save System To Replace
 
-Important current behavior:
+Important files now:
 
-- city boards already model a local distinction between `published`, `saved`, and `draft`
-- local "saved baseline" is still browser/file based, not backend canonical
-- saved matches are fully localStorage-based
-- role catalog and classic games still rely heavily on browser and filesystem workflows
+- [cityReviewState.ts](/abs/path/c:/workspace/narrative-chess/apps/web/src/cityReviewState.ts:1)
+- [fileSystemAccess.ts](/abs/path/c:/workspace/narrative-chess/apps/web/src/fileSystemAccess.ts:1)
+- [savedMatches.ts](/abs/path/c:/workspace/narrative-chess/apps/web/src/savedMatches.ts:1)
 
-This is useful because the UI language already exists. The migration should preserve that mental model while changing where truth lives.
+Important truth now:
+
+- city boards already have local idea of `published` / `saved` / `draft`
+- but "saved" still means browser/file world, not backend truth
+- saved matches are localStorage only
+- role catalog and classic games still rely on browser and file flows a lot
+
+Good news:
+
+- UI language already partly exists
+- migration can keep mental model, just change where truth lives
 
 ## Rollout Order
 
-Do not migrate everything at once.
+Do not move all at once.
 
-### Phase 0: Contracts and terminology
+### Phase 0: Name things right
 
 Goal:
-- define shared persistence language before backend writes are introduced
 
-Deliverables:
+- define persistence words and contracts first
 
-- document canonical vs local draft rules in code and docs
-- define per-entity sync status vocabulary
-- define which surfaces read `published` data and which surfaces edit `draft` data
+Need:
 
-Recommended implementation notes:
+- clear canonical vs local draft rules
+- clear sync status words
+- clear rule for what reads published vs edits draft
 
-- add small frontend-facing types instead of broad architecture changes
-- prefer a `source` or `syncStatus` field over ad hoc booleans
+Implementation rule:
+
+- prefer small explicit types
+- do not invent broad new architecture first
 
 ### Phase 1: Cities first
 
-Goal:
-- solve the most visible and highest-value persistence problem first
+Why:
 
-Why first:
+- strongest authoring surface now
+- biggest visible save pain
+- Play depends on city data being correct
 
-- Cities is already the strongest authored surface
-- the PRD already highlights city-board canonicality as partially solved
-- Play depends on city data integrity
+Need:
 
-Deliverables:
-
-- Supabase tables for city boards and version history
-- ability to load published city data into Play
-- ability to edit a remote draft in Cities
+- Supabase tables for cities and city versions
+- Cities page edits remote draft
 - explicit publish action
 - explicit reset-to-published action
+- Play can later read published city data
 
-UI behavior target:
+UI target:
 
-- Cities page edits a draft
-- Play defaults to published city data
-- optional toggle later to preview a selected draft in Play for editor testing
+- Cities edits draft
+- public Play uses published
+- later maybe add editor-only draft preview
 
-### Phase 2: Role catalog and character foundations
+### Phase 2: Roles and character foundation
 
-Goal:
-- support richer authored content for roles and future character overrides
+Why:
 
-Deliverables:
+- user wants deeper city + character tools
+- role content already exists
 
-- migrate role catalog persistence to Supabase
-- define authored character override path without overbuilding generator logic
-- preserve current lightweight character model from AGENTS.md
+Need:
 
-Notes:
+- move role catalog persistence to Supabase
+- add narrow authored character override path
 
-- character generation should stay lightweight
-- authored overrides should be narrow: name, role, district, faction, traits, verbs, summary, status metadata
+Character rule:
 
-### Phase 3: Reference/classic games and saved matches
+- keep lightweight
+- no giant proc-gen identity system
+- authored override fields can stay simple:
+  - name
+  - role
+  - district
+  - faction
+  - traits
+  - verbs
+  - one-line summary
+  - review/status metadata
 
-Goal:
-- stabilize the remaining save-heavy surfaces
+### Phase 3: Reference games and saved matches
 
-Deliverables:
+Need:
 
-- remote persistence for reference games library
-- remote persistence for signed-in saved matches
-- anonymous fallback can remain local during the first pass
+- remote reference game persistence
+- remote saved matches for signed-in users
 
-Notes:
+Okay first pass:
 
-- saved matches should not block on auth if that hurts usability
-- a dual-path model is acceptable at first:
-  - signed-in users get remote saves
-  - anonymous users keep local saves with optional import/migration later
+- signed-in users get remote saves
+- anonymous users can keep local saves
 
-### Phase 4: Cleanup and deprecation
+### Phase 4: Cleanup old paths
 
-Goal:
-- remove old ambiguity once remote persistence is stable
+Need:
 
-Deliverables:
+- stop presenting folder save as main workflow
+- keep export/import
+- stop assuming bundled JSON is live source after entity migrates
 
-- de-emphasize "save to connected folder" as primary workflow
-- keep export/import for backup and editorial review
-- remove legacy assumptions that bundled JSON is the default live source for migrated entities
+## Data Shape
 
-## Recommended Data Model
+Keep first version simple.
 
-The exact schema should be kept narrow and explicit.
+### `cities`
 
-### Core tables
-
-#### `cities`
-
-Purpose:
-- stable identity and routing for a city
+Use for stable city identity.
 
 Suggested fields:
 
@@ -235,32 +246,30 @@ Suggested fields:
 - `created_at`
 - `updated_at`
 
-#### `city_versions`
+### `city_versions`
 
-Purpose:
-- immutable record of draft and published city board versions
+Use for draft and published city board records.
 
 Suggested fields:
 
 - `id`
 - `city_id`
 - `version_number`
-- `status` with values such as `draft`, `published`, `archived`
-- `board_payload` as JSONB
+- `status`
+- `board_payload` JSONB
 - `created_by`
 - `created_at`
 - `published_at`
 - `notes`
 
-Recommended rule:
+Rule:
 
-- never overwrite a published payload in place
-- publish by creating or promoting a versioned record
+- never overwrite published in place
+- use versions
 
-#### `roles`
+### `roles`
 
-Purpose:
-- stable identity for role entries
+Use for stable role identity.
 
 Suggested fields:
 
@@ -270,41 +279,38 @@ Suggested fields:
 - `created_at`
 - `updated_at`
 
-#### `role_versions`
+### `role_versions`
 
-Purpose:
-- draft/published role content history
+Use for role draft/published history.
 
 Suggested fields:
 
 - `id`
 - `role_id`
 - `status`
-- `payload` as JSONB
+- `payload` JSONB
 - `created_by`
 - `created_at`
 - `published_at`
 
-#### `characters`
+### `characters`
 
-Purpose:
-- authored override records, not full procedural identity generation
+Use for authored overrides, not giant generation system.
 
 Suggested fields:
 
 - `id`
 - `city_id`
-- `piece_key` or equivalent gameplay anchor
+- `piece_key` or similar anchor
 - `status`
-- `payload` as JSONB
+- `payload` JSONB
 - `created_by`
 - `created_at`
 - `updated_at`
 
-#### `reference_games`
+### `reference_games`
 
-Purpose:
-- curated study library identity
+Use for stable study identity.
 
 Suggested fields:
 
@@ -314,112 +320,98 @@ Suggested fields:
 - `created_at`
 - `updated_at`
 
-#### `reference_game_versions`
+### `reference_game_versions`
 
-Purpose:
-- versioned editorial content for studies
+Use for study content versions.
 
 Suggested fields:
 
 - `id`
 - `reference_game_id`
 - `status`
-- `payload` as JSONB
+- `payload` JSONB
 - `created_by`
 - `created_at`
 - `published_at`
 
-#### `saved_matches`
+### `saved_matches`
 
-Purpose:
-- durable user saves
+Use for durable player saves.
 
 Suggested fields:
 
 - `id`
 - `user_id`
 - `name`
-- `snapshot_payload` as JSONB
+- `snapshot_payload` JSONB
 - `move_count`
 - `created_at`
 - `updated_at`
 
-### Why version tables instead of in-place edits
+## Why Version Tables
 
-This plan favors version tables because the product needs:
+Need:
 
-- explicit draft vs published distinction
-- future revision history
-- safer editorial publish flows
-- easier rollback
+- draft vs published
+- revision history later
+- safer publish flow
+- rollback
 
-This is more aligned with the PRD than a single mutable table per entity.
+So version tables better than only one mutable row.
 
 ## Schema Strategy
 
-### Preferred approach
+Start simple:
 
-- keep shared runtime validation in `packages/content-schema`
-- use JSONB payloads initially for faster migration
-- validate payloads at the application edge with existing Zod schemas
-- normalize into more relational columns later only when query needs justify it
+- keep validation in `packages/content-schema`
+- store first payloads as JSONB
+- validate with Zod on app side
+- normalize later only when real query need appears
 
-This avoids a premature schema explosion while still getting durable storage and clear versioning.
+Important rule:
 
-### Important constraint
-
-Do not change shared schemas casually.
-
-If an agent updates `packages/content-schema`, they must call it out explicitly and explain why the frontend and backend contracts required it.
+- do not casually change shared schemas
+- if agent changes `packages/content-schema`, agent must say so clearly
 
 ## Auth Strategy
 
-### Initial recommendation
+Start narrow:
 
-- enable Supabase Auth
-- keep access narrow at first
-- start with authenticated editor access only
+- use Supabase Auth
+- editor login for write actions
+- public can read published data if needed
+- remote saved matches for signed-in users first
 
-Suggested initial model:
-
-- anonymous public reads for published content if needed
-- authenticated writes for editor tools
-- saved matches remote-only for authenticated users
-
-This keeps the public Play surface simple while protecting authored content.
-
-### Not needed yet
+Not needed yet:
 
 - social login
-- fine-grained team org roles
-- public user accounts
+- full multi-user account system
+- complicated org roles
 
-Email magic link or a small editor-only auth setup is enough for the first pass.
+Small email magic-link setup enough at first.
 
 ## API Strategy
 
-### Preferred first implementation
+First pass:
 
-- frontend talks directly to Supabase for simple reads and writes
-- use Row Level Security policies for access control
-- avoid introducing a separate custom API layer unless a workflow truly needs it
+- frontend talks to Supabase directly
+- use RLS for access control
+- do not build custom API layer unless clearly needed
 
-### When to add Edge Functions
+Use Edge Functions only for things like:
 
-Only add Supabase Edge Functions for:
-
-- publish workflows requiring privileged writes
+- privileged publish action
 - import/export jobs
-- more complex validation or migration tasks
-- webhook-driven processes later
+- migration helpers
+- complex validation jobs
 
-Do not start with Edge Functions for basic CRUD.
+Do not start with Edge Functions for plain CRUD.
 
-## Frontend Integration Plan
+## Frontend Integration Rule
 
-### Introduce persistence adapters per entity
+Do not spray Supabase calls through giant React components.
 
-For each migrated content type, create a small adapter layer in `apps/web` that exposes a stable interface such as:
+Make small adapters in `apps/web`, for example:
 
 - `loadPublishedCity`
 - `loadEditableCityDraft`
@@ -427,175 +419,167 @@ For each migrated content type, create a small adapter layer in `apps/web` that 
 - `publishCityDraft`
 - `resetCityDraftToPublished`
 
-Do not scatter Supabase client calls through large React components.
+Good rule:
 
-### Keep local draft buffering
+- local component state for immediate editing
+- optional localStorage for unsynced buffer
+- explicit save to Supabase
 
-During transition:
+This keeps editor fast and lowers regression risk.
 
-- keep immediate UI edits local in component state
-- optionally persist temporary unsynced work in localStorage
-- sync to Supabase via explicit save actions
+## Play Surface Rule
 
-This reduces risk while preserving current editor responsiveness.
+After city migration:
 
-### Update Play data flow
+- public Play should read published city data
+- keep bundled JSON fallback during rollout
 
-Once city data is migrated:
+Can use simple source flag during transition.
 
-- Play should resolve city boards from published remote content, not bundled JSON, for migrated cities
-- keep bundled JSON as fallback during rollout
-
-Recommended migration flag:
-
-- use a simple per-city or per-entity source switch while rollout is incomplete
+Do not switch all city reads at once until verified.
 
 ## Migration Mechanics
 
-### Seed strategy
+### Seed plan
 
-For each entity family:
+For each content family:
 
 1. export current checked-in content
-2. import into Supabase as initial published versions
-3. mark source provenance in metadata where helpful
-4. keep repo content as seed material until rollout is stable
+2. import to Supabase as first published version
+3. keep provenance metadata if useful
+4. keep repo content as seed/export until stable
 
-### Import/export strategy
+### Import/export plan
 
-Keep file import/export support, but redefine its role:
+Keep import/export, but demote it.
 
-- export:
-  - backup
-  - editorial review
-  - repo sync if desired
-- import:
-  - bootstrap or manual restore
+Use export for:
 
-Agents should avoid presenting file save as the primary source of truth after migration.
+- backup
+- review
+- optional repo sync
+
+Use import for:
+
+- bootstrap
+- manual restore
 
 ## Testing Plan
 
-### Add tests where logic changes
+Add tests around logic changes.
 
-Focus on:
+Main cases:
 
-- draft vs published resolver behavior
-- migration adapters
-- fallback behavior when offline or unauthenticated
-- publish/reset flows
-- save-match loading after remote persistence
-
-### Minimum validation matrix
-
-- load with no remote draft
+- no remote draft
 - save remote draft
 - publish draft
 - reset draft to published
-- load Play against published city data
-- fall back to bundled/local data when backend unavailable during staged rollout
+- Play reads correct published city
+- fallback works when backend not ready or unavailable
+- saved matches still work during transition
 
 ## Risks
 
-### Risk: scope expansion
+### Scope bloat
 
-Mitigation:
+Fix:
 
-- migrate cities first
-- delay realtime, collaboration, and multiplayer
+- cities first
+- no realtime now
+- no multiplayer now
 
-### Risk: frontend regression in large editor components
+### Big editor regressions
 
-Mitigation:
+Fix:
 
-- hide persistence changes behind narrow adapters
-- avoid rewriting large UI panels unless required
+- hide backend behind adapters
+- avoid giant component rewrites
 
-### Risk: schema churn
+### Schema churn
 
-Mitigation:
+Fix:
 
-- start with JSONB payload version tables
-- keep Zod contracts authoritative
+- JSONB first
+- Zod contracts stay source of truth
 
-### Risk: unclear anonymous vs authenticated behavior
+### Login behavior unclear
 
-Mitigation:
+Fix:
 
-- decide early whether public users can remote-save matches
-- if unclear, keep remote saves authenticated-only first
+- decide early if remote saves require login
+- if unclear, make remote saves login-only first
 
-## Suggested Task Breakdown for Agents
+## Agent Work Split
 
-### Agent task 1
+### Agent 1
 
-Define persistence contracts and adapter interfaces for migrated entities.
+Define persistence contracts and adapter interfaces.
 
-Target areas:
-
-- `apps/web`
-- `packages/content-schema` only if strictly required
-
-### Agent task 2
-
-Implement Supabase client setup and city persistence adapters.
-
-Target areas:
+Target:
 
 - `apps/web`
+- `packages/content-schema` only if truly needed
 
-### Agent task 3
+### Agent 2
 
-Implement city draft/publish UI state wiring without broad component rewrites.
+Add Supabase client setup and city persistence adapters.
 
-Target areas:
+Target:
 
-- `apps/web/src/components/EdinburghReviewPage.tsx`
-- related city editor modules
+- `apps/web`
 
-### Agent task 4
+### Agent 3
 
-Seed current city content into Supabase and document import process.
+Wire city draft/publish UI without giant rewrite.
 
-Target areas:
+Target:
+
+- [EdinburghReviewPage.tsx](/abs/path/c:/workspace/narrative-chess/apps/web/src/components/EdinburghReviewPage.tsx:1)
+- related city editor files
+
+### Agent 4
+
+Seed current city content into Supabase and document import flow.
+
+Target:
 
 - `content/`
-- migration scripts or docs
+- migration docs or scripts
 
-### Agent task 5
+### Agent 5
 
 Migrate role catalog persistence.
 
-Target areas:
+Target:
 
 - `apps/web`
-- role-related content seed path
 
-## Immediate Next Step Recommendation
+## Best First Build Order
 
-If implementation starts now, the first concrete task should be:
+If build starts now:
 
-1. define the city persistence contract
-2. create Supabase tables for `cities` and `city_versions`
-3. seed Edinburgh as the first published city
-4. wire Cities editor to `remote_draft` plus explicit publish/reset actions
-5. leave Play reading bundled content until the city read path is verified
-6. switch Play city reads to published remote content after verification
+1. define city persistence contract
+2. create `cities` and `city_versions`
+3. seed Edinburgh as first published city
+4. wire Cities editor to remote draft
+5. add publish/reset actions
+6. keep Play on bundled content until verified
+7. then switch Play to published remote city reads
 
-This sequence keeps Milestone 2 stable while making real progress on Milestone 6.
+This keeps Milestone 2 safer while moving Milestone 6 forward.
 
-## Open Questions For The User
+## User Answers Still Needed
 
-These answers will affect implementation details:
+These choices matter:
 
-1. Should anonymous users be able to save matches remotely, or should remote saves require login?
-2. Do you want published content edits limited to you for now, or should we plan for multiple editors immediately?
-3. Do you want repo `content/` files to remain part of the editorial workflow long-term, or only as seed/export artifacts after migration?
-4. For the public site, should Play always use published data only, or do you want a private editor preview mode that can load drafts?
+1. Remote saved matches need login, or anonymous cloud save too?
+2. One editor now, or multiple editors soon?
+3. Should `content/` stay part of normal editing workflow, or become seed/export/backup only?
+4. Public Play use published only, or should private editor preview load drafts too?
 
-## Source References
+## References
 
-- [docs/PRD.md](/abs/path/c:/workspace/narrative-chess/docs/PRD.md:1)
-- [apps/web/src/cityReviewState.ts](/abs/path/c:/workspace/narrative-chess/apps/web/src/cityReviewState.ts:1)
-- [apps/web/src/fileSystemAccess.ts](/abs/path/c:/workspace/narrative-chess/apps/web/src/fileSystemAccess.ts:1)
-- [apps/web/src/savedMatches.ts](/abs/path/c:/workspace/narrative-chess/apps/web/src/savedMatches.ts:1)
+- [PRD.md](/abs/path/c:/workspace/narrative-chess/docs/PRD.md:1)
+- [cityReviewState.ts](/abs/path/c:/workspace/narrative-chess/apps/web/src/cityReviewState.ts:1)
+- [fileSystemAccess.ts](/abs/path/c:/workspace/narrative-chess/apps/web/src/fileSystemAccess.ts:1)
+- [savedMatches.ts](/abs/path/c:/workspace/narrative-chess/apps/web/src/savedMatches.ts:1)
