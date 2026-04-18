@@ -13,15 +13,17 @@ Last updated: April 18, 2026
    f. `Active` tab now creates invites and accepts / declines them
    g. product direction changed from `sync/async` to time controls
    h. time-control schema + invite presets implemented
-   i. next: move append / turn sync
+   i. move append / turn sync implemented
+   j. `Active` games can now be opened into the match surface
+   k. next: rated completion + Elo update
 
 ## Next
 
-1. Add move append / turn update flow
+1. Add rated game completion + Elo update
 
-2. Add rated game completion + Elo update
+2. Add remote refresh / polling or Realtime so opponent moves appear without manual reopen
 
-3. Add `Resume game` flow from `Active`
+3. Show explicit multiplayer session status in Play UI
 
 4. Add Supabase Realtime subscriptions for multiplayer
 

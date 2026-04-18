@@ -100,6 +100,11 @@ import {
   supportsWorkspaceLayoutDirectory
 } from "./fileSystemAccess";
 import {
+  appendActiveGameMoveInSupabase,
+  loadActiveGameSessionFromSupabase,
+  type TimeControlKind
+} from "./activeGames";
+import {
   bootstrapFirstAdmin,
   getCurrentSession,
   loadCurrentUserRole,
@@ -178,6 +183,17 @@ type SaveEverythingNotice = LayoutFileNotice;
 
 type PlayCitySource = "fallback" | "supabase-published" | "supabase-draft";
 type PlayCityPreviewMode = "published" | "draft";
+
+type ActiveMultiplayerSession = {
+  gameId: string;
+  cityEditionId: string | null;
+  status: "invited" | "active" | "completed" | "abandoned" | "cancelled";
+  yourSide: "white" | "black" | "spectator";
+  currentTurn: "white" | "black" | null;
+  syncedMoveCount: number;
+  timeControlKind: TimeControlKind;
+  deadlineAt: string | null;
+};
 
 type PanelSizeConstraint = {
   minW: number;
@@ -444,6 +460,9 @@ export default function App() {
   const [sessionProfile, setSessionProfile] = useState<UserProfile | null>(null);
   const [viewAsRole, setViewAsRole] = useState<AppRole>("player");
   const [isAuthBusy, setIsAuthBusy] = useState(false);
+  const [activeMultiplayerSession, setActiveMultiplayerSession] = useState<ActiveMultiplayerSession | null>(null);
+  const [isSyncingActiveMultiplayerMove, setIsSyncingActiveMultiplayerMove] = useState(false);
+  const activeMultiplayerMoveSyncRef = useRef<string | null>(null);
   const handleCityBoardDraftChange = useCallback((board: CityBoard) => {
     if (useSupabasePublishedCities) {
       return;
@@ -479,6 +498,10 @@ export default function App() {
   const effectiveRole = viewAsRole;
   const canAccessDraftCities = effectiveRole === "author" || effectiveRole === "admin";
   const canPublishCities = effectiveRole === "admin";
+  const isActiveMultiplayerSessionLoaded = activeMultiplayerSession !== null;
+  const isActiveMultiplayerTurn =
+    activeMultiplayerSession?.status === "active" &&
+    activeMultiplayerSession.currentTurn === activeMultiplayerSession.yourSide;
   const visiblePageOptions = useMemo(
     () =>
       effectiveRole === "player"
@@ -528,6 +551,43 @@ export default function App() {
       setSessionProfile(null);
     }
   }, []);
+
+  const clearActiveMultiplayerSession = useCallback(() => {
+    activeMultiplayerMoveSyncRef.current = null;
+    setActiveMultiplayerSession(null);
+  }, []);
+
+  const handleLoadActiveMultiplayerGame = useCallback(async (gameId: string) => {
+    try {
+      const session = await loadActiveGameSessionFromSupabase(gameId);
+      if (!session) {
+        return;
+      }
+
+      if (
+        session.cityEditionId &&
+        playCityOptions.some((option) => option.id === session.cityEditionId)
+      ) {
+        setPlayCityOptionId(session.cityEditionId);
+      }
+
+      loadSnapshot(session.snapshot);
+      activeMultiplayerMoveSyncRef.current = null;
+      setActiveMultiplayerSession({
+        gameId: session.gameId,
+        cityEditionId: session.cityEditionId,
+        status: session.status,
+        yourSide: session.yourSide,
+        currentTurn: session.currentTurn,
+        syncedMoveCount: session.syncedMoveCount,
+        timeControlKind: session.timeControlKind,
+        deadlineAt: session.deadlineAt
+      });
+      setPage("match");
+    } catch (error) {
+      console.warn("[supabase] Could not load multiplayer game session.", error);
+    }
+  }, [loadSnapshot, playCityOptions]);
 
   useEffect(() => {
     let cancelled = false;
@@ -695,6 +755,80 @@ export default function App() {
   }, [refreshCurrentUserProfile, resolveAppRole]);
 
   useEffect(() => {
+    if (sessionEmail) {
+      return;
+    }
+
+    clearActiveMultiplayerSession();
+  }, [clearActiveMultiplayerSession, sessionEmail]);
+
+  useEffect(() => {
+    if (
+      !activeMultiplayerSession ||
+      isStudyMode ||
+      isSyncingActiveMultiplayerMove ||
+      snapshot.moveHistory.length <= activeMultiplayerSession.syncedMoveCount
+    ) {
+      return;
+    }
+
+    const latestMove = snapshot.moveHistory.at(-1);
+    if (!latestMove || latestMove.side !== activeMultiplayerSession.yourSide) {
+      return;
+    }
+
+    if (activeMultiplayerMoveSyncRef.current === latestMove.id) {
+      return;
+    }
+
+    let cancelled = false;
+    activeMultiplayerMoveSyncRef.current = latestMove.id;
+    setIsSyncingActiveMultiplayerMove(true);
+
+    void appendActiveGameMoveInSupabase({
+      gameId: activeMultiplayerSession.gameId,
+      move: latestMove,
+      snapshot
+    })
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+
+        setActiveMultiplayerSession((current) =>
+          current && current.gameId === activeMultiplayerSession.gameId
+            ? {
+                ...current,
+                status: result.status,
+                currentTurn: result.currentTurn,
+                deadlineAt: result.deadlineAt,
+                syncedMoveCount: result.nextPlyNumber
+              }
+            : current
+        );
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.warn("[supabase] Could not sync multiplayer move.", error);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsSyncingActiveMultiplayerMove(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeMultiplayerSession,
+    isStudyMode,
+    isSyncingActiveMultiplayerMove,
+    snapshot
+  ]);
+
+  useEffect(() => {
     const allowedViewAsRoles =
       sessionRole === "admin"
         ? (["admin", "author", "player"] as AppRole[])
@@ -787,9 +921,12 @@ export default function App() {
     jumpToEnd,
     updateTonePreset,
     loadSavedMatch,
-    removeSavedMatch
+    removeSavedMatch,
+    loadSnapshot
   } = useChessMatch({
-    roleCatalog
+    roleCatalog,
+    moveInteractionLocked: isActiveMultiplayerSessionLoaded && !isActiveMultiplayerTurn,
+    localControlsLocked: isActiveMultiplayerSessionLoaded
   });
   const motionPlayhead = useMovePlayhead({
     targetPly: selectedPly,
@@ -1553,10 +1690,12 @@ export default function App() {
   };
 
   const handleLoadReferenceGame = () => {
+    clearActiveMultiplayerSession();
     loadChosenReferenceGame();
   };
 
   const handleLoadReferenceGameFromLibrary = (referenceGameId: string) => {
+    clearActiveMultiplayerSession();
     loadChosenReferenceGame(referenceGameId);
     setPage("match");
   };
@@ -2213,6 +2352,7 @@ export default function App() {
       return;
     }
 
+    clearActiveMultiplayerSession();
     loadSavedMatch(selectedSavedMatch.id);
   };
 
@@ -2721,6 +2861,10 @@ export default function App() {
                     accountEmail={sessionEmail}
                     accountUsername={sessionProfile?.username ?? null}
                     multiplayerCityOptions={multiplayerCityOptions}
+                    activeMultiplayerGameId={activeMultiplayerSession?.gameId ?? null}
+                    onLoadActiveGame={(gameId) => {
+                      void handleLoadActiveMultiplayerGame(gameId);
+                    }}
                   />
                 </Panel>
               )

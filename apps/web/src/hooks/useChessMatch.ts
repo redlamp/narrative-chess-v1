@@ -40,6 +40,8 @@ import { getRolePoolsOverride, type RoleCatalog } from "../roleCatalog";
 
 type UseChessMatchOptions = {
   roleCatalog: RoleCatalog;
+  moveInteractionLocked?: boolean;
+  localControlsLocked?: boolean;
 };
 
 type StudyReplay = {
@@ -119,7 +121,11 @@ function buildLocalTimelineSnapshots(snapshot: GameSnapshot) {
   return timeline;
 }
 
-export function useChessMatch({ roleCatalog }: UseChessMatchOptions) {
+export function useChessMatch({
+  roleCatalog,
+  moveInteractionLocked = false,
+  localControlsLocked = false
+}: UseChessMatchOptions) {
   const [localSnapshot, setLocalSnapshot] = useState<GameSnapshot>(() => createSnapshot(roleCatalog));
   const [studyReplay, setStudyReplay] = useState<StudyReplay | null>(null);
   const [localPly, setLocalPly] = useState(0);
@@ -152,8 +158,8 @@ export function useChessMatch({ roleCatalog }: UseChessMatchOptions) {
     : [];
   const legalMoves = selectedSquare ? listLegalMoves(snapshot, selectedSquare) : [];
   const boardSquares = getBoardSquares(snapshot);
-  const canUndo = !isStudyMode && localSnapshot.moveHistory.length > 0;
-  const canSave = !isStudyMode;
+  const canUndo = !isStudyMode && !localControlsLocked && localSnapshot.moveHistory.length > 0;
+  const canSave = !isStudyMode && !localControlsLocked;
   const canStepBackward = selectedPly > 0;
   const canStepForward = selectedPly < totalPlies;
   const lastMove = snapshot.moveHistory.at(-1) ?? null;
@@ -282,7 +288,11 @@ export function useChessMatch({ roleCatalog }: UseChessMatchOptions) {
   };
 
   const handleSquareClick = (square: Square) => {
-    if (selectedSquare && !isStudyMode && isViewingLatestPosition) {
+    if (moveInteractionLocked || isStudyMode) {
+      return;
+    }
+
+    if (selectedSquare && isViewingLatestPosition) {
       const legalTarget = legalMoves.includes(square);
       if (legalTarget) {
         commitMove(selectedSquare, square);
@@ -305,7 +315,7 @@ export function useChessMatch({ roleCatalog }: UseChessMatchOptions) {
   };
 
   const handleUndo = () => {
-    if (isStudyMode) {
+    if (isStudyMode || localControlsLocked) {
       return;
     }
 
@@ -394,7 +404,7 @@ export function useChessMatch({ roleCatalog }: UseChessMatchOptions) {
   };
 
   const saveCurrentMatch = () => {
-    if (isStudyMode) {
+    if (isStudyMode || localControlsLocked) {
       return false;
     }
 
@@ -439,6 +449,25 @@ export function useChessMatch({ roleCatalog }: UseChessMatchOptions) {
     setSavedMatches(deleteSavedMatchRecord(savedMatchId));
     void deleteSavedMatchFromSupabase(savedMatchId).catch((error) => {
       console.warn("[supabase] Could not delete cloud saved match.", error);
+    });
+  };
+
+  const loadSnapshot = (nextSnapshot?: GameSnapshot | null) => {
+    const snapshotToLoad = nextSnapshot ?? createSnapshot(roleCatalog);
+
+    startTransition(() => {
+      setStudyReplay(null);
+      setStudyPly(0);
+      setSelectedSquare(null);
+      setLocalSnapshot(
+        rebuildSnapshot({
+          snapshot: snapshotToLoad,
+          roleCatalog,
+          tonePreset
+        })
+      );
+      setLocalPly(snapshotToLoad.moveHistory.length);
+      setTimelineKey((current) => current + 1);
     });
   };
 
@@ -487,6 +516,7 @@ export function useChessMatch({ roleCatalog }: UseChessMatchOptions) {
     updateTonePreset,
     saveCurrentMatch,
     loadSavedMatch,
-    removeSavedMatch
+    removeSavedMatch,
+    loadSnapshot
   };
 }

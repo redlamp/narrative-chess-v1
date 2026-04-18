@@ -1,3 +1,9 @@
+import {
+  gameSnapshotSchema,
+  type GameSnapshot,
+  type MoveRecord,
+  type PieceSide
+} from "@narrative-chess/content-schema";
 import { getSupabaseClient, hasSupabaseConfig } from "./lib/supabase";
 
 export type TimeControlKind = "live_clock" | "move_deadline";
@@ -89,6 +95,21 @@ export type ActiveGameRecord = {
   isOutgoingInvite: boolean;
 };
 
+export type ActiveGameSession = {
+  gameId: string;
+  cityEditionId: string | null;
+  status: ActiveGameRecord["status"];
+  yourSide: ActiveGameRecord["yourSide"];
+  currentTurn: ActiveGameRecord["currentTurn"];
+  snapshot: GameSnapshot | null;
+  syncedMoveCount: number;
+  timeControlKind: TimeControlKind;
+  baseSeconds: number | null;
+  incrementSeconds: number;
+  moveDeadlineSeconds: number | null;
+  deadlineAt: string | null;
+};
+
 type ActiveGameRow = {
   game_id: string;
   status: ActiveGameRecord["status"];
@@ -114,6 +135,29 @@ type ActiveGameRow = {
   is_your_turn: boolean;
   is_incoming_invite: boolean;
   is_outgoing_invite: boolean;
+};
+
+type ActiveGameSessionThreadRow = {
+  id: string;
+  city_edition_id: string | null;
+  status: ActiveGameRecord["status"];
+  current_turn: ActiveGameRecord["currentTurn"];
+  time_control_kind: TimeControlKind;
+  base_seconds: number | null;
+  increment_seconds: number | null;
+  move_deadline_seconds: number | null;
+  deadline_at: string | null;
+  game_participants:
+    | Array<{
+        side: ActiveGameRecord["yourSide"];
+        participant_status: ActiveGameRecord["yourParticipantStatus"];
+      }>
+    | null;
+};
+
+type ActiveGameSnapshotRow = {
+  ply_number: number;
+  snapshot_payload: unknown;
 };
 
 function mapActiveGameRow(row: ActiveGameRow): ActiveGameRecord {
@@ -281,4 +325,125 @@ export async function respondToGameInviteInSupabase(input: {
   if (error) {
     throw error;
   }
+}
+
+export async function loadActiveGameSessionFromSupabase(
+  gameId: string
+): Promise<ActiveGameSession | null> {
+  const auth = await requireAuthenticatedUser();
+  if (!auth) {
+    return null;
+  }
+
+  const { data: threadData, error: threadError } = await auth.supabase
+    .from("game_threads")
+    .select(
+      "id, city_edition_id, status, current_turn, time_control_kind, base_seconds, increment_seconds, move_deadline_seconds, deadline_at, game_participants!inner(side, participant_status)"
+    )
+    .eq("id", gameId)
+    .eq("game_participants.user_id", auth.user.id)
+    .maybeSingle();
+
+  if (threadError) {
+    throw threadError;
+  }
+
+  if (!threadData) {
+    return null;
+  }
+
+  const thread = threadData as unknown as ActiveGameSessionThreadRow;
+  const selfParticipant = Array.isArray(thread.game_participants)
+    ? thread.game_participants[0] ?? null
+    : null;
+
+  if (!selfParticipant) {
+    return null;
+  }
+
+  const { data: moveData, error: moveError } = await auth.supabase
+    .from("game_moves")
+    .select("ply_number, snapshot_payload")
+    .eq("game_id", gameId)
+    .order("ply_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (moveError) {
+    throw moveError;
+  }
+
+  let snapshot: GameSnapshot | null = null;
+  let syncedMoveCount = 0;
+  if (moveData) {
+    const latestMove = moveData as ActiveGameSnapshotRow;
+    snapshot = gameSnapshotSchema.parse(latestMove.snapshot_payload);
+    syncedMoveCount = latestMove.ply_number;
+  }
+
+  return {
+    gameId: thread.id,
+    cityEditionId: thread.city_edition_id,
+    status: thread.status,
+    yourSide: selfParticipant.side,
+    currentTurn: thread.current_turn,
+    snapshot,
+    syncedMoveCount,
+    timeControlKind: thread.time_control_kind,
+    baseSeconds: thread.base_seconds,
+    incrementSeconds: thread.increment_seconds ?? 0,
+    moveDeadlineSeconds: thread.move_deadline_seconds,
+    deadlineAt: thread.deadline_at
+  };
+}
+
+export async function appendActiveGameMoveInSupabase(input: {
+  gameId: string;
+  move: MoveRecord;
+  snapshot: GameSnapshot;
+}): Promise<{
+  status: ActiveGameRecord["status"];
+  currentTurn: PieceSide | null;
+  deadlineAt: string | null;
+  nextPlyNumber: number;
+}> {
+  const auth = await requireAuthenticatedUser();
+  if (!auth) {
+    throw new Error("Sign in to sync multiplayer moves.");
+  }
+
+  const promotion =
+    input.move.promotion === "queen"
+      ? "q"
+      : input.move.promotion === "rook"
+        ? "r"
+        : input.move.promotion === "bishop"
+          ? "b"
+          : input.move.promotion === "knight"
+            ? "n"
+            : null;
+
+  const { data, error } = await auth.supabase.rpc("append_game_move", {
+    p_game_id: input.gameId,
+    p_from_square: input.move.from,
+    p_to_square: input.move.to,
+    p_promotion: promotion,
+    p_san: input.move.san,
+    p_fen_after: input.move.fenAfter,
+    p_snapshot_payload: gameSnapshotSchema.parse(input.snapshot),
+    p_is_checkmate: input.move.isCheckmate,
+    p_is_stalemate: input.move.isStalemate
+  });
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (error || !row) {
+    throw error ?? new Error("Could not sync the multiplayer move.");
+  }
+
+  return {
+    status: row.status as ActiveGameRecord["status"],
+    currentTurn: (row.current_turn as PieceSide | null) ?? null,
+    deadlineAt: (row.deadline_at as string | null) ?? null,
+    nextPlyNumber: row.next_ply_number as number
+  };
 }

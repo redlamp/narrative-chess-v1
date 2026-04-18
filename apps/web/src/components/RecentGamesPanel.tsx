@@ -44,6 +44,8 @@ type RecentGamesPanelProps = {
     id: string;
     label: string;
   }>;
+  activeMultiplayerGameId: string | null;
+  onLoadActiveGame: (gameId: string) => void;
 };
 
 type RecentGameRowProps = {
@@ -147,7 +149,9 @@ export function RecentGamesPanel({
   onLoadReferenceGame,
   accountEmail,
   accountUsername,
-  multiplayerCityOptions
+  multiplayerCityOptions,
+  activeMultiplayerGameId,
+  onLoadActiveGame
 }: RecentGamesPanelProps) {
   const minimumListWidthPercent = 28;
   const maximumListWidthPercent = 72;
@@ -451,6 +455,9 @@ export function RecentGamesPanel({
                           <Badge variant={game.isIncomingInvite || game.isYourTurn ? "secondary" : "outline"}>
                             {activeGameStatusLabel(game)}
                           </Badge>
+                          {activeMultiplayerGameId === game.gameId ? (
+                            <Badge variant="outline">Open</Badge>
+                          ) : null}
                         </div>
                         <p className="recent-games-active__entry-meta">
                           {game.opponentUsername ? `@${game.opponentUsername}` : "Unnamed opponent"} ·{" "}
@@ -472,6 +479,14 @@ export function RecentGamesPanel({
                         <div className="recent-games-active__entry-actions">
                           <Button
                             type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onLoadActiveGame(game.gameId)}
+                          >
+                            Open
+                          </Button>
+                          <Button
+                            type="button"
                             variant="secondary"
                             size="sm"
                             onClick={() => void handleRespondToInvite(game.gameId, "accept")}
@@ -489,7 +504,18 @@ export function RecentGamesPanel({
                             Decline
                           </Button>
                         </div>
-                      ) : null}
+                      ) : (
+                        <div className="recent-games-active__entry-actions">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onLoadActiveGame(game.gameId)}
+                          >
+                            {game.status === "active" ? "Resume" : "Open"}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </li>
                 ))}
