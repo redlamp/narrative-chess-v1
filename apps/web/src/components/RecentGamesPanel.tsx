@@ -13,6 +13,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -409,7 +417,13 @@ export function RecentGamesPanel({
                   Direct invites first. Time controls decide how quickly each player must move.
                 </p>
               </div>
-              <Button type="button" variant="outline" size="icon-sm" onClick={() => void refreshActiveGames()}>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                onClick={() => void refreshActiveGames()}
+                aria-label="Refresh active games"
+              >
                 <RefreshCcw />
               </Button>
             </div>
@@ -431,46 +445,64 @@ export function RecentGamesPanel({
                 </label>
                 <label className="grid gap-1">
                   <span className="text-sm font-medium">City</span>
-                  <select
-                    className="field-select"
+                  <Select
                     value={inviteCityEditionId}
-                    onChange={(event) => setInviteCityEditionId(event.currentTarget.value)}
                     disabled={isSubmittingInvite || multiplayerCityOptions.length === 0}
+                    onValueChange={setInviteCityEditionId}
                   >
-                    {multiplayerCityOptions.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger aria-label="City">
+                      <SelectValue placeholder="Choose city…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {multiplayerCityOptions.map((option) => (
+                          <SelectItem key={option.id} value={option.id}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                 </label>
                 <label className="grid gap-1">
                   <span className="text-sm font-medium">Time control</span>
-                  <select
-                    className="field-select"
+                  <Select
                     value={inviteTimeControlPresetId}
-                    onChange={(event) => setInviteTimeControlPresetId(event.currentTarget.value)}
                     disabled={isSubmittingInvite}
+                    onValueChange={setInviteTimeControlPresetId}
                   >
-                    {timeControlPresets.map((preset) => (
-                      <option key={preset.id} value={preset.id}>
-                        {preset.label}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger aria-label="Time control">
+                      <SelectValue placeholder="Choose time…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {timeControlPresets.map((preset) => (
+                          <SelectItem key={preset.id} value={preset.id}>
+                            {preset.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                 </label>
                 <label className="grid gap-1">
                   <span className="text-sm font-medium">Your side</span>
-                  <select
-                    className="field-select"
+                  <Select
                     value={inviteCreatorSide}
-                    onChange={(event) => setInviteCreatorSide(event.currentTarget.value as InviteCreatorSide)}
                     disabled={isSubmittingInvite}
+                    onValueChange={(value) => setInviteCreatorSide(value as InviteCreatorSide)}
                   >
-                    <option value="random">Random</option>
-                    <option value="white">White</option>
-                    <option value="black">Black</option>
-                  </select>
+                    <SelectTrigger aria-label="Your side">
+                      <SelectValue placeholder="Choose side…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="random">Random</SelectItem>
+                        <SelectItem value="white">White</SelectItem>
+                        <SelectItem value="black">Black</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                 </label>
                 <label className="recent-games-active__rated">
                   <Checkbox
@@ -488,7 +520,7 @@ export function RecentGamesPanel({
                   disabled={isSubmittingInvite || multiplayerCityOptions.length === 0}
                 >
                   <Send data-icon="inline-start" />
-                  {isSubmittingInvite ? "Sending..." : "Create invite"}
+                  {isSubmittingInvite ? "Sending…" : "Create invite"}
                 </Button>
               </div>
             )}
@@ -618,14 +650,14 @@ export function RecentGamesPanel({
                                   ) : null}
                                 </div>
                                 <p className="recent-games-active__entry-meta">
-                                  {game.opponentUsername ? `@${game.opponentUsername}` : "Unnamed opponent"} Â·{" "}
-                                  {game.cityLabel ?? "Default board"} Â·{" "}
+                                  {game.opponentUsername ? `@${game.opponentUsername}` : "Unnamed opponent"} -{" "}
+                                  {game.cityLabel ?? "Default board"} -{" "}
                                   {formatTimeControlLabel({
                                     timeControlKind: game.timeControlKind,
                                     baseSeconds: game.baseSeconds,
                                     incrementSeconds: game.incrementSeconds,
                                     moveDeadlineSeconds: game.moveDeadlineSeconds
-                                  })} Â· {game.rated ? "Rated" : "Casual"}
+                                  })} - {game.rated ? "Rated" : "Casual"}
                                 </p>
                                 <p className="recent-games-active__entry-meta">
                                   Completed {formatGameTimestamp(game.lastMoveAt ?? game.updatedAt)}
