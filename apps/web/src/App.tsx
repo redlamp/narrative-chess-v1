@@ -585,42 +585,6 @@ export default function App() {
     setActiveMultiplayerSession(null);
   }, []);
 
-  const handleLoadActiveMultiplayerGame = useCallback(async (gameId: string) => {
-    try {
-      const session = await loadActiveGameSessionFromSupabase(gameId);
-      if (!session) {
-        return;
-      }
-
-      if (
-        session.cityEditionId &&
-        playCityOptions.some((option) => option.id === session.cityEditionId)
-      ) {
-        setPlayCityOptionId(session.cityEditionId);
-      }
-
-      loadSnapshot(session.snapshot);
-      activeMultiplayerMoveSyncRef.current = null;
-      setActiveMultiplayerSession({
-        gameId: session.gameId,
-        cityEditionId: session.cityEditionId,
-        status: session.status,
-        rated: session.rated,
-        yourSide: session.yourSide,
-        currentTurn: session.currentTurn,
-        syncedMoveCount: session.syncedMoveCount,
-        timeControlKind: session.timeControlKind,
-        deadlineAt: session.deadlineAt,
-        result: session.result,
-        whiteRatingDelta: session.whiteRatingDelta,
-        blackRatingDelta: session.blackRatingDelta
-      });
-      setPage("match");
-    } catch (error) {
-      console.warn("[supabase] Could not load multiplayer game session.", error);
-    }
-  }, [loadSnapshot, playCityOptions]);
-
   useEffect(() => {
     let cancelled = false;
 
@@ -963,6 +927,41 @@ export default function App() {
     moveInteractionLocked: isActiveMultiplayerSessionLoaded && !isActiveMultiplayerTurn,
     localControlsLocked: isActiveMultiplayerSessionLoaded
   });
+  const handleLoadActiveMultiplayerGame = useCallback(async (gameId: string) => {
+    try {
+      const session = await loadActiveGameSessionFromSupabase(gameId);
+      if (!session) {
+        return;
+      }
+
+      if (
+        session.cityEditionId &&
+        playCityOptions.some((option) => option.id === session.cityEditionId)
+      ) {
+        setPlayCityOptionId(session.cityEditionId);
+      }
+
+      loadSnapshot(session.snapshot);
+      activeMultiplayerMoveSyncRef.current = null;
+      setActiveMultiplayerSession({
+        gameId: session.gameId,
+        cityEditionId: session.cityEditionId,
+        status: session.status,
+        rated: session.rated,
+        yourSide: session.yourSide,
+        currentTurn: session.currentTurn,
+        syncedMoveCount: session.syncedMoveCount,
+        timeControlKind: session.timeControlKind,
+        deadlineAt: session.deadlineAt,
+        result: session.result,
+        whiteRatingDelta: session.whiteRatingDelta,
+        blackRatingDelta: session.blackRatingDelta
+      });
+      setPage("match");
+    } catch (error) {
+      console.warn("[supabase] Could not load multiplayer game session.", error);
+    }
+  }, [loadSnapshot, playCityOptions]);
   const motionPlayhead = useMovePlayhead({
     targetPly: selectedPly,
     totalPlies,
