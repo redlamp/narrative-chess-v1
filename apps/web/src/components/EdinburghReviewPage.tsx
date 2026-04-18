@@ -63,6 +63,7 @@ import {
   cityBoardDefinitions,
   getCityBoardDefinition,
   loadLatestDraftCityBoard,
+  publishCityBoardToSupabase,
   saveCityBoardDraftToSupabase
 } from "../cityBoards";
 import { getDistrictMapCenter, getDistrictRadiusMeters, getSquareTone } from "./cityMapShared";
@@ -744,6 +745,7 @@ type EdinburghReviewPageProps = {
   showLayoutGrid: boolean;
   layoutNavigation?: LayoutNavigation;
   canManageRemoteDrafts: boolean;
+  canPublishRemoteCities: boolean;
   onCityBoardDraftChange?: (board: CityBoard) => void;
   onToggleLayoutMode: () => void;
   onToggleLayoutGrid: (checked: boolean) => void;
@@ -754,6 +756,7 @@ export function EdinburghReviewPage({
   showLayoutGrid,
   layoutNavigation,
   canManageRemoteDrafts,
+  canPublishRemoteCities,
   onCityBoardDraftChange,
   onToggleLayoutMode,
   onToggleLayoutGrid
@@ -1125,7 +1128,11 @@ export function EdinburghReviewPage({
         tone: "error" as const,
         text: error instanceof Error ? error.message : "Something went wrong."
       };
-      if (actionName === "save-city-draft" || actionName === "save-district-draft") {
+      if (
+        actionName === "save-city-draft" ||
+        actionName === "save-district-draft" ||
+        actionName === "publish-city"
+      ) {
         setCloudActionNotice(notice);
       } else {
         setSaveNotice(notice);
@@ -1178,6 +1185,27 @@ export function EdinburghReviewPage({
     setSaveNotice({
       tone: "neutral",
       text: `Reset all ${nextDraft.name} data back to the bundled board.`
+    });
+  };
+
+  const handlePublishCity = () => {
+    if (!canPublishRemoteCities || !selectedCityDefinition) {
+      return;
+    }
+
+    void runAsyncAction("publish-city", async () => {
+      const nextDraft = saveCityBoardDraft(draft);
+      cityDraftsRef.current[nextDraft.id] = nextDraft;
+      markCityBoardSaved(nextDraft);
+      const result = await publishCityBoardToSupabase(selectedCityDefinition, nextDraft);
+      setCloudActionNotice({
+        tone: "success",
+        text: `Published v${result.versionNumber}.`
+      });
+      setSaveNotice({
+        tone: "success",
+        text: `${nextDraft.name} published to remote version ${result.versionNumber}.`
+      });
     });
   };
 
@@ -1477,6 +1505,24 @@ export function EdinburghReviewPage({
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Upload draft to remote</TooltipContent>
+                      </Tooltip>
+                  ) : null}
+
+                  {canPublishRemoteCities ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon-sm"
+                          variant="secondary"
+                          onClick={handlePublishCity}
+                          disabled={busyAction !== null || !validation.isValid}
+                          aria-label="Publish city"
+                        >
+                          <BadgeCheck />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Publish city to remote</TooltipContent>
                     </Tooltip>
                   ) : null}
                 </div>

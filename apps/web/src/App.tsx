@@ -454,6 +454,7 @@ export default function App() {
   );
   const effectiveRole = viewAsRole;
   const canAccessDraftCities = effectiveRole === "author" || effectiveRole === "admin";
+  const canPublishCities = effectiveRole === "admin";
   const visiblePageOptions = useMemo(
     () =>
       effectiveRole === "player"
@@ -2421,6 +2422,7 @@ export default function App() {
           showLayoutGrid={settings.showLayoutGrid}
           layoutNavigation={layoutNavigation}
           canManageRemoteDrafts={canAccessDraftCities}
+          canPublishRemoteCities={canPublishCities}
           onCityBoardDraftChange={handleCityBoardDraftChange}
           onToggleLayoutMode={() => setIsLayoutMode(false)}
           onToggleLayoutGrid={(checked) => handleBooleanSettingChange("showLayoutGrid", checked)}

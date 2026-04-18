@@ -43,6 +43,12 @@ export type RemoteCityBoardDraftSaveResult = {
   versionNumber: number;
 };
 
+export type PublishedCityBoardSaveResult = {
+  cityEditionId: string;
+  versionId: string;
+  versionNumber: number;
+};
+
 export type PlayableCityOption = {
   id: string;
   boardId: string;
@@ -156,6 +162,41 @@ export async function saveCityBoardDraftToSupabase(
     cityEditionId: data.city_edition_id,
     versionId: data.id,
     versionNumber: data.version_number
+  };
+}
+
+export async function publishCityBoardToSupabase(
+  definition: CityBoardDefinition,
+  board: CityBoard
+): Promise<PublishedCityBoardSaveResult> {
+  if (!definition.publishedEditionId || !hasSupabaseConfig) {
+    throw new Error(`Remote publishing is not configured for ${definition.displayLabel}.`);
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    throw new Error("Supabase is not configured.");
+  }
+
+  const { data, error } = await supabase.rpc("publish_city_version", {
+    p_city_edition_id: definition.publishedEditionId,
+    p_payload: board,
+    p_content_status: board.contentStatus,
+    p_review_status: board.reviewStatus,
+    p_review_notes: board.reviewNotes,
+    p_last_reviewed_at: board.lastReviewedAt,
+    p_notes: `Published from ${definition.displayLabel} editor`
+  });
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (error || !row) {
+    throw error ?? new Error("Could not publish the remote city version.");
+  }
+
+  return {
+    cityEditionId: row.city_edition_id,
+    versionId: row.version_id,
+    versionNumber: row.version_number
   };
 }
 
