@@ -197,6 +197,7 @@ export function RecentGamesPanel({
   const [inviteOpponentUsername, setInviteOpponentUsername] = useState("");
   const [inviteCityEditionId, setInviteCityEditionId] = useState(multiplayerCityOptions[0]?.id ?? "");
   const [inviteTimeControlPresetId, setInviteTimeControlPresetId] = useState("deadline-daily");
+  const [inviteCreatorSide, setInviteCreatorSide] = useState<"white" | "black">("white");
   const [inviteRated, setInviteRated] = useState(false);
   const splitContentRef = useRef<HTMLDivElement | null>(null);
   const selectedSavedMatch = savedMatches.find((savedMatch) => savedMatch.id === selectedSavedMatchId);
@@ -301,6 +302,7 @@ export function RecentGamesPanel({
         opponentUsername: inviteOpponentUsername,
         cityEditionId: inviteCityEditionId,
         timeControlPresetId: inviteTimeControlPresetId,
+        creatorSide: inviteCreatorSide,
         rated: inviteRated
       });
       setInviteOpponentUsername("");
@@ -317,7 +319,15 @@ export function RecentGamesPanel({
     } finally {
       setIsSubmittingInvite(false);
     }
-  }, [accountUsername, inviteCityEditionId, inviteOpponentUsername, inviteRated, inviteTimeControlPresetId, refreshActiveGames]);
+  }, [
+    accountUsername,
+    inviteCityEditionId,
+    inviteCreatorSide,
+    inviteOpponentUsername,
+    inviteRated,
+    inviteTimeControlPresetId,
+    refreshActiveGames
+  ]);
 
   const handleRespondToInvite = useCallback(async (gameId: string, response: "accept" | "decline") => {
     try {
@@ -394,7 +404,7 @@ export function RecentGamesPanel({
               <div>
                 <h4>Invite by username</h4>
                 <p className="muted">
-                  Direct invites first. Sync and async both use the same thread model.
+                  Direct invites first. Time controls decide how quickly each player must move.
                 </p>
               </div>
               <Button type="button" variant="outline" size="icon-sm" onClick={() => void refreshActiveGames()}>
@@ -447,13 +457,25 @@ export function RecentGamesPanel({
                     ))}
                   </select>
                 </label>
+                <label className="grid gap-1">
+                  <span className="text-sm font-medium">Your side</span>
+                  <select
+                    className="field-select"
+                    value={inviteCreatorSide}
+                    onChange={(event) => setInviteCreatorSide(event.currentTarget.value as "white" | "black")}
+                    disabled={isSubmittingInvite}
+                  >
+                    <option value="white">White</option>
+                    <option value="black">Black</option>
+                  </select>
+                </label>
                 <label className="recent-games-active__rated">
                   <Checkbox
                     checked={inviteRated}
                     onCheckedChange={(checked) => setInviteRated(checked === true)}
                     disabled={isSubmittingInvite}
                   />
-                  <span>Rated</span>
+                  <span>{inviteRated ? "Rated game" : "Casual game"}</span>
                 </label>
                 <Button
                   type="button"

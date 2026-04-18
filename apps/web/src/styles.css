@@ -3801,7 +3801,7 @@ label:has(> .text-sm.font-medium) {
 .recent-games-active__filters {
   display: grid;
   gap: var(--space-2_5);
-  grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(8rem, 0.8fr)) auto auto;
+  grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(7.5rem, 0.8fr)) auto auto;
   align-items: end;
 }
 

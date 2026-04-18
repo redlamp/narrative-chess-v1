@@ -295,6 +295,7 @@ export async function createGameInviteInSupabase(input: {
   opponentUsername: string;
   cityEditionId: string | null;
   timeControlPresetId: string;
+  creatorSide: "white" | "black";
   rated: boolean;
 }): Promise<string> {
   const auth = await requireAuthenticatedUser();
@@ -314,7 +315,8 @@ export async function createGameInviteInSupabase(input: {
     p_base_seconds: preset.baseSeconds,
     p_increment_seconds: preset.incrementSeconds,
     p_move_deadline_seconds: preset.moveDeadlineSeconds,
-    p_rated: input.rated
+    p_rated: input.rated,
+    p_creator_side: input.creatorSide
   });
 
   const row = Array.isArray(data) ? data[0] : data;
