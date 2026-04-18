@@ -248,6 +248,8 @@ Need strict ownership rules:
 6. time control badge
 7. rated/casual badge
 8. result screen with Elo delta
+9. completed games list in `Games > Active`
+10. creator side choice
 
 ## Near-term implementation order
 
@@ -261,8 +263,9 @@ Need strict ownership rules:
 4. replace `sync/async` with time controls
 5. create invite flow
 6. append moves to DB
-7. subscribe with Realtime
+7. poll open active games for opponent moves
 8. add rated game completion function
+9. subscribe with Realtime
 
 ## Deliberate non-goals for first release
 
@@ -279,3 +282,4 @@ Need strict ownership rules:
 2. Ask for a time control instead.
 3. Live and correspondence are backend variants of the same thread model.
 4. The first implementation can keep `play_mode` internally if needed for compatibility, but the product direction should move to explicit time controls.
+5. Polling is the first multiplayer refresh path; Realtime can replace it after the turn loop is stable.

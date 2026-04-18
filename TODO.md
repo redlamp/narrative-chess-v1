@@ -17,16 +17,20 @@ Last updated: April 18, 2026
    j. `Active` games can now be opened into the match surface
    k. rated completion + Elo update implemented
    l. Play header now shows multiplayer status and Elo delta for completed rated games
+   m. open multiplayer games poll Supabase for opponent moves while loaded
+   n. completed multiplayer games now appear in `Games > Active`
+   o. invite creator can choose white or black
+   p. append-move promotion mapping has focused tests
 
 ## Next
 
-1. Add remote refresh / polling or Realtime so opponent moves appear without manual reopen
+1. Add Supabase Realtime subscriptions for multiplayer
 
-2. Pull completed multiplayer games into a dedicated list or archive surface
+2. Add random side assignment to invites
 
-3. Add Supabase Realtime subscriptions for multiplayer
+3. Add fuller tests around active-game session refresh and append failure states
 
-4. Let invite creator choose or randomize color instead of fixed white
+4. Add completed-game review filters if completed list becomes noisy
 
 ## Durable data already moved to Supabase
 
@@ -39,5 +43,5 @@ Last updated: April 18, 2026
 1. Keep public Play on published city data by default
 2. Keep invite-based multiplayer before public matchmaking
 3. Keep `Historic` separate from multiplayer state
-4. Current invite flow assigns creator = white and opponent = black as a first pass
+4. Current invite flow lets the creator choose white or black; random side remains future work
 5. Replace user-facing `sync/async` with time-control presets like `10 min` and `1 move / day`
