@@ -17,3 +17,6 @@ Thumbs.db
 
 # Local city board working files — save via Cities editor, not committed
 *.local.json
+
+# Local plugin/vendor checkouts
+/caveman/

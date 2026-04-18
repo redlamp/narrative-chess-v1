@@ -9,6 +9,7 @@
     "build": "corepack pnpm --filter @narrative-chess/web build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "security:scan": "node scripts/check-public-secrets.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
