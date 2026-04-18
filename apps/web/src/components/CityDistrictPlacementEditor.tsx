@@ -23,6 +23,7 @@ type CityDistrictBoardEditorProps = {
   selectedDistrict: DistrictCell | null;
   highlightedDistrict: DistrictCell | null;
   hoveredSquare: Square | null;
+  isEditable?: boolean;
   showDistrictLabels?: boolean;
   showPieces?: boolean;
   onHoveredSquareChange: (square: Square | null) => void;
@@ -36,6 +37,7 @@ type CityDistrictMapEditorProps = {
   selectedDistrict: DistrictCell | null;
   highlightedDistrict: DistrictCell | null;
   searchContainerRef: MutableRefObject<HTMLDivElement | null>;
+  isEditable?: boolean;
   onMapAnchorChange: (anchor: DistrictCell["mapAnchor"]) => void;
   onHighlightedDistrictChange: (districtId: string | null) => void;
   onSelectDistrict: (districtId: string) => void;
@@ -260,6 +262,7 @@ export function CityDistrictBoardEditor({
   selectedDistrict,
   highlightedDistrict,
   hoveredSquare,
+  isEditable = true,
   showDistrictLabels = true,
   showPieces = false,
   onHoveredSquareChange,
@@ -298,13 +301,13 @@ export function CityDistrictBoardEditor({
           return;
         }
 
-        if (selectedDistrict) {
+        if (selectedDistrict && isEditable) {
           onSquareChange(square);
         }
       }}
       onSquareHover={(square) => onHoveredSquareChange(square)}
       onSquareLeave={() => onHoveredSquareChange(null)}
-      onSquareDrop={onSquareSwap}
+      onSquareDrop={isEditable ? onSquareSwap : undefined}
     />
   );
 }
@@ -314,6 +317,7 @@ export function CityDistrictMapEditor({
   selectedDistrict,
   highlightedDistrict,
   searchContainerRef,
+  isEditable = true,
   onMapAnchorChange,
   onHighlightedDistrictChange,
   onSelectDistrict,
@@ -425,7 +429,7 @@ export function CityDistrictMapEditor({
         }
       }
 
-      if (!selectedDistrictRef.current || !importModeArmedRef.current) {
+      if (!isEditable || !selectedDistrictRef.current || !importModeArmedRef.current) {
         return;
       }
 
@@ -725,6 +729,7 @@ export function CityDistrictMapEditor({
               type="button"
               size="sm"
               variant="outline"
+              disabled={!isEditable}
               onClick={() => onMapAnchorChange(undefined)}
             >
               <MapPinOff />

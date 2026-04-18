@@ -744,6 +744,7 @@ type EdinburghReviewPageProps = {
   layoutMode: boolean;
   showLayoutGrid: boolean;
   layoutNavigation?: LayoutNavigation;
+  canEditCities: boolean;
   canManageRemoteDrafts: boolean;
   canPublishRemoteCities: boolean;
   onCityBoardDraftChange?: (board: CityBoard) => void;
@@ -755,6 +756,7 @@ export function EdinburghReviewPage({
   layoutMode,
   showLayoutGrid,
   layoutNavigation,
+  canEditCities,
   canManageRemoteDrafts,
   canPublishRemoteCities,
   onCityBoardDraftChange,
@@ -1002,7 +1004,7 @@ export function EdinburghReviewPage({
   );
   const editorDistrict = highlightedDistrict ?? selectedDistrict;
   const isDistrictHoverPreview = highlightedDistrict !== null && highlightedDistrict.id !== selectedDistrict?.id;
-  const canEditEditorDistrict = editorDistrict !== null && !isDistrictHoverPreview;
+  const canEditEditorDistrict = canEditCities && editorDistrict !== null && !isDistrictHoverPreview;
   const isEditorDistrictDirty = editorDistrict ? dirtyDistrictIdSet.has(editorDistrict.id) : false;
   const cityContentStatusMeta = getContentStatusMeta(draft.contentStatus);
   const cityReviewStatusMeta = getReviewStatusMeta(draft.reviewStatus);
@@ -1173,6 +1175,10 @@ export function EdinburghReviewPage({
   };
 
   const handleResetCityDraft = () => {
+    if (!canEditCities) {
+      return;
+    }
+
     const fallback = selectedCityDefinition?.board ?? createInitialCityDraft();
     const nextDraft = resetCityBoardDraft(selectedCityId, fallback);
     cityDraftsRef.current[nextDraft.id] = nextDraft;
@@ -1422,35 +1428,37 @@ export function EdinburghReviewPage({
               </div>
               <TooltipProvider delayDuration={150}>
                 <div className="workspace-header-actions-group">
-                  <DropdownMenu>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            type="button"
-                            size="icon-sm"
-                            variant="outline"
-                            disabled={busyAction !== null}
-                            aria-label="Open file"
+                  {canEditCities ? (
+                    <DropdownMenu>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              size="icon-sm"
+                              variant="outline"
+                              disabled={busyAction !== null}
+                              aria-label="Open file"
+                            >
+                              <FolderOpen />
+                            </Button>
+                          </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>Open file</TooltipContent>
+                      </Tooltip>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Import into city</DropdownMenuLabel>
+                        {cityBoardDefinitions.map((definition) => (
+                          <DropdownMenuItem
+                            key={definition.id}
+                            onSelect={() => beginCityFileImport(definition.id)}
                           >
-                            <FolderOpen />
-                          </Button>
-                        </DropdownMenuTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent>Open file</TooltipContent>
-                    </Tooltip>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Import into city</DropdownMenuLabel>
-                      {cityBoardDefinitions.map((definition) => (
-                        <DropdownMenuItem
-                          key={definition.id}
-                          onSelect={() => beginCityFileImport(definition.id)}
-                        >
-                          {definition.displayLabel}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                            {definition.displayLabel}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : null}
 
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -1460,6 +1468,7 @@ export function EdinburghReviewPage({
                         variant="outline"
                         className="workspace-header-actions-reset-button"
                         onClick={handleResetCityDraft}
+                        disabled={!canEditCities}
                         aria-label="Reset all city data"
                       >
                         <RotateCcw />
@@ -1530,8 +1539,13 @@ export function EdinburghReviewPage({
             </div>
           </CardHeader>
           <CardContent className="page-card__content page-card__content--scroll">
-            {!saveNotice && validation.isValid ? null : (
+            {!saveNotice && validation.isValid && canEditCities ? null : (
               <div className="grid gap-3 pb-4">
+                {!canEditCities ? (
+                  <WorkspaceNoticeCard tone="neutral">
+                    <p className="text-sm">Player view is read-only here. Switch to Author or Admin to edit city data.</p>
+                  </WorkspaceNoticeCard>
+                ) : null}
                 {saveNotice ? (
                   <WorkspaceNoticeCard tone={saveNotice.tone}>
                     <p className="text-sm">{saveNotice.text}</p>
@@ -1964,6 +1978,7 @@ export function EdinburghReviewPage({
                       <Input
                         name="city-name"
                         autoComplete="off"
+                        disabled={!canEditCities}
                         value={draft.name}
                         onChange={(event) => setCityField("name", event.currentTarget.value)}
                       />
@@ -1973,6 +1988,7 @@ export function EdinburghReviewPage({
                       value={draft.contentStatus}
                       options={statusOptions}
                       getMeta={getContentStatusMeta}
+                      disabled={!canEditCities}
                       onChange={(value) => setCityField("contentStatus", value as CityBoard["contentStatus"])}
                     />
                     <StatusDropdownField
@@ -1980,6 +1996,7 @@ export function EdinburghReviewPage({
                       value={draft.reviewStatus}
                       options={reviewOptions}
                       getMeta={getReviewStatusMeta}
+                      disabled={!canEditCities}
                       onChange={(value) => setCityField("reviewStatus", value as CityBoard["reviewStatus"])}
                     />
                     <label className="grid gap-1">
@@ -1988,6 +2005,7 @@ export function EdinburghReviewPage({
                         name="city-last-reviewed-at"
                         autoComplete="off"
                         type="date"
+                        disabled={!canEditCities}
                         value={draft.lastReviewedAt ?? ""}
                         onChange={(event) => setCityField("lastReviewedAt", event.currentTarget.value || null)}
                       />
@@ -1999,6 +2017,7 @@ export function EdinburghReviewPage({
                       name="city-review-notes"
                       autoComplete="off"
                       className="flex-1 resize-none"
+                      disabled={!canEditCities}
                       value={draft.reviewNotes ?? ""}
                       onChange={(event) => setCityField("reviewNotes", event.currentTarget.value || null)}
                     />
@@ -2012,6 +2031,7 @@ export function EdinburghReviewPage({
                       <Textarea
                         name="city-summary"
                         autoComplete="off"
+                        disabled={!canEditCities}
                         value={draft.summary}
                         onChange={(event) => setCityField("summary", event.currentTarget.value)}
                         rows={4}
@@ -2022,6 +2042,7 @@ export function EdinburghReviewPage({
                       <Textarea
                         name="city-board-orientation"
                         autoComplete="off"
+                        disabled={!canEditCities}
                         value={draft.boardOrientation}
                         onChange={(event) => setCityField("boardOrientation", event.currentTarget.value)}
                         rows={2}
@@ -2037,6 +2058,7 @@ export function EdinburghReviewPage({
                       <Input
                         name="city-country"
                         autoComplete="off"
+                        disabled={!canEditCities}
                         value={draft.country}
                         onChange={(event) => setCityField("country", event.currentTarget.value)}
                       />
@@ -2046,6 +2068,7 @@ export function EdinburghReviewPage({
                       <Input
                         name="city-generation-source"
                         autoComplete="off"
+                        disabled={!canEditCities}
                         value={draft.generationSource}
                         onChange={(event) => setCityField("generationSource", event.currentTarget.value)}
                       />
@@ -2056,6 +2079,7 @@ export function EdinburghReviewPage({
                         name="city-source-urls"
                         autoComplete="off"
                         spellCheck={false}
+                        disabled={!canEditCities}
                         value={formatListValue(draft.sourceUrls)}
                         onChange={(event) => setCityField("sourceUrls", parseListValue(event.currentTarget.value))}
                         rows={4}
@@ -2523,6 +2547,7 @@ export function EdinburghReviewPage({
                 setDraft((current) => reassignDistrictSquare(current, selectedDistrict.id, square));
               }}
               onSquareSwap={handleBoardSquareSwap}
+              isEditable={canEditCities}
             />
           ) : (
             <CityDistrictBoardEditor
@@ -2536,6 +2561,7 @@ export function EdinburghReviewPage({
               onSelectDistrict={selectDistrictById}
               onSquareChange={() => {}}
               onSquareSwap={handleBoardSquareSwap}
+              isEditable={canEditCities}
             />
           )}
         </BoardPanel>
@@ -2562,9 +2588,10 @@ export function EdinburghReviewPage({
                 selectedDistrict={selectedDistrict}
                 highlightedDistrict={highlightedDistrict}
                 searchContainerRef={mapPlacementSearchContainerRef}
+                isEditable={canEditCities}
                 onHighlightedDistrictChange={setHoveredDistrictId}
                 onSelectDistrict={selectDistrictById}
-                importModeArmed={isMapImportArmed}
+                importModeArmed={canEditCities ? isMapImportArmed : false}
                 onImportModeConsumed={() => setIsMapImportArmed(false)}
                 onMapAnchorChange={(mapAnchor) =>
                   setDraft((current) =>
@@ -2581,6 +2608,7 @@ export function EdinburghReviewPage({
                 selectedDistrict={null}
                 highlightedDistrict={highlightedDistrict}
                 searchContainerRef={mapPlacementSearchContainerRef}
+                isEditable={canEditCities}
                 onHighlightedDistrictChange={setHoveredDistrictId}
                 onSelectDistrict={selectDistrictById}
                 importModeArmed={false}

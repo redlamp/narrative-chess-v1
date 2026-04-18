@@ -2421,6 +2421,7 @@ export default function App() {
           layoutMode={effectiveLayoutMode}
           showLayoutGrid={settings.showLayoutGrid}
           layoutNavigation={layoutNavigation}
+          canEditCities={canAccessDraftCities}
           canManageRemoteDrafts={canAccessDraftCities}
           canPublishRemoteCities={canPublishCities}
           onCityBoardDraftChange={handleCityBoardDraftChange}
