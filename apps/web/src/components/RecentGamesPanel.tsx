@@ -71,7 +71,7 @@ function RecentGameRow({
 }
 
 // Note: RecentGamesPanel does not wrap itself in <Panel> because App.tsx already
-// renders it inside <Panel title="Saved Games">. Adding another Panel here would
+// renders it inside <Panel title="Games">. Adding another Panel here would
 // double-nest the card chrome.
 export function RecentGamesPanel({
   savedMatches,
@@ -162,19 +162,19 @@ export function RecentGamesPanel({
 
   return (
     <TooltipProvider delayDuration={150}>
-      <Tabs defaultValue="historic" className="recent-games-panel w-full">
+      <Tabs defaultValue="open" className="recent-games-panel w-full">
       <TabsList className="recent-games-tabs">
-        <TabsTrigger value="historic">Historic Games</TabsTrigger>
+        <TabsTrigger value="open">Open Games</TabsTrigger>
         <TabsTrigger value="saved">Your Games ({savedMatches.length})</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="historic" className="recent-games-content">
+      <TabsContent value="open" className="recent-games-content">
         <div className="recent-games-historic">
           <div ref={splitContentRef} className="recent-games-historic__content" style={historicSplitStyle}>
             <ul
               className="recent-games-historic__list"
               role="listbox"
-              aria-label="Historic games"
+              aria-label="Open games"
               onMouseLeave={() => setHoveredReferenceGameId(null)}
             >
               {referenceGames.map((game) => (

@@ -192,7 +192,7 @@ const panelTitles: Record<WorkspacePanelId, string> = {
   "story-tile": "District",
   "story-character": "Character",
   "story-tone": "Narrative Tone",
-  "recent-games": "Saved Games"
+  "recent-games": "Games"
 };
 
 const pageOptions: Array<{ value: AppPage; label: string; icon?: React.ReactNode }> = [
@@ -2643,9 +2643,9 @@ export default function App() {
             },
             {
               id: "recent-games",
-              label: "Saved Games",
+              label: "Games",
               content: (
-                <Panel title="Saved Games">
+                <Panel title="Games">
                   <RecentGamesPanel
                     savedMatches={savedMatches}
                     selectedSavedMatchId={selectedSavedMatchId}
