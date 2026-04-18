@@ -8,20 +8,20 @@ Last updated: April 18, 2026
    a. `Games` tabs split into `Active`, `Yours`, `Historic`
    b. multiplayer plan doc added
    c. profiles + username claim UI scaffolded
-   d. next: multiplayer schema tables
+   d. multiplayer schema tables scaffolded
+   e. next: invite flow
 
 ## Next
 
-1. Add multiplayer tables
-   a. `game_threads`
-   b. `game_participants`
-   c. `game_moves`
+1. Add invite-by-username flow
 
-2. Add invite-by-username flow
+2. Add move append / turn update flow
 
 3. Add rated game completion + Elo update
 
 4. Add `Active` games UI backed by multiplayer data
+
+5. Add Supabase Realtime subscriptions for multiplayer
 
 ## Durable data already moved to Supabase
 

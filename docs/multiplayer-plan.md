@@ -216,10 +216,14 @@ Need strict ownership rules:
 1. scaffold `profiles`
 2. add username claim UI
 3. add multiplayer schema tables
+   a. done: `game_threads`
+   b. done: `game_participants`
+   c. done: `game_moves`
+   d. done: `calculate_elo_delta()`
 4. create invite flow
 5. append moves to DB
 6. subscribe with Realtime
-7. add Elo completion function
+7. add rated game completion function
 
 ## Deliberate non-goals for first release
 
