@@ -110,6 +110,11 @@ import {
   type AppRole
 } from "./auth";
 import {
+  loadCurrentUserProfile,
+  saveCurrentUserProfile,
+  type UserProfile
+} from "./profiles";
+import {
   cityBoardDefinitions,
   getCityBoardDefinition,
   isSupabasePublishedCitiesEnabled,
@@ -436,6 +441,7 @@ export default function App() {
   const [playCityMatchesFallback, setPlayCityMatchesFallback] = useState<boolean | null>(null);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [sessionRole, setSessionRole] = useState<AppRole>("player");
+  const [sessionProfile, setSessionProfile] = useState<UserProfile | null>(null);
   const [viewAsRole, setViewAsRole] = useState<AppRole>("player");
   const [isAuthBusy, setIsAuthBusy] = useState(false);
   const handleCityBoardDraftChange = useCallback((board: CityBoard) => {
@@ -489,6 +495,20 @@ export default function App() {
     }
 
     return loadCurrentUserRole(user);
+  }, []);
+
+  const refreshCurrentUserProfile = useCallback(async (user: { id: string } | null) => {
+    if (!user) {
+      setSessionProfile(null);
+      return;
+    }
+
+    try {
+      setSessionProfile(await loadCurrentUserProfile());
+    } catch (error) {
+      console.warn("[supabase] Could not read current profile.", error);
+      setSessionProfile(null);
+    }
   }, []);
 
   useEffect(() => {
@@ -619,11 +639,13 @@ export default function App() {
         const user = session?.user ?? null;
         setSessionEmail(user?.email ?? null);
         setSessionRole(await resolveAppRole(user));
+        await refreshCurrentUserProfile(user);
       } catch (error) {
         if (!cancelled) {
           console.warn("[supabase] Could not read current auth session.", error);
           setSessionEmail(null);
           setSessionRole("player");
+          setSessionProfile(null);
         }
       }
     };
@@ -633,6 +655,7 @@ export default function App() {
     const unsubscribe = subscribeToAuthChanges((session) => {
       const user = session?.user ?? null;
       setSessionEmail(user?.email ?? null);
+      void refreshCurrentUserProfile(user);
       void resolveAppRole(user)
         .then((role) => {
           if (!cancelled) {
@@ -651,7 +674,7 @@ export default function App() {
       cancelled = true;
       unsubscribe();
     };
-  }, [resolveAppRole]);
+  }, [refreshCurrentUserProfile, resolveAppRole]);
 
   useEffect(() => {
     const allowedViewAsRoles =
@@ -920,10 +943,27 @@ export default function App() {
     try {
       await signOut();
       setSessionRole("player");
+      setSessionProfile(null);
       setViewAsRole("player");
       return "Signed out.";
     } catch (error) {
       console.warn("[supabase] Sign-out failed.", error);
+      throw error;
+    } finally {
+      setIsAuthBusy(false);
+    }
+  }, []);
+
+  const handleSaveProfile = useCallback(async (username: string, displayName: string) => {
+    setIsAuthBusy(true);
+    try {
+      const profile = await saveCurrentUserProfile({ username, displayName });
+      setSessionProfile(profile);
+      return profile.username
+        ? `Profile saved as @${profile.username}.`
+        : "Profile saved.";
+    } catch (error) {
+      console.warn("[supabase] Could not save profile.", error);
       throw error;
     } finally {
       setIsAuthBusy(false);
@@ -2379,6 +2419,9 @@ export default function App() {
               }
               accountEmail={sessionEmail}
               accountRole={sessionRole}
+              accountUsername={sessionProfile?.username ?? null}
+              accountDisplayName={sessionProfile?.displayName ?? null}
+              accountEloRating={sessionProfile?.eloRating ?? null}
               viewAsRole={viewAsRole}
               onViewAsRoleChange={setViewAsRole}
               canAccessDraftCities={canAccessDraftCities}
@@ -2386,6 +2429,7 @@ export default function App() {
               onSignInWithPassword={handleSignInWithPassword}
               onSignUpWithPassword={handleSignUpWithPassword}
               onSignOut={handleSignOut}
+              onSaveProfile={handleSaveProfile}
               playCitySourceLabel={playCitySourceLabel}
               playCityPreviewModeLabel={
                 effectivePlayCityPreviewMode === "draft" ? "Draft preview" : "Published"

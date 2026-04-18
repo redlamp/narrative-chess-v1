@@ -7,28 +7,21 @@ Last updated: April 18, 2026
 1. Multiplayer groundwork
    a. `Games` tabs split into `Active`, `Yours`, `Historic`
    b. multiplayer plan doc added
-   c. next: profiles + username claim UI
+   c. profiles + username claim UI scaffolded
+   d. next: multiplayer schema tables
 
 ## Next
 
-1. Add `profiles` table
-   a. username
-   b. display name
-   c. basic Elo rating
-
-2. Wire username claim UI
-   a. account details panel
-   b. validation
-   c. unique username check
-
-3. Add multiplayer tables
+1. Add multiplayer tables
    a. `game_threads`
    b. `game_participants`
    c. `game_moves`
 
-4. Add invite-by-username flow
+2. Add invite-by-username flow
 
-5. Add rated game completion + Elo update
+3. Add rated game completion + Elo update
+
+4. Add `Active` games UI backed by multiplayer data
 
 ## Durable data already moved to Supabase
 

@@ -35,6 +35,9 @@ type AppMenuProps = {
   onHighlightColorChange: (color: HighlightColor) => void;
   accountEmail: string | null;
   accountRole: AppRole;
+  accountUsername: string | null;
+  accountDisplayName: string | null;
+  accountEloRating: number | null;
   viewAsRole: AppRole;
   onViewAsRoleChange: (role: AppRole) => void;
   canAccessDraftCities: boolean;
@@ -42,6 +45,7 @@ type AppMenuProps = {
   onSignInWithPassword: (email: string, password: string) => Promise<string>;
   onSignUpWithPassword: (email: string, password: string) => Promise<string>;
   onSignOut: () => Promise<string>;
+  onSaveProfile: (username: string, displayName: string) => Promise<string>;
   playCitySourceLabel: string;
   playCityPreviewModeLabel: string;
   playCityEditionLabel: string | null;
@@ -72,6 +76,9 @@ export function AppMenu({
   onHighlightColorChange,
   accountEmail,
   accountRole,
+  accountUsername,
+  accountDisplayName,
+  accountEloRating,
   viewAsRole,
   onViewAsRoleChange,
   canAccessDraftCities,
@@ -79,6 +86,7 @@ export function AppMenu({
   onSignInWithPassword,
   onSignUpWithPassword,
   onSignOut,
+  onSaveProfile,
   playCitySourceLabel,
   playCityPreviewModeLabel,
   playCityEditionLabel,
@@ -90,6 +98,8 @@ export function AppMenu({
   const [isPanelHovered, setIsPanelHovered] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [profileUsername, setProfileUsername] = useState(accountUsername ?? "");
+  const [profileDisplayName, setProfileDisplayName] = useState(accountDisplayName ?? "");
   const [authNotice, setAuthNotice] = useState<AuthNotice | null>(null);
   const availableViewAsRoles =
     accountRole === "admin"
@@ -97,6 +107,11 @@ export function AppMenu({
       : accountRole === "author"
         ? (["author", "player"] as AppRole[])
         : (["player"] as AppRole[]);
+
+  useEffect(() => {
+    setProfileUsername(accountUsername ?? "");
+    setProfileDisplayName(accountDisplayName ?? "");
+  }, [accountDisplayName, accountUsername]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -203,6 +218,21 @@ export function AppMenu({
       setAuthNotice({
         tone: "error",
         text: error instanceof Error ? error.message : "Sign-out failed."
+      });
+    }
+  };
+
+  const handleProfileSave = async () => {
+    try {
+      const message = await onSaveProfile(profileUsername, profileDisplayName);
+      setAuthNotice({
+        tone: "success",
+        text: message
+      });
+    } catch (error) {
+      setAuthNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Profile save failed."
       });
     }
   };
@@ -324,6 +354,14 @@ export function AppMenu({
                 <Badge variant="outline">{roleLabel(accountRole)}</Badge>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[0.82rem] text-muted-foreground">Username</span>
+                <span className="text-[0.9rem]">{accountUsername ? `@${accountUsername}` : "Unset"}</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[0.82rem] text-muted-foreground">Elo</span>
+                <Badge variant="outline">{accountEloRating ?? 1200}</Badge>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-[0.82rem] text-muted-foreground">View as</span>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -348,6 +386,40 @@ export function AppMenu({
                 </Badge>
               </div>
             </div>
+
+            {accountEmail ? (
+              <div className="grid gap-2">
+                <Input
+                  type="text"
+                  autoComplete="off"
+                  placeholder="username"
+                  value={profileUsername}
+                  onChange={(event) => setProfileUsername(event.target.value)}
+                  disabled={isAuthBusy}
+                />
+                <Input
+                  type="text"
+                  autoComplete="nickname"
+                  placeholder="Display name"
+                  value={profileDisplayName}
+                  onChange={(event) => setProfileDisplayName(event.target.value)}
+                  disabled={isAuthBusy}
+                />
+                <p className="text-xs leading-[1.45] text-muted-foreground">
+                  Username is for invites and multiplayer identity. Use lowercase letters, numbers,
+                  or underscores.
+                </p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleProfileSave}
+                  disabled={isAuthBusy}
+                >
+                  <Save data-icon="inline-start" />
+                  {isAuthBusy ? "Saving..." : "Save profile"}
+                </Button>
+              </div>
+            ) : null}
 
             <div className="app-menu__actions">
               {accountEmail ? (
