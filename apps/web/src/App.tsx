@@ -20,6 +20,7 @@ import {
 import { getPieceAtSquare } from "@narrative-chess/game-core";
 import { getCharacterEventHistory } from "@narrative-chess/narrative-engine";
 import type { CityBoard, PieceKind, Square } from "@narrative-chess/content-schema";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -92,10 +93,23 @@ import {
   supportsWorkspaceLayoutDirectory
 } from "./fileSystemAccess";
 import {
+  bootstrapFirstAdmin,
+  getCurrentSession,
+  loadCurrentUserRole,
+  signInWithPassword,
+  signUpWithPassword,
+  signOut,
+  subscribeToAuthChanges,
+  type AppRole
+} from "./auth";
+import {
   cityBoardDefinitions,
   getCityBoardDefinition,
   isSupabasePublishedCitiesEnabled,
-  loadPublishedCityBoard
+  listFallbackPlayableCityOptions,
+  listPlayableCityOptions,
+  loadPublishedCityBoard,
+  type PlayableCityOption
 } from "./cityBoards";
 import { listCityBoardDraft, saveCityBoardDraft } from "./cityReviewState";
 import { getAnimatedPieceFrames } from "./chessMotion";
@@ -148,6 +162,8 @@ type LayoutFileNotice = {
 };
 
 type SaveEverythingNotice = LayoutFileNotice;
+
+type PlayCitySource = "fallback" | "supabase";
 
 type PanelSizeConstraint = {
   minW: number;
@@ -392,9 +408,25 @@ export default function App() {
   const [selectedSavedMatchId, setSelectedSavedMatchId] = useState<string | null>(null);
   const [isHistoryPlaying, setIsHistoryPlaying] = useState(false);
   const useSupabasePublishedCities = isSupabasePublishedCitiesEnabled();
+  const [playCityOptions, setPlayCityOptions] = useState<PlayableCityOption[]>(() =>
+    listFallbackPlayableCityOptions()
+  );
+  const [playCityOptionId, setPlayCityOptionId] = useState<string>(() =>
+    listFallbackPlayableCityOptions()[0]?.id ?? edinburghBoard.id
+  );
   const [playCityBoard, setPlayCityBoard] = useState<CityBoard>(() =>
     useSupabasePublishedCities ? edinburghBoard : listCityBoardDraft(edinburghBoard.id, edinburghBoard)
   );
+  const [playCitySource, setPlayCitySource] = useState<PlayCitySource>(
+    useSupabasePublishedCities ? "fallback" : "fallback"
+  );
+  const [playCityPublishedEditionId, setPlayCityPublishedEditionId] = useState<string | null>(
+    listFallbackPlayableCityOptions()[0]?.publishedEditionId ?? null
+  );
+  const [playCityMatchesFallback, setPlayCityMatchesFallback] = useState<boolean | null>(null);
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [sessionRole, setSessionRole] = useState<AppRole>("reader");
+  const [isAuthBusy, setIsAuthBusy] = useState(false);
   const handleCityBoardDraftChange = useCallback((board: CityBoard) => {
     if (useSupabasePublishedCities) {
       return;
@@ -405,19 +437,81 @@ export default function App() {
     }
   }, [playCityBoard.id, useSupabasePublishedCities]);
 
+  const selectedPlayCityOption = useMemo(
+    () => playCityOptions.find((option) => option.id === playCityOptionId) ?? playCityOptions[0] ?? null,
+    [playCityOptionId, playCityOptions]
+  );
+  const canAccessDraftCities = sessionRole === "author" || sessionRole === "admin";
+  const playCitySourceLabel = playCitySource === "supabase" ? "Supabase published" : "Bundled fallback";
+
+  const resolveAppRole = useCallback(async (user: { id: string } | null) => {
+    const initialRole = await loadCurrentUserRole(user);
+    if (!user || initialRole !== "reader") {
+      return initialRole;
+    }
+
+    const nextRole = await bootstrapFirstAdmin();
+    if (nextRole === "admin") {
+      return "admin" as AppRole;
+    }
+
+    return loadCurrentUserRole(user);
+  }, []);
+
   useEffect(() => {
-    if (!useSupabasePublishedCities) {
+    let cancelled = false;
+
+    void listPlayableCityOptions()
+      .then((options) => {
+        if (!cancelled) {
+          setPlayCityOptions(options);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.warn("[supabase] Could not load playable city options.", error);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedPlayCityOption) {
       return;
     }
 
-    const definition = getCityBoardDefinition(playCityBoard.id);
+    if (playCityOptions.some((option) => option.id === playCityOptionId)) {
+      return;
+    }
+
+    setPlayCityOptionId(selectedPlayCityOption.id);
+  }, [playCityOptionId, playCityOptions, selectedPlayCityOption]);
+
+  useEffect(() => {
+    if (!selectedPlayCityOption) {
+      return;
+    }
+
+    const definition = getCityBoardDefinition(selectedPlayCityOption.boardId);
     if (!definition) {
       return;
     }
 
     let cancelled = false;
 
-    void loadPublishedCityBoard(definition)
+    if (!useSupabasePublishedCities) {
+      const nextBoard = listCityBoardDraft(definition.id, definition.board);
+      setPlayCityBoard(nextBoard);
+      setPlayCitySource("fallback");
+      setPlayCityPublishedEditionId(selectedPlayCityOption.publishedEditionId);
+      setPlayCityMatchesFallback(null);
+      return;
+    }
+
+    void loadPublishedCityBoard(definition, selectedPlayCityOption.publishedEditionId)
       .then((result) => {
         if (cancelled) {
           return;
@@ -425,22 +519,76 @@ export default function App() {
 
         if (result.source === "supabase" && result.matchesFallback === false) {
           console.warn(
-            `[supabase] Published city board for ${definition.id} differs from bundled fallback ${definition.boardFileStem}.`
+            `[supabase] Published city board for ${selectedPlayCityOption.id} differs from bundled fallback ${definition.boardFileStem}.`
           );
         }
 
-        setPlayCityBoard((current) => (current.id === definition.id ? result.board : current));
+        setPlayCityBoard(result.board);
+        setPlayCitySource(result.source);
+        setPlayCityPublishedEditionId(result.publishedEditionId);
+        setPlayCityMatchesFallback(result.matchesFallback);
       })
       .catch((error) => {
         if (!cancelled) {
-          console.warn(`[supabase] Could not load published city board for ${definition.id}.`, error);
+          console.warn(`[supabase] Could not load published city board for ${selectedPlayCityOption.id}.`, error);
+          setPlayCityBoard(definition.board);
+          setPlayCitySource("fallback");
+          setPlayCityPublishedEditionId(selectedPlayCityOption.publishedEditionId);
+          setPlayCityMatchesFallback(null);
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [playCityBoard.id, useSupabasePublishedCities]);
+  }, [selectedPlayCityOption, useSupabasePublishedCities]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const applySessionState = async () => {
+      try {
+        const session = await getCurrentSession();
+        if (cancelled) {
+          return;
+        }
+
+        const user = session?.user ?? null;
+        setSessionEmail(user?.email ?? null);
+        setSessionRole(await resolveAppRole(user));
+      } catch (error) {
+        if (!cancelled) {
+          console.warn("[supabase] Could not read current auth session.", error);
+          setSessionEmail(null);
+          setSessionRole("reader");
+        }
+      }
+    };
+
+    void applySessionState();
+
+    const unsubscribe = subscribeToAuthChanges((session) => {
+      const user = session?.user ?? null;
+      setSessionEmail(user?.email ?? null);
+      void resolveAppRole(user)
+        .then((role) => {
+          if (!cancelled) {
+            setSessionRole(role);
+          }
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            console.warn("[supabase] Could not read user role.", error);
+            setSessionRole("reader");
+          }
+        });
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [resolveAppRole]);
 
   useEffect(() => {
     if (
@@ -603,6 +751,75 @@ export default function App() {
     goToPly(nextPly);
   }, [goToPly]);
 
+  const maybeBootstrapAdmin = useCallback(async () => {
+    try {
+      const nextRole = await bootstrapFirstAdmin();
+      if (nextRole === "admin") {
+        setSessionRole("admin");
+        return true;
+      }
+    } catch (error) {
+      console.warn("[supabase] First-admin bootstrap failed.", error);
+    }
+
+    return false;
+  }, []);
+
+  const handleSignInWithPassword = useCallback(async (email: string, password: string) => {
+    setIsAuthBusy(true);
+    try {
+      const result = await signInWithPassword({ email, password });
+      if (result.error) {
+        throw result.error;
+      }
+      const didBootstrapAdmin = await maybeBootstrapAdmin();
+      return didBootstrapAdmin ? "Signed in. First admin claimed." : "Signed in.";
+    } catch (error) {
+      console.warn("[supabase] Email/password sign-in failed.", error);
+      throw error;
+    } finally {
+      setIsAuthBusy(false);
+    }
+  }, [maybeBootstrapAdmin]);
+
+  const handleSignUpWithPassword = useCallback(async (email: string, password: string) => {
+    setIsAuthBusy(true);
+    try {
+      const result = await signUpWithPassword({ email, password });
+      if (result.error) {
+        throw result.error;
+      }
+
+      if (result.data.session) {
+        const didBootstrapAdmin = await maybeBootstrapAdmin();
+        return didBootstrapAdmin
+          ? "Account created. First admin claimed."
+          : "Account created and signed in.";
+      }
+
+      return "Account created. If email confirmation is enabled, confirm first, then sign in.";
+    } catch (error) {
+      console.warn("[supabase] Email/password sign-up failed.", error);
+      throw error;
+    } finally {
+      setIsAuthBusy(false);
+    }
+  }, [maybeBootstrapAdmin]);
+
+  const handleSignOut = useCallback(async () => {
+    setIsAuthBusy(true);
+    try {
+      await signOut();
+      setSessionRole("reader");
+      return "Signed out.";
+    } catch (error) {
+      console.warn("[supabase] Sign-out failed.", error);
+      throw error;
+    } finally {
+      setIsAuthBusy(false);
+    }
+  }, []);
+
   const effectiveLayoutMode = isLayoutMode && !isCompactViewport;
   const layoutNavigation = useMemo<LayoutNavigation>(
     () => ({
@@ -694,30 +911,31 @@ export default function App() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button type="button" variant="ghost" size="sm" className="panel__title-trigger">
-          <span className="panel__title-trigger-label">{playCityBoard.name}</span>
+          <span className="panel__title-trigger-label">
+            {selectedPlayCityOption?.displayLabel ?? playCityBoard.name}
+          </span>
+          <Badge variant="outline">
+            {playCitySource === "supabase" ? "Published DB" : "Bundled"}
+          </Badge>
           <ChevronDown data-icon="inline-end" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Cities</DropdownMenuLabel>
+        <DropdownMenuLabel>Playable settings</DropdownMenuLabel>
         <DropdownMenuRadioGroup
-          value={playCityBoard.id}
-          onValueChange={(nextCityId) => {
-            const nextDefinition = cityBoardDefinitions.find((definition) => definition.id === nextCityId);
-            if (!nextDefinition) {
+          value={selectedPlayCityOption?.id ?? playCityOptionId}
+          onValueChange={(nextOptionId) => {
+            const nextOption = playCityOptions.find((option) => option.id === nextOptionId);
+            if (!nextOption) {
               return;
             }
 
-            setPlayCityBoard(
-              useSupabasePublishedCities
-                ? nextDefinition.board
-                : listCityBoardDraft(nextDefinition.id, nextDefinition.board)
-            );
+            setPlayCityOptionId(nextOption.id);
           }}
         >
-          {cityBoardDefinitions.map((definition) => (
-            <DropdownMenuRadioItem key={definition.id} value={definition.id}>
-              {definition.displayLabel}
+          {playCityOptions.map((option) => (
+            <DropdownMenuRadioItem key={option.id} value={option.id}>
+              {option.displayLabel}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
@@ -1999,6 +2217,16 @@ export default function App() {
               onHighlightColorChange={(color: HighlightColor) =>
                 setSettings((s) => ({ ...s, highlightColor: color }))
               }
+              accountEmail={sessionEmail}
+              accountRole={sessionRole}
+              canAccessDraftCities={canAccessDraftCities}
+              isAuthBusy={isAuthBusy}
+              onSignInWithPassword={handleSignInWithPassword}
+              onSignUpWithPassword={handleSignUpWithPassword}
+              onSignOut={handleSignOut}
+              playCitySourceLabel={playCitySourceLabel}
+              playCityEditionLabel={playCityPublishedEditionId}
+              isPlayCityFallbackMatchKnown={playCityMatchesFallback !== null}
             />
           </div>
 

@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Download, Menu, RotateCcw, Save, X } from "lucide-react";
+import { Download, LogIn, LogOut, Menu, RotateCcw, Save, UserPlus, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Tooltip,
   TooltipContent,
@@ -24,6 +26,21 @@ type AppMenuProps = {
   onDismissSaveEverythingNotice: () => void;
   highlightColor: HighlightColor;
   onHighlightColorChange: (color: HighlightColor) => void;
+  accountEmail: string | null;
+  accountRole: string;
+  canAccessDraftCities: boolean;
+  isAuthBusy: boolean;
+  onSignInWithPassword: (email: string, password: string) => Promise<string>;
+  onSignUpWithPassword: (email: string, password: string) => Promise<string>;
+  onSignOut: () => Promise<string>;
+  playCitySourceLabel: string;
+  playCityEditionLabel: string | null;
+  isPlayCityFallbackMatchKnown: boolean;
+};
+
+type AuthNotice = {
+  tone: "success" | "error";
+  text: string;
 };
 
 export function AppMenu({
@@ -38,12 +55,25 @@ export function AppMenu({
   saveEverythingNotice,
   onDismissSaveEverythingNotice,
   highlightColor,
-  onHighlightColorChange
+  onHighlightColorChange,
+  accountEmail,
+  accountRole,
+  canAccessDraftCities,
+  isAuthBusy,
+  onSignInWithPassword,
+  onSignUpWithPassword,
+  onSignOut,
+  playCitySourceLabel,
+  playCityEditionLabel,
+  isPlayCityFallbackMatchKnown
 }: AppMenuProps) {
   const panelId = useId();
   const titleId = useId();
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [isPanelHovered, setIsPanelHovered] = useState(false);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authNotice, setAuthNotice] = useState<AuthNotice | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -77,6 +107,78 @@ export function AppMenu({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen, onOpenChange]);
+
+  const getAuthInput = () => {
+    const email = authEmail.trim();
+    const password = authPassword;
+    if (!email || !password) {
+      setAuthNotice({
+        tone: "error",
+        text: "Email and password both needed."
+      });
+      return null;
+    }
+
+    return { email, password };
+  };
+
+  const handlePasswordSignIn = async () => {
+    const input = getAuthInput();
+    if (!input) {
+      return;
+    }
+
+    try {
+      const message = await onSignInWithPassword(input.email, input.password);
+      setAuthPassword("");
+      setAuthNotice({
+        tone: "success",
+        text: message
+      });
+    } catch (error) {
+      setAuthNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Sign-in failed."
+      });
+    }
+  };
+
+  const handlePasswordSignUp = async () => {
+    const input = getAuthInput();
+    if (!input) {
+      return;
+    }
+
+    try {
+      const message = await onSignUpWithPassword(input.email, input.password);
+      setAuthPassword("");
+      setAuthNotice({
+        tone: "success",
+        text: message
+      });
+    } catch (error) {
+      setAuthNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Account creation failed."
+      });
+    }
+  };
+
+  const handleAccountSignOut = async () => {
+    try {
+      const message = await onSignOut();
+      setAuthPassword("");
+      setAuthNotice({
+        tone: "success",
+        text: message
+      });
+    } catch (error) {
+      setAuthNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Sign-out failed."
+      });
+    }
+  };
 
   return (
     <div className="app-menu" ref={menuRef}>
@@ -185,8 +287,112 @@ export function AppMenu({
               <h3 className="app-menu__panel-title">Account Details</h3>
             </div>
 
+            <div className="grid gap-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[0.82rem] text-muted-foreground">Signed in</span>
+                <span className="text-[0.9rem]">{accountEmail ?? "No"}</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[0.82rem] text-muted-foreground">Role</span>
+                <Badge variant="outline">{accountRole}</Badge>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[0.82rem] text-muted-foreground">Draft city access</span>
+                <Badge variant={canAccessDraftCities ? "secondary" : "outline"}>
+                  {canAccessDraftCities ? "Allowed" : "Published only"}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="app-menu__actions">
+              {accountEmail ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAccountSignOut}
+                  disabled={isAuthBusy}
+                  className="col-span-full"
+                >
+                  <LogOut data-icon="inline-start" />
+                  {isAuthBusy ? "Signing out..." : "Sign out"}
+                </Button>
+              ) : (
+                <div className="col-span-full grid gap-2">
+                  <div className="grid gap-2">
+                    <Input
+                      type="email"
+                      autoComplete="email"
+                      placeholder="Email"
+                      value={authEmail}
+                      onChange={(event) => setAuthEmail(event.target.value)}
+                      disabled={isAuthBusy}
+                    />
+                    <Input
+                      type="password"
+                      autoComplete="current-password"
+                      placeholder="Password"
+                      value={authPassword}
+                      onChange={(event) => setAuthPassword(event.target.value)}
+                      disabled={isAuthBusy}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handlePasswordSignIn}
+                      disabled={isAuthBusy}
+                    >
+                      <LogIn data-icon="inline-start" />
+                      {isAuthBusy ? "Working..." : "Sign in"}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handlePasswordSignUp}
+                      disabled={isAuthBusy}
+                    >
+                      <UserPlus data-icon="inline-start" />
+                      {isAuthBusy ? "Working..." : "Create account"}
+                    </Button>
+                  </div>
+                  <p className="text-xs leading-[1.45] text-muted-foreground">
+                    Supabase handles the account. If email confirmation is on, check inbox after
+                    sign-up.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {authNotice ? (
+              <p
+                className={`text-xs leading-[1.45] ${
+                  authNotice.tone === "error" ? "text-destructive" : "text-muted-foreground"
+                }`}
+              >
+                {authNotice.text}
+              </p>
+            ) : null}
+
             <div className="app-menu__panel-section">
               <h3 className="app-menu__panel-title">Network Details</h3>
+            </div>
+
+            <div className="grid gap-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[0.82rem] text-muted-foreground">Play city source</span>
+                <Badge variant="outline">{playCitySourceLabel}</Badge>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[0.82rem] text-muted-foreground">Edition</span>
+                <span className="text-[0.9rem]">{playCityEditionLabel ?? "None"}</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[0.82rem] text-muted-foreground">Fallback parity</span>
+                <span className="text-[0.9rem]">
+                  {isPlayCityFallbackMatchKnown ? "Known" : "Unknown"}
+                </span>
+              </div>
             </div>
           </CardContent>
         </Card>

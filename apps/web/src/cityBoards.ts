@@ -30,6 +30,16 @@ export type PublishedCityBoardLoadResult = {
   matchesFallback: boolean | null;
 };
 
+export type PlayableCityOption = {
+  id: string;
+  boardId: string;
+  displayLabel: string;
+  boardFileStem: string;
+  publishedEditionId: string | null;
+  catalogSource: "fallback" | "supabase";
+  isDefault: boolean;
+};
+
 export const cityBoardDefinitions: CityBoardDefinition[] = [
   {
     id: "edinburgh",
@@ -51,14 +61,101 @@ export function getCityBoardDefinition(cityId: string) {
   return cityBoardDefinitions.find((definition) => definition.id === cityId) ?? null;
 }
 
+export function listFallbackPlayableCityOptions(): PlayableCityOption[] {
+  return cityBoardDefinitions.map((definition, index) => ({
+    id: definition.publishedEditionId ?? definition.id,
+    boardId: definition.id,
+    displayLabel: definition.displayLabel,
+    boardFileStem: definition.boardFileStem,
+    publishedEditionId: definition.publishedEditionId,
+    catalogSource: "fallback",
+    isDefault: index === 0
+  }));
+}
+
+type RawPublishedEditionRow = {
+  city_edition_id: string;
+  city_editions:
+    | {
+        id: string;
+        city_id: string;
+        label: string;
+        is_default: boolean;
+      }
+    | Array<{
+        id: string;
+        city_id: string;
+        label: string;
+        is_default: boolean;
+      }>;
+};
+
+export async function listPlayableCityOptions(): Promise<PlayableCityOption[]> {
+  const fallbackOptions = listFallbackPlayableCityOptions();
+
+  if (!isSupabasePublishedCitiesEnabled() || !hasSupabaseConfig) {
+    return fallbackOptions;
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return fallbackOptions;
+  }
+
+  const { data, error } = await supabase
+    .from("city_versions")
+    .select("city_edition_id, city_editions!inner(id, city_id, label, is_default)")
+    .eq("status", "published")
+    .order("is_default", { referencedTable: "city_editions", ascending: false })
+    .order("label", { referencedTable: "city_editions", ascending: true });
+
+  if (error || !data) {
+    return fallbackOptions;
+  }
+
+  const mappedOptions = (data as RawPublishedEditionRow[])
+    .map((row) => {
+      const edition = Array.isArray(row.city_editions) ? row.city_editions[0] ?? null : row.city_editions;
+      if (!edition) {
+        return null;
+      }
+
+      const definition = getCityBoardDefinition(edition.city_id);
+      if (!definition) {
+        return null;
+      }
+
+      return {
+        id: row.city_edition_id,
+        boardId: definition.id,
+        displayLabel: edition.label,
+        boardFileStem: definition.boardFileStem,
+        publishedEditionId: row.city_edition_id,
+        catalogSource: "supabase" as const,
+        isDefault: edition.is_default
+      };
+    })
+    .filter((option): option is PlayableCityOption => option !== null);
+
+  if (mappedOptions.length === 0) {
+    return fallbackOptions;
+  }
+
+  const mappedBoardIds = new Set(mappedOptions.map((option) => option.boardId));
+  const missingFallbacks = fallbackOptions.filter((option) => !mappedBoardIds.has(option.boardId));
+
+  return [...mappedOptions, ...missingFallbacks];
+}
+
 export async function loadPublishedCityBoard(
-  definition: CityBoardDefinition
+  definition: CityBoardDefinition,
+  publishedEditionId = definition.publishedEditionId
 ): Promise<PublishedCityBoardLoadResult> {
-  if (!isSupabasePublishedCitiesEnabled() || !definition.publishedEditionId || !hasSupabaseConfig) {
+  if (!isSupabasePublishedCitiesEnabled() || !publishedEditionId || !hasSupabaseConfig) {
     return {
       board: definition.board,
       source: "fallback",
-      publishedEditionId: definition.publishedEditionId,
+      publishedEditionId,
       matchesFallback: null
     };
   }
@@ -68,7 +165,7 @@ export async function loadPublishedCityBoard(
     return {
       board: definition.board,
       source: "fallback",
-      publishedEditionId: definition.publishedEditionId,
+      publishedEditionId,
       matchesFallback: null
     };
   }
@@ -76,7 +173,7 @@ export async function loadPublishedCityBoard(
   const { data, error } = await supabase
     .from("city_versions")
     .select("payload")
-    .eq("city_edition_id", definition.publishedEditionId)
+    .eq("city_edition_id", publishedEditionId)
     .eq("status", "published")
     .order("version_number", { ascending: false })
     .limit(1)
@@ -86,7 +183,7 @@ export async function loadPublishedCityBoard(
     return {
       board: definition.board,
       source: "fallback",
-      publishedEditionId: definition.publishedEditionId,
+      publishedEditionId,
       matchesFallback: null
     };
   }
@@ -96,7 +193,7 @@ export async function loadPublishedCityBoard(
   return {
     board,
     source: "supabase",
-    publishedEditionId: definition.publishedEditionId,
+    publishedEditionId,
     matchesFallback: boardsMatch(board, definition.board)
   };
 }
