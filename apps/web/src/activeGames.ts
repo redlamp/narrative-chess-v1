@@ -291,6 +291,18 @@ export function formatTimeControlLabel(input: {
   return input.timeControlKind === "live_clock" ? "Live clock" : "Move deadline";
 }
 
+export function getSupabaseMovePromotion(promotion: MoveRecord["promotion"]) {
+  return promotion === "queen"
+    ? "q"
+    : promotion === "rook"
+      ? "r"
+      : promotion === "bishop"
+        ? "b"
+        : promotion === "knight"
+          ? "n"
+          : null;
+}
+
 export async function createGameInviteInSupabase(input: {
   opponentUsername: string;
   cityEditionId: string | null;
@@ -438,22 +450,11 @@ export async function appendActiveGameMoveInSupabase(input: {
     throw new Error("Sign in to sync multiplayer moves.");
   }
 
-  const promotion =
-    input.move.promotion === "queen"
-      ? "q"
-      : input.move.promotion === "rook"
-        ? "r"
-        : input.move.promotion === "bishop"
-          ? "b"
-          : input.move.promotion === "knight"
-            ? "n"
-            : null;
-
   const { data, error } = await auth.supabase.rpc("append_game_move", {
     p_game_id: input.gameId,
     p_from_square: input.move.from,
     p_to_square: input.move.to,
-    p_promotion: promotion,
+    p_promotion: getSupabaseMovePromotion(input.move.promotion),
     p_san: input.move.san,
     p_fen_after: input.move.fenAfter,
     p_snapshot_payload: gameSnapshotSchema.parse(input.snapshot),
