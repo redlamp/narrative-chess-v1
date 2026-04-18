@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -439,6 +440,8 @@ export function SharedLayoutToolbar({
               </div>
             </CollapsibleContent>
           </Collapsible>
+
+          <Separator className="my-1" />
 
           {/* Grid section */}
           <Collapsible
