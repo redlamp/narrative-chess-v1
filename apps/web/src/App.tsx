@@ -2657,7 +2657,13 @@ export default function App() {
 
           <div className="app-header__status">
             {page === "match" || hasActiveGame ? (
-              <div className="app-header__status-grid">
+              <div
+                className={
+                  activeMultiplayerSession || multiplayerEloValue
+                    ? "app-header__status-grid app-header__status-grid--extended"
+                    : "app-header__status-grid"
+                }
+              >
                 <div className="app-header__status-card">
                   <span className="app-header__status-label">Turn</span>
                   <strong className="app-header__status-value">{turnLabel(status.turn)}</strong>

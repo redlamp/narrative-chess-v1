@@ -240,8 +240,13 @@ label:has(> .text-sm.font-medium) {
 
 .app-header__status-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  grid-template-columns: repeat(3, minmax(8rem, 1fr));
   gap: var(--space-2);
+  width: min(100%, 31rem);
+}
+
+.app-header__status-grid--extended {
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
   width: min(100%, 42rem);
 }
 
