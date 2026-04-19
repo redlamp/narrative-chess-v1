@@ -679,7 +679,7 @@ export function IndexedWorkspace({
       const nextStore = createPageLayoutPreset(layoutKey, "Default", layoutState);
       setPresetStore(nextStore);
     }
-  }, [layoutKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [layoutKey]);
 
   const handleSavePreset = () => {
     if (!layoutKey) return;

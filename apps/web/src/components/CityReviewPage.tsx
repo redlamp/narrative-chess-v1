@@ -838,7 +838,6 @@ export function CityReviewPage({
   const cityDraftStatus = useMemo(
     (): CityBoardDraftStatus => getCityBoardDraftStatus(selectedCityId),
     // Re-evaluate when city switches or when savedDraftsByCityId updates (save / reset events).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectedCityId, savedDraftsByCityId]
   );
 
