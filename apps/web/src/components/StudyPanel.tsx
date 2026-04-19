@@ -50,8 +50,6 @@ export function StudyPanel({
   onExitStudy,
   embedded = false
 }: StudyPanelProps) {
-  const selectedGame = referenceGames.find((g) => g.id === selectedReferenceGameId);
-
   const content = (
     <div className="study-panel">
       <div className="study-panel__block">

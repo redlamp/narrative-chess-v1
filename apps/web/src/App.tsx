@@ -22,7 +22,6 @@ import { getCharacterEventHistory } from "@narrative-chess/narrative-engine";
 import type { CityBoard, PieceKind, Square } from "@narrative-chess/content-schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +30,6 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
@@ -49,30 +47,12 @@ import {
 } from "./appSettings";
 import { edinburghBoard } from "./edinburghBoard";
 import {
-  getSnappedWorkspaceColumn,
-  getSnappedWorkspaceRow,
-  getWorkspaceLayoutRowCount,
-  getWorkspacePanelRenderHeight,
   listWorkspaceLayoutState,
-  resetWorkspaceLayoutState,
-  restoreWorkspacePanel,
   saveWorkspaceLayoutState,
   setWorkspacePanelCollapsed,
-  setWorkspacePanelVisible,
-  updateWorkspaceColumnCount,
-  updateWorkspaceColumnGap,
-  updateWorkspacePanelRect,
-  updateWorkspaceRowHeight,
-  workspacePanelIds,
-  type CollapsibleWorkspacePanelId,
-  type WorkspaceLayoutState,
-  type WorkspacePanelId,
-  type WorkspacePanelRect
+  type CollapsibleWorkspacePanelId
 } from "./layoutState";
-import {
-  listKnownWorkspaceLayoutFiles,
-  type WorkspaceLayoutFileReference
-} from "./layoutFiles";
+import { listKnownWorkspaceLayoutFiles } from "./layoutFiles";
 import { applyPieceStyleSheet, listPieceStyleSheet, resetPieceStyleSheet, savePieceStyleSheet } from "./pieceStyles";
 import { listReferenceGames, saveReferenceGames, type ReferenceGameLibrary } from "./referenceGames";
 import {
@@ -85,9 +65,7 @@ import {
   supportsDirectoryWrite as supportsRoleCatalogDirectory,
   saveClassicGamesDraftToDirectory,
   saveCityDraftToDirectory,
-  connectWorkspaceLayoutDirectory,
   getConnectedWorkspaceLayoutDirectoryName,
-  deleteWorkspaceLayoutFileFromDirectory,
   loadWorkspaceLayoutFileFromDirectory,
   saveWorkspaceLayoutFileToDirectory,
   savePageLayoutFileToDirectory,
@@ -164,15 +142,6 @@ import {
 } from "./roleCatalog";
 
 type AppPage = "match" | "classics" | "cities" | "roles" | "design" | "research";
-type LayoutEditMode = "move" | "resize";
-
-type ActiveLayoutEdit = {
-  panelId: WorkspacePanelId;
-  mode: LayoutEditMode;
-  originColumn: number;
-  originRow: number;
-  initialRect: WorkspacePanelRect;
-};
 
 type LayoutFileNotice = {
   tone: "neutral" | "success" | "error";
@@ -183,6 +152,12 @@ type SaveEverythingNotice = LayoutFileNotice;
 
 type PlayCitySource = "fallback" | "supabase-published" | "supabase-draft";
 type PlayCityPreviewMode = "published" | "draft";
+type PlayCityBoardLoadResult = {
+  board: CityBoard;
+  source: PlayCitySource;
+  publishedEditionId: string | null;
+  matchesFallback: boolean | null;
+};
 
 type ActiveMultiplayerSession = {
   gameId: string;
@@ -199,26 +174,7 @@ type ActiveMultiplayerSession = {
   blackRatingDelta: number | null;
 };
 
-type PanelSizeConstraint = {
-  minW: number;
-  maxW: number;
-  minH: number;
-  maxH: number;
-};
-
 const historyPlaybackDelayMs = 700;
-
-const panelTitles: Record<WorkspacePanelId, string> = {
-  board: "Board",
-  moves: "Match History (PGN)",
-  "city-map": "City Map (Google)",
-  "city-map-maplibre": "Map",
-  "story-beat": "Story Beat",
-  "story-tile": "District",
-  "story-character": "Character",
-  "story-tone": "Narrative Tone",
-  "recent-games": "Games"
-};
 
 const pageOptions: Array<{ value: AppPage; label: string; icon?: React.ReactNode }> = [
   { value: "match", label: "Play", icon: <ChessPawn className="size-4" /> },
@@ -310,111 +266,6 @@ function multiplayerResultLabel(result: ActiveMultiplayerSession["result"]) {
   return "In progress";
 }
 
-function getWorkspaceGridStyle(
-  layoutState: WorkspaceLayoutState,
-  rowCount: number
-): CSSProperties {
-  return {
-    "--workspace-column-count": String(layoutState.columnCount),
-    "--workspace-column-gap": `${layoutState.columnGap}px`,
-    "--workspace-row-height": `${layoutState.rowHeight}px`,
-    "--workspace-row-count": String(rowCount)
-  } as CSSProperties;
-}
-
-function getWorkspacePanelStyle(
-  layoutState: WorkspaceLayoutState,
-  panelId: WorkspacePanelId,
-  isCompactViewport: boolean,
-  freeformLayout: boolean
-): CSSProperties | undefined {
-  if (isCompactViewport) {
-    return undefined;
-  }
-
-  const panel = layoutState.panels[panelId];
-  if (!panel) {
-    // Fallback: return a minimal style for panels that don't exist in layout
-    return {
-      gridColumn: "1 / span 1",
-      gridRow: "1 / span 1",
-      zIndex: 100
-    };
-  }
-
-  const renderHeight = getWorkspacePanelRenderHeight(layoutState, panelId);
-  const area = panel.w * renderHeight;
-  const zIndex = Math.max(
-    100,
-    Number.isFinite(area) && Number.isFinite(panel.w) && Number.isFinite(renderHeight)
-      ? 6000 - area * 10 - panel.w - renderHeight
-      : 100
-  );
-
-  if (freeformLayout) {
-    const columnOffset = Math.max(0, panel.x - 1);
-    const rowOffset = Math.max(0, panel.y - 1);
-
-    return {
-      left: `calc(((100% - (var(--workspace-column-gap) * (var(--workspace-column-count) - 1))) / var(--workspace-column-count) * ${columnOffset}) + (var(--workspace-column-gap) * ${columnOffset}))`,
-      top: `calc((var(--workspace-row-height) * ${rowOffset}) + (var(--workspace-column-gap) * ${rowOffset}))`,
-      width: `calc(((100% - (var(--workspace-column-gap) * (var(--workspace-column-count) - 1))) / var(--workspace-column-count) * ${panel.w}) + (var(--workspace-column-gap) * ${Math.max(panel.w - 1, 0)}))`,
-      height: `calc((var(--workspace-row-height) * ${renderHeight}) + (var(--workspace-column-gap) * ${Math.max(renderHeight - 1, 0)}))`,
-      zIndex
-    };
-  }
-
-  return {
-    gridColumn: `${panel.x} / span ${panel.w}`,
-    gridRow: `${panel.y} / span ${renderHeight}`,
-    zIndex
-  };
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
-function createDefaultPanelSizeConstraints(input: {
-  maxWidth: number;
-  maxHeight: number;
-}): Record<WorkspacePanelId, PanelSizeConstraint> {
-  const safeMaxWidth = Math.max(1, input.maxWidth);
-  const safeMaxHeight = Math.max(1, input.maxHeight);
-
-  return workspacePanelIds.reduce((next, panelId) => {
-    next[panelId] = {
-      minW: 1,
-      maxW: safeMaxWidth,
-      minH: 1,
-      maxH: safeMaxHeight
-    };
-    return next;
-  }, {} as Record<WorkspacePanelId, PanelSizeConstraint>);
-}
-
-function normalizePanelSizeConstraint(
-  constraint: PanelSizeConstraint,
-  maxSize: {
-    maxWidth: number;
-    maxHeight: number;
-  }
-): PanelSizeConstraint {
-  const safeMaxWidth = Math.max(1, maxSize.maxWidth);
-  const safeMaxHeight = Math.max(1, maxSize.maxHeight);
-  const minW = clamp(Math.round(constraint.minW), 1, safeMaxWidth);
-  const maxW = clamp(Math.round(constraint.maxW), minW, safeMaxWidth);
-  const minH = clamp(Math.round(constraint.minH), 1, safeMaxHeight);
-  const maxH = clamp(Math.round(constraint.maxH), minH, safeMaxHeight);
-
-  return {
-    minW,
-    maxW,
-    minH,
-    maxH
-  };
-}
-
 export default function App() {
   const [page, setPage] = useState<AppPage>(() => getInitialPage());
   const [referenceGamesLibrary, setReferenceGamesLibrary] = useState<ReferenceGameLibrary>(() =>
@@ -436,29 +287,13 @@ export default function App() {
   const [roleCatalogFileNotice, setRoleCatalogFileNotice] = useState<LayoutFileNotice | null>(null);
   const [isRoleCatalogDirectorySupported, setIsRoleCatalogDirectorySupported] = useState(false);
   const [workspaceLayout, setWorkspaceLayout] = useState(() => listWorkspaceLayoutState());
-  const [panelSizeConstraints, setPanelSizeConstraints] = useState<
-    Record<WorkspacePanelId, PanelSizeConstraint>
-  >(() => {
-    const initialLayout = listWorkspaceLayoutState();
-    return createDefaultPanelSizeConstraints({
-      maxWidth: initialLayout.columnCount,
-      maxHeight: Math.max(24, getWorkspaceLayoutRowCount(initialLayout) + 12)
-    });
-  });
-  const [activePanelConstraintEditor, setActivePanelConstraintEditor] = useState<WorkspacePanelId | null>(null);
   const [layoutFileName, setLayoutFileName] = useState("match-workspace");
-  const [layoutDirectoryName, setLayoutDirectoryName] = useState<string | null>(null);
-  const [layoutFileBusyAction, setLayoutFileBusyAction] = useState<string | null>(null);
-  const [layoutFileNotice, setLayoutFileNotice] = useState<LayoutFileNotice | null>(null);
+  const [, setLayoutDirectoryName] = useState<string | null>(null);
   const [saveEverythingNotice, setSaveEverythingNotice] = useState<SaveEverythingNotice | null>(null);
   const [isSavingEverything, setIsSavingEverything] = useState(false);
   const [isLoadingEverything, setIsLoadingEverything] = useState(false);
   const [isResettingEverything, setIsResettingEverything] = useState(false);
-  const [knownLayoutFiles, setKnownLayoutFiles] = useState<WorkspaceLayoutFileReference[]>(() =>
-    listKnownWorkspaceLayoutFiles()
-  );
-  const [isLayoutDirectorySupported, setIsLayoutDirectorySupported] = useState(false);
-  const [activeLayoutEdit, setActiveLayoutEdit] = useState<ActiveLayoutEdit | null>(null);
+  const [, setKnownLayoutFiles] = useState(() => listKnownWorkspaceLayoutFiles());
   const [pieceStyleSheet, setPieceStyleSheet] = useState(() => listPieceStyleSheet());
   const [pieceStyleDirectoryName, setPieceStyleDirectoryName] = useState<string | null>(null);
   const [pieceStyleFileBusyAction, setPieceStyleFileBusyAction] = useState<string | null>(null);
@@ -652,29 +487,27 @@ export default function App() {
       return;
     }
 
-    const loadRemoteBoard =
-      effectivePlayCityPreviewMode === "draft"
-        ? loadLatestDraftCityBoard(definition).then((draftResult) => {
-            if (draftResult) {
-              return {
-                board: draftResult.board,
-                source: "supabase-draft" as const,
-                publishedEditionId: draftResult.cityEditionId,
-                matchesFallback: null
-              };
-            }
+    const loadRemoteBoard = async (): Promise<PlayCityBoardLoadResult> => {
+      if (effectivePlayCityPreviewMode === "draft") {
+        const draftResult = await loadLatestDraftCityBoard(definition);
+        if (draftResult) {
+          return {
+            board: draftResult.board,
+            source: "supabase-draft",
+            publishedEditionId: draftResult.cityEditionId,
+            matchesFallback: null
+          };
+        }
+      }
 
-            return loadPublishedCityBoard(definition, selectedPlayCityOption.publishedEditionId).then((result) => ({
-              ...result,
-              source: result.source === "supabase" ? ("supabase-published" as const) : "fallback"
-            }));
-          })
-        : loadPublishedCityBoard(definition, selectedPlayCityOption.publishedEditionId).then((result) => ({
-            ...result,
-            source: result.source === "supabase" ? ("supabase-published" as const) : "fallback"
-          }));
+      const result = await loadPublishedCityBoard(definition, selectedPlayCityOption.publishedEditionId);
+      return {
+        ...result,
+        source: result.source === "supabase" ? "supabase-published" : "fallback"
+      };
+    };
 
-    void loadRemoteBoard
+    void loadRemoteBoard()
       .then((result) => {
         if (cancelled) {
           return;
@@ -832,7 +665,6 @@ export default function App() {
       )
     );
   }, [workspaceLayout.collapsed]);
-  const workspaceRef = useRef<HTMLDivElement | null>(null);
   const {
     snapshot,
     timelineKey,
@@ -1307,82 +1139,6 @@ export default function App() {
     }),
     [page, visiblePageOptions]
   );
-  const useFreeformWorkspaceLayout = !isCompactViewport;
-  const workspaceRowCount = useMemo(
-    () => getWorkspaceLayoutRowCount(workspaceLayout, effectiveLayoutMode ? 18 : 1),
-    [effectiveLayoutMode, workspaceLayout]
-  );
-  const panelConstraintMaxSize = useMemo(
-    () => ({
-      maxWidth: Math.max(1, workspaceLayout.columnCount),
-      maxHeight: Math.max(24, workspaceRowCount + 12)
-    }),
-    [workspaceLayout.columnCount, workspaceRowCount]
-  );
-  const workspaceGridStyle = useMemo(
-    () => getWorkspaceGridStyle(workspaceLayout, workspaceRowCount),
-    [workspaceLayout, workspaceRowCount]
-  );
-  const gridOverlayCells = useMemo(
-    () => Array.from({ length: workspaceRowCount * workspaceLayout.columnCount }, (_, index) => index),
-    [workspaceLayout.columnCount, workspaceRowCount]
-  );
-  const layoutToolbarComponents = useMemo(
-    () => [
-      {
-        id: "board",
-        label: panelTitles.board,
-        visible: workspaceLayout.visible.board
-      },
-      {
-        id: "moves",
-        label: panelTitles.moves,
-        visible: workspaceLayout.visible.moves
-      },
-      {
-        id: "city-map",
-        label: panelTitles["city-map"],
-        collapsed: workspaceLayout.collapsed["city-map"],
-        visible: workspaceLayout.visible["city-map"]
-      },
-      {
-        id: "city-map-maplibre",
-        label: panelTitles["city-map-maplibre"],
-        visible: workspaceLayout.visible["city-map-maplibre"]
-      },
-      {
-        id: "story-beat",
-        label: panelTitles["story-beat"],
-        collapsed: workspaceLayout.collapsed["story-beat"],
-        visible: workspaceLayout.visible["story-beat"]
-      },
-      {
-        id: "story-tile",
-        label: panelTitles["story-tile"],
-        collapsed: workspaceLayout.collapsed["story-tile"],
-        visible: workspaceLayout.visible["story-tile"]
-      },
-      {
-        id: "story-character",
-        label: panelTitles["story-character"],
-        collapsed: workspaceLayout.collapsed["story-character"],
-        visible: workspaceLayout.visible["story-character"]
-      },
-      {
-        id: "story-tone",
-        label: panelTitles["story-tone"],
-        visible: workspaceLayout.visible["story-tone"]
-      },
-      {
-        id: "recent-games",
-        label: panelTitles["recent-games"],
-        collapsed: workspaceLayout.collapsed["recent-games"],
-        visible: workspaceLayout.visible["recent-games"]
-      }
-    ],
-    [workspaceLayout.collapsed, workspaceLayout.visible]
-  );
-
   const playMapCityMenu = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -1476,27 +1232,6 @@ export default function App() {
       {renderPlayHeaderDistrictBadge()}
     </div>
   );
-  const applyResizeConstraints = (
-    panelId: WorkspacePanelId,
-    nextRect: WorkspacePanelRect,
-    layoutState: WorkspaceLayoutState = workspaceLayout
-  ): WorkspacePanelRect => {
-    const maxSize = {
-      maxWidth: Math.max(1, layoutState.columnCount),
-      maxHeight: Math.max(24, getWorkspaceLayoutRowCount(layoutState) + 12)
-    };
-    const normalized = normalizePanelSizeConstraint(
-      panelSizeConstraints[panelId],
-      maxSize
-    );
-
-    return {
-      ...nextRect,
-      w: clamp(nextRect.w, normalized.minW, normalized.maxW),
-      h: clamp(nextRect.h, normalized.minH, normalized.maxH)
-    };
-  };
-
   useEffect(() => {
     if (
       selectedReferenceGameId &&
@@ -1536,21 +1271,6 @@ export default function App() {
   }, [isCompactViewport]);
 
   useEffect(() => {
-    setPanelSizeConstraints((current) =>
-      workspacePanelIds.reduce((next, panelId) => {
-        next[panelId] = normalizePanelSizeConstraint(current[panelId], panelConstraintMaxSize);
-        return next;
-      }, {} as Record<WorkspacePanelId, PanelSizeConstraint>)
-    );
-  }, [panelConstraintMaxSize]);
-
-  useEffect(() => {
-    if (!effectiveLayoutMode) {
-      setActivePanelConstraintEditor(null);
-    }
-  }, [effectiveLayoutMode]);
-
-  useEffect(() => {
     applyAppTheme(settings.theme);
   }, [settings.theme]);
 
@@ -1577,7 +1297,6 @@ export default function App() {
   }, [savedMatches, selectedSavedMatchId]);
 
   useEffect(() => {
-    setIsLayoutDirectorySupported(supportsWorkspaceLayoutDirectory());
     setIsPieceStyleDirectorySupported(supportsWorkspaceLayoutDirectory());
 
     const rememberedLayoutFiles = listKnownWorkspaceLayoutFiles();
@@ -1612,82 +1331,6 @@ export default function App() {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    if (!activeLayoutEdit || isCompactViewport) {
-      return;
-    }
-
-    const handlePointerMove = (event: PointerEvent) => {
-      const workspaceNode = workspaceRef.current;
-      if (!workspaceNode) {
-        return;
-      }
-
-      const rect = workspaceNode.getBoundingClientRect();
-      const nextColumn = getSnappedWorkspaceColumn({
-        offsetX: event.clientX - rect.left,
-        width: rect.width,
-        columnCount: workspaceLayout.columnCount,
-        columnGap: workspaceLayout.columnGap
-      });
-      const nextRow = getSnappedWorkspaceRow({
-        offsetY: event.clientY - rect.top,
-        rowHeight: workspaceLayout.rowHeight,
-        rowGap: workspaceLayout.columnGap
-      });
-
-      setWorkspaceLayout((currentLayout) => {
-        if (!activeLayoutEdit) {
-          return currentLayout;
-        }
-
-        if (activeLayoutEdit.mode === "move") {
-          return updateWorkspacePanelRect({
-            layoutState: currentLayout,
-            panelId: activeLayoutEdit.panelId,
-            nextRect: {
-              ...activeLayoutEdit.initialRect,
-              x: activeLayoutEdit.initialRect.x + (nextColumn - activeLayoutEdit.originColumn),
-              y: Math.max(1, activeLayoutEdit.initialRect.y + (nextRow - activeLayoutEdit.originRow))
-            }
-          });
-        }
-
-        return updateWorkspacePanelRect({
-          layoutState: currentLayout,
-          panelId: activeLayoutEdit.panelId,
-          nextRect: applyResizeConstraints(
-            activeLayoutEdit.panelId,
-            {
-              ...activeLayoutEdit.initialRect,
-              w: Math.max(1, nextColumn - activeLayoutEdit.initialRect.x + 1),
-              h: Math.max(1, nextRow - activeLayoutEdit.initialRect.y + 1)
-            },
-            currentLayout
-          )
-        });
-      });
-    };
-
-    const handlePointerUp = () => {
-      setActiveLayoutEdit(null);
-    };
-
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", handlePointerUp);
-
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
-    };
-  }, [
-    applyResizeConstraints,
-    activeLayoutEdit,
-    isCompactViewport,
-    workspaceLayout.columnCount,
-    workspaceLayout.rowHeight
-  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -1743,109 +1386,6 @@ export default function App() {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [settings.defaultViewMode]);
-
-  const beginPanelEdit =
-    (panelId: WorkspacePanelId, mode: LayoutEditMode) =>
-    (event: ReactPointerEvent<HTMLButtonElement>) => {
-      if (!effectiveLayoutMode || !workspaceRef.current) {
-        return;
-      }
-
-      event.preventDefault();
-
-      const initialRect = workspaceLayout.panels[panelId];
-      if (!initialRect) {
-        return;
-      }
-
-      const rect = workspaceRef.current.getBoundingClientRect();
-      const originColumn = getSnappedWorkspaceColumn({
-        offsetX: event.clientX - rect.left,
-        width: rect.width,
-        columnCount: workspaceLayout.columnCount,
-        columnGap: workspaceLayout.columnGap
-      });
-      const originRow = getSnappedWorkspaceRow({
-        offsetY: event.clientY - rect.top,
-        rowHeight: workspaceLayout.rowHeight,
-        rowGap: workspaceLayout.columnGap
-      });
-
-      setActiveLayoutEdit({
-        panelId,
-        mode,
-        originColumn,
-        originRow,
-        initialRect
-      });
-    };
-
-  const adjustPanelLayout = (
-    panelId: WorkspacePanelId,
-    mode: LayoutEditMode,
-    deltaX: number,
-    deltaY: number
-  ) => {
-    if (!effectiveLayoutMode) {
-      return;
-    }
-
-    setWorkspaceLayout((currentLayout) => {
-      const currentRect = currentLayout.panels[panelId];
-      const nextRect =
-        mode === "move"
-          ? {
-              ...currentRect,
-              x: currentRect.x + deltaX,
-              y: currentRect.y + deltaY
-            }
-          : applyResizeConstraints(
-              panelId,
-              {
-                ...currentRect,
-                w: currentRect.w + deltaX,
-                h: currentRect.h + deltaY
-              },
-              currentLayout
-            );
-
-      return updateWorkspacePanelRect({
-        layoutState: currentLayout,
-        panelId,
-        nextRect
-      });
-    });
-  };
-
-  const handlePanelEditKeyDown =
-    (panelId: WorkspacePanelId, mode: LayoutEditMode) =>
-    (event: ReactKeyboardEvent<HTMLButtonElement>) => {
-      if (!effectiveLayoutMode) {
-        return;
-      }
-
-      const step = event.shiftKey ? 2 : 1;
-      switch (event.key) {
-        case "ArrowUp":
-          event.preventDefault();
-          adjustPanelLayout(panelId, mode, 0, mode === "move" ? -step : -step);
-          break;
-        case "ArrowDown":
-          event.preventDefault();
-          adjustPanelLayout(panelId, mode, 0, step);
-          break;
-        case "ArrowLeft":
-          event.preventDefault();
-          adjustPanelLayout(panelId, mode, mode === "move" ? -step : -step, 0);
-          break;
-        case "ArrowRight":
-          event.preventDefault();
-          adjustPanelLayout(panelId, mode, step, 0);
-          break;
-        default:
-          break;
-      }
-    };
 
   const loadChosenReferenceGame = (referenceGameId?: string) => {
     const nextReferenceGame =
@@ -2005,73 +1545,6 @@ export default function App() {
     });
   };
 
-  const handleTogglePanelCollapse = (panelId: CollapsibleWorkspacePanelId) => {
-    setWorkspaceLayout((currentLayout) =>
-      setWorkspacePanelCollapsed({
-        layoutState: currentLayout,
-        panelId,
-        collapsed: !currentLayout.collapsed[panelId]
-      })
-    );
-  };
-
-  const handleWorkspacePanelVisibilityChange = (panelId: WorkspacePanelId, visible: boolean) => {
-    setWorkspaceLayout((currentLayout) =>
-      setWorkspacePanelVisible({
-        layoutState: currentLayout,
-        panelId,
-        visible
-      })
-    );
-
-    if (!visible) {
-      setActiveLayoutEdit((currentEdit) => (currentEdit?.panelId === panelId ? null : currentEdit));
-      setActivePanelConstraintEditor((currentPanelId) =>
-        currentPanelId === panelId ? null : currentPanelId
-      );
-    }
-  };
-
-  const handleWorkspaceColumnCountChange = (value: number) => {
-    setWorkspaceLayout((currentLayout) =>
-      updateWorkspaceColumnCount({
-        layoutState: currentLayout,
-        value
-      })
-    );
-  };
-
-  const handleWorkspaceColumnGapChange = (value: number) => {
-    setWorkspaceLayout((currentLayout) =>
-      updateWorkspaceColumnGap({
-        layoutState: currentLayout,
-        value
-      })
-    );
-  };
-
-  const handleWorkspaceRowHeightChange = (value: number) => {
-    setWorkspaceLayout((currentLayout) =>
-      updateWorkspaceRowHeight({
-        layoutState: currentLayout,
-        value
-      })
-    );
-  };
-
-  const handleResetLayout = () => {
-    setWorkspaceLayout(resetWorkspaceLayoutState());
-  };
-
-  const handleRestoreWorkspaceComponent = (panelId: WorkspacePanelId) => {
-    setWorkspaceLayout((currentLayout) =>
-      restoreWorkspacePanel({
-        layoutState: currentLayout,
-        panelId
-      })
-    );
-  };
-
   const handleThemeChange = (theme: AppSettings["theme"]) => {
     setSettings((current) => ({
       ...current,
@@ -2098,85 +1571,6 @@ export default function App() {
       ...current,
       [key]: value
     }));
-  };
-
-  const runLayoutFileAction = async (actionName: string, action: () => Promise<void>) => {
-    setLayoutFileBusyAction(actionName);
-    setLayoutFileNotice(null);
-
-    try {
-      await action();
-    } catch (error) {
-      setLayoutFileNotice({
-        tone: "error",
-        text: error instanceof Error ? error.message : "Something went wrong while working with the layout file."
-      });
-    } finally {
-      setLayoutFileBusyAction(null);
-    }
-  };
-
-  const handleConnectLayoutDirectory = () => {
-    void runLayoutFileAction("connect-layout-directory", async () => {
-      const result = await connectWorkspaceLayoutDirectory();
-      setLayoutDirectoryName(result.directoryName);
-      setLayoutFileNotice({
-        tone: "success",
-        text: `Connected layout files to ${result.directoryName}.`
-      });
-    });
-  };
-
-  const handleSaveLayoutFile = () => {
-    void runLayoutFileAction("save-layout-file", async () => {
-      const result = await saveWorkspaceLayoutFileToDirectory({
-        name: layoutFileName,
-        layoutState: workspaceLayout
-      });
-      setKnownLayoutFiles(result.knownFiles);
-      setLayoutDirectoryName(result.directoryName);
-      setLayoutFileName(result.layoutName);
-      setLayoutFileNotice({
-        tone: "success",
-        text: `Saved ${result.layoutName} to ${result.relativePath}.`
-      });
-    });
-  };
-
-  const handleLoadLayoutFile = () => {
-    void runLayoutFileAction("load-layout-file", async () => {
-      const result = await loadWorkspaceLayoutFileFromDirectory(layoutFileName);
-      if (!result) {
-        setLayoutFileNotice({
-          tone: "neutral",
-          text: "No named layout file matched that name in the connected folder."
-        });
-        return;
-      }
-
-      setWorkspaceLayout(saveWorkspaceLayoutState(result.layoutState));
-      setKnownLayoutFiles(result.knownFiles);
-      setLayoutDirectoryName(result.directoryName);
-      setLayoutFileName(result.layoutName);
-      setLayoutFileNotice({
-        tone: "success",
-        text: `Loaded ${result.layoutName} from ${result.relativePath}.`
-      });
-    });
-  };
-
-  const handleDeleteLayoutFile = () => {
-    void runLayoutFileAction("delete-layout-file", async () => {
-      const result = await deleteWorkspaceLayoutFileFromDirectory(layoutFileName);
-      setKnownLayoutFiles(result.knownFiles);
-      setLayoutDirectoryName(result.directoryName);
-      setLayoutFileName("match-workspace");
-      setWorkspaceLayout(resetWorkspaceLayoutState());
-      setLayoutFileNotice({
-        tone: "neutral",
-        text: `Removed ${result.layoutName} from ${result.relativePath} and restored the default layout.`
-      });
-    });
   };
 
   const runPieceStyleFileAction = async (actionName: string, action: () => Promise<void>) => {
@@ -2534,139 +1928,6 @@ export default function App() {
 
     removeSavedMatch(selectedSavedMatch.id);
     setSelectedSavedMatchId(null);
-  };
-
-  const updatePanelConstraintRange = (
-    panelId: WorkspacePanelId,
-    axis: "width" | "height",
-    nextRange: number[]
-  ) => {
-    if (nextRange.length < 2) {
-      return;
-    }
-
-    const [start, end] = nextRange;
-    const minValue = Math.min(start, end);
-    const maxValue = Math.max(start, end);
-    const normalized = normalizePanelSizeConstraint(
-      axis === "width"
-        ? {
-            ...panelSizeConstraints[panelId],
-            minW: minValue,
-            maxW: maxValue
-          }
-        : {
-            ...panelSizeConstraints[panelId],
-            minH: minValue,
-            maxH: maxValue
-          },
-      panelConstraintMaxSize
-    );
-
-    setPanelSizeConstraints((current) => ({
-      ...current,
-      [panelId]: normalized
-    }));
-
-    setWorkspaceLayout((currentLayout) =>
-      updateWorkspacePanelRect({
-        layoutState: currentLayout,
-        panelId,
-        nextRect: {
-          ...currentLayout.panels[panelId],
-          w: clamp(currentLayout.panels[panelId].w, normalized.minW, normalized.maxW),
-          h: clamp(currentLayout.panels[panelId].h, normalized.minH, normalized.maxH)
-        }
-      })
-    );
-  };
-
-  const renderMoveSurface = (panelId: WorkspacePanelId) =>
-    effectiveLayoutMode ? (
-      <button
-        type="button"
-        className="workspace-item__move-surface"
-        onPointerDown={beginPanelEdit(panelId, "move")}
-        onKeyDown={handlePanelEditKeyDown(panelId, "move")}
-        aria-label={`Move ${panelTitles[panelId]} panel with pointer or arrow keys`}
-      />
-    ) : null;
-
-  const renderResizeHandle = (panelId: WorkspacePanelId) =>
-    effectiveLayoutMode ? (
-      <button
-        type="button"
-        className="workspace-item__resize-handle"
-        onPointerDown={beginPanelEdit(panelId, "resize")}
-        onKeyDown={handlePanelEditKeyDown(panelId, "resize")}
-        aria-label={`Resize ${panelTitles[panelId]} panel with pointer or arrow keys`}
-      >
-        <span />
-      </button>
-    ) : null;
-
-  const renderConstraintHandle = (panelId: WorkspacePanelId) => {
-    if (!effectiveLayoutMode) {
-      return null;
-    }
-
-    const isOpen = activePanelConstraintEditor === panelId;
-    const constraint = normalizePanelSizeConstraint(
-      panelSizeConstraints[panelId],
-      panelConstraintMaxSize
-    );
-
-    return (
-      <>
-        <Button
-          type="button"
-          variant={isOpen ? "secondary" : "outline"}
-          size="icon-sm"
-          className="workspace-item__settings-handle"
-          aria-label={`Edit ${panelTitles[panelId]} resize bounds`}
-          onClick={(event) => {
-            event.stopPropagation();
-            setActivePanelConstraintEditor((current) => (current === panelId ? null : panelId));
-          }}
-        >
-          <Cog />
-        </Button>
-        {isOpen ? (
-          <Card
-            className="workspace-item__settings-card"
-            onPointerDown={(event) => event.stopPropagation()}
-          >
-            <CardHeader className="workspace-item__settings-card-header">
-              <CardTitle className="workspace-item__settings-card-title">
-                {panelTitles[panelId]} bounds
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="workspace-item__settings-card-body">
-              <label className="workspace-item__settings-row">
-                <span>Width: {constraint.minW} to {constraint.maxW}</span>
-                <Slider
-                  min={1}
-                  max={panelConstraintMaxSize.maxWidth}
-                  step={1}
-                  value={[constraint.minW, constraint.maxW]}
-                  onValueChange={(value) => updatePanelConstraintRange(panelId, "width", value)}
-                />
-              </label>
-              <label className="workspace-item__settings-row">
-                <span>Height: {constraint.minH} to {constraint.maxH}</span>
-                <Slider
-                  min={1}
-                  max={panelConstraintMaxSize.maxHeight}
-                  step={1}
-                  value={[constraint.minH, constraint.maxH]}
-                  onValueChange={(value) => updatePanelConstraintRange(panelId, "height", value)}
-                />
-              </label>
-            </CardContent>
-          </Card>
-        ) : null}
-      </>
-    );
   };
 
   return (

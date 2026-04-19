@@ -34,7 +34,6 @@ import {
   renamePreset,
   reorderPreset,
   saveActivePreset,
-  togglePresetHidden,
   type PageLayoutPresetStore
 } from "../pageLayoutPresets";
 import type { SharedLayoutPresetEntry, SharedLayoutPageOption } from "./SharedLayoutToolbar";
@@ -44,7 +43,6 @@ import {
   getSnappedPageLayoutColumn,
   getSnappedPageLayoutRow,
   listPageLayoutState,
-  pageLayoutPanelIds,
   resetPageLayoutState,
   restorePageLayoutPanel,
   savePageLayoutState,
@@ -695,11 +693,6 @@ export function IndexedWorkspace({
     if (result.layoutState) {
       setLayoutState(result.layoutState);
     }
-  };
-
-  const handleTogglePresetHidden = (presetId: string) => {
-    if (!layoutKey) return;
-    setPresetStore(togglePresetHidden(layoutKey, presetId));
   };
 
   const handleDeletePreset = (presetId: string) => {

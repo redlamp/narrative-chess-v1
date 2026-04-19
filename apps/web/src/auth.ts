@@ -124,7 +124,7 @@ export function subscribeToAuthChanges(
   return () => subscription.unsubscribe();
 }
 
-export async function loadCurrentUserRole(user: User | null): Promise<AppRole> {
+export async function loadCurrentUserRole(user: Pick<User, "id"> | null): Promise<AppRole> {
   if (!user) {
     return "player";
   }

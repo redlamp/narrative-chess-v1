@@ -253,18 +253,18 @@ export async function listPlayableCityOptions(): Promise<PlayableCityOption[]> {
   }
 
   const mappedOptions = (data as RawPublishedEditionRow[])
-    .map((row) => {
+    .flatMap((row): PlayableCityOption[] => {
       const edition = Array.isArray(row.city_editions) ? row.city_editions[0] ?? null : row.city_editions;
       if (!edition) {
-        return null;
+        return [];
       }
 
       const definition = getCityBoardDefinition(edition.city_id);
       if (!definition) {
-        return null;
+        return [];
       }
 
-      return {
+      return [{
         id: row.city_edition_id,
         boardId: definition.id,
         displayLabel: edition.label,
@@ -272,9 +272,8 @@ export async function listPlayableCityOptions(): Promise<PlayableCityOption[]> {
         publishedEditionId: row.city_edition_id,
         catalogSource: "supabase" as const,
         isDefault: edition.is_default
-      };
-    })
-    .filter((option): option is PlayableCityOption => option !== null);
+      }];
+    });
 
   if (mappedOptions.length === 0) {
     return fallbackOptions;
