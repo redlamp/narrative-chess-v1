@@ -60,7 +60,7 @@ export function Panel({
   }, []);
 
   return (
-    <Card ref={cardRef} data-landscape={isLandscape} className={cn("panel", collapsed && "panel--collapsed", className)} size="sm">
+    <Card ref={cardRef} data-landscape={isLandscape} className={cn("panel", collapsed && "panel--collapsed", className)}>
       <CardHeader className="panel__header">
         <div className="panel__heading">
           {onToggleCollapse ? (

@@ -195,7 +195,6 @@ export function AppMenu({
         <Card
           id={panelId}
           className="app-menu__content"
-          size="sm"
           role="dialog"
           aria-modal="false"
           aria-labelledby={titleId}
@@ -459,7 +458,6 @@ export function UserMenu({
         <Card
           id={panelId}
           className="app-menu__content"
-          size="sm"
           role="dialog"
           aria-modal="false"
           aria-labelledby={titleId}

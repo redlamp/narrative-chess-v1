@@ -945,7 +945,6 @@ export function IndexedWorkspace({
         {isOpen ? (
           <Card
             className="workspace-item__settings-card"
-            size="sm"
             onPointerDown={(event) => event.stopPropagation()}
           >
             <CardHeader className="workspace-item__settings-card-header">

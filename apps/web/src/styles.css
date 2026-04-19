@@ -4537,7 +4537,6 @@ label:has(> .text-sm.font-medium) {
   flex: 0 0 auto;
 }
 
-
 .app-menu__panel-section {
   display: grid;
   gap: var(--space-1);

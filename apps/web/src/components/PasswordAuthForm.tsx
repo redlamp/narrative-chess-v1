@@ -93,7 +93,7 @@ export function PasswordAuthForm({
 
   return (
     <div className={cn("flex flex-col gap-3", className)} {...props}>
-      <Card size="sm">
+      <Card>
         <CardHeader>
           <CardTitle>
             {isForgotPassword ? "Reset password" : isSignUp ? "Create account" : "Sign in"}
@@ -258,7 +258,7 @@ export function PasswordUpdateForm({
   };
 
   return (
-    <Card size="sm" className={className} {...props}>
+    <Card className={className} {...props}>
       <CardHeader>
         <CardTitle>Update password</CardTitle>
         <CardDescription>Set a new password for this account.</CardDescription>
