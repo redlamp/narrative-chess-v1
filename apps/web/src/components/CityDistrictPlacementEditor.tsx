@@ -4,10 +4,8 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import MaplibreGeocoder from "@maplibre/maplibre-gl-geocoder";
 import "@maplibre/maplibre-gl-geocoder/dist/maplibre-gl-geocoder.css";
 import { ExternalLink, Map as MapIcon, MapPinOff, Satellite } from "lucide-react";
-import { createSnapshotFromFen, getBoardSquares } from "@narrative-chess/game-core";
 import type { CityBoard, DistrictCell, Square } from "@narrative-chess/content-schema";
 import { Button } from "@/components/ui/button";
-import { Board } from "./Board";
 import {
   buildOpenStreetMapUrl,
   createMapLibreRasterStyle,
@@ -18,21 +16,7 @@ import {
   type MapViewMode
 } from "./cityMapShared";
 
-type CityDistrictBoardEditorProps = {
-  cityBoard: CityBoard;
-  selectedDistrict: DistrictCell | null;
-  highlightedDistrict: DistrictCell | null;
-  hoveredSquare: Square | null;
-  isEditable?: boolean;
-  showDistrictLabels?: boolean;
-  showPieces?: boolean;
-  onHoveredSquareChange: (square: Square | null) => void;
-  onSquareChange: (square: Square) => void;
-  onSelectDistrict: (districtId: string) => void;
-  onSquareSwap?: (fromSquare: Square, toSquare: Square) => void;
-};
-
-type CityDistrictMapEditorProps = {
+export type CityDistrictMapEditorProps = {
   cityBoard: CityBoard;
   selectedDistrict: DistrictCell | null;
   highlightedDistrict: DistrictCell | null;
@@ -45,7 +29,6 @@ type CityDistrictMapEditorProps = {
   onImportModeConsumed: () => void;
 };
 
-const previewBoardFen = "4k3/8/8/8/8/8/8/4K3 w - - 0 1";
 const markerSourceId = "city-review-district-markers";
 const markerLayerId = "city-review-district-markers-layer";
 const markerActiveLayerId = "city-review-district-markers-active-layer";
@@ -255,61 +238,6 @@ function syncSearchResultLayer(map: MapLibreMap, feature: GeocoderFeature | null
       "circle-opacity": 0.95
     }
   });
-}
-
-export function CityDistrictBoardEditor({
-  cityBoard,
-  selectedDistrict,
-  highlightedDistrict,
-  hoveredSquare,
-  isEditable = true,
-  showDistrictLabels = true,
-  showPieces = false,
-  onHoveredSquareChange,
-  onSquareChange,
-  onSelectDistrict,
-  onSquareSwap
-}: CityDistrictBoardEditorProps) {
-  const previewSnapshot = useMemo(() => createSnapshotFromFen(previewBoardFen), []);
-  const previewCells = useMemo(() => getBoardSquares(previewSnapshot), [previewSnapshot]);
-  const districtsBySquare = useMemo(
-    () => new Map(cityBoard.districts.map((district) => [district.square, district] as const)),
-    [cityBoard.districts]
-  );
-  const activeDistrict = highlightedDistrict ?? selectedDistrict;
-
-  return (
-    <Board
-      snapshot={previewSnapshot}
-      cells={previewCells}
-      selectedSquare={selectedDistrict?.square ?? null}
-      hoveredSquare={hoveredSquare}
-      inspectedSquare={activeDistrict?.square ?? null}
-      legalMoves={[]}
-      viewMode="board"
-      districtsBySquare={districtsBySquare}
-      showCoordinates={true}
-      showDistrictLabels={showDistrictLabels}
-      showActiveSquareLabel={false}
-      showSquareLabels={false}
-      showPieces={showPieces}
-      onSquareClick={(square) => {
-        const district = districtsBySquare.get(square);
-
-        if (district) {
-          onSelectDistrict(district.id);
-          return;
-        }
-
-        if (selectedDistrict && isEditable) {
-          onSquareChange(square);
-        }
-      }}
-      onSquareHover={(square) => onHoveredSquareChange(square)}
-      onSquareLeave={() => onHoveredSquareChange(null)}
-      onSquareDrop={isEditable ? onSquareSwap : undefined}
-    />
-  );
 }
 
 export function CityDistrictMapEditor({

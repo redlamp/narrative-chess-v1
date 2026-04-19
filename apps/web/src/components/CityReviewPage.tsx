@@ -1,4 +1,5 @@
 import {
+  lazy,
   useEffect,
   useMemo,
   useRef,
@@ -85,10 +86,13 @@ import { WorkspaceNoticeCard } from "./WorkspaceNoticeCard";
 import { ClearableSearchField } from "./ClearableSearchField";
 import { BoardPanel } from "./BoardPanel";
 import { LocationBadge } from "./LocationBadge";
-import {
-  CityDistrictBoardEditor,
-  CityDistrictMapEditor
-} from "./CityDistrictPlacementEditor";
+import { CityDistrictBoardEditor } from "./CityDistrictBoardEditor";
+import { DeferredMapLibreSurface } from "./DeferredMapLibreSurface";
+import type { CityDistrictMapEditorProps } from "./CityDistrictPlacementEditor";
+
+const CityDistrictMapEditor = lazy(() =>
+  import("./CityDistrictPlacementEditor").then((module) => ({ default: module.CityDistrictMapEditor }))
+);
 
 type SaveNotice = {
   tone: "neutral" | "success" | "error";
@@ -104,6 +108,18 @@ type TrackedCity = {
   contentStatus: CityBoard["contentStatus"];
   reviewStatus: CityBoard["reviewStatus"];
 };
+
+function DeferredCityDistrictMapEditor(props: CityDistrictMapEditorProps) {
+  return (
+    <DeferredMapLibreSurface
+      title="District map"
+      description="Place district anchors with street or satellite imagery."
+      loadingLabel="Loading map editor..."
+    >
+      <CityDistrictMapEditor {...props} />
+    </DeferredMapLibreSurface>
+  );
+}
 
 const cityOverviewId = "city-overview";
 const statusOptions = ["empty", "procedural", "authored"] as const;
@@ -2583,7 +2599,7 @@ export function CityReviewPage({
           <CardContent className="page-card__content page-card__content--map-placement">
             <div ref={mapPlacementSearchContainerRef} className="city-placement-editor__geocoder-host" />
             {selectedDistrict ? (
-              <CityDistrictMapEditor
+              <DeferredCityDistrictMapEditor
                 cityBoard={draft}
                 selectedDistrict={selectedDistrict}
                 highlightedDistrict={highlightedDistrict}
@@ -2603,7 +2619,7 @@ export function CityReviewPage({
                 }
               />
             ) : (
-              <CityDistrictMapEditor
+              <DeferredCityDistrictMapEditor
                 cityBoard={draft}
                 selectedDistrict={null}
                 highlightedDistrict={highlightedDistrict}

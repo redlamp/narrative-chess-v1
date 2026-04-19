@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { lazy, type ReactNode } from "react";
 import type {
   CharacterSummary,
   CityBoard,
@@ -15,7 +15,7 @@ import type { SavedMatchRecord } from "../savedMatches";
 import { Board } from "./Board";
 import { BoardPanel } from "./BoardPanel";
 import { CharacterDetailPanel } from "./CharacterDetailPanel";
-import { CityMapLibrePanel } from "./CityMapLibrePanel";
+import { DeferredMapLibreSurface } from "./DeferredMapLibreSurface";
 import { IndexedWorkspace, type LayoutNavigation } from "./IndexedWorkspace";
 import { MatchHistoryPanel } from "./MatchHistoryPanel";
 import { Panel } from "./Panel";
@@ -23,6 +23,10 @@ import { RecentGamesPanel } from "./RecentGamesPanel";
 import { StoryBeatSection } from "./StoryBeatSection";
 import { StoryCityTileSection } from "./StoryCityTileSection";
 import { StoryToneSection } from "./StoryToneSection";
+
+const CityMapLibrePanel = lazy(() =>
+  import("./CityMapLibrePanel").then((module) => ({ default: module.CityMapLibrePanel }))
+);
 
 type MatchWorkspacePageProps = {
   layoutMode: boolean;
@@ -223,15 +227,21 @@ export function MatchWorkspacePage({
           label: "Map",
           content: (
             <Panel title={playMapCityMenu} action={playHeaderActions}>
-              <CityMapLibrePanel
-                cityBoard={playCityBoard}
-                pieces={animatedPieces}
-                selectedDistrict={selectedDistrict}
-                hoveredDistrict={hoveredSquare ? focusedDistrict : null}
-                lastMoveDistrict={lastMoveDistrict}
-                lastMove={lastMove}
-                onPieceSquareHover={onSquareHover}
-              />
+              <DeferredMapLibreSurface
+                title="City map"
+                description="Street and satellite view for districts and pieces."
+                loadingLabel="Loading city map..."
+              >
+                <CityMapLibrePanel
+                  cityBoard={playCityBoard}
+                  pieces={animatedPieces}
+                  selectedDistrict={selectedDistrict}
+                  hoveredDistrict={hoveredSquare ? focusedDistrict : null}
+                  lastMoveDistrict={lastMoveDistrict}
+                  lastMove={lastMove}
+                  onPieceSquareHover={onSquareHover}
+                />
+              </DeferredMapLibreSurface>
             </Panel>
           )
         },

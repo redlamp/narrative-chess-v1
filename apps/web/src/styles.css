@@ -321,6 +321,39 @@ label:has(> .text-sm.font-medium) {
   font-size: var(--font-size-sm);
 }
 
+.map-lazy-placeholder {
+  min-height: 18rem;
+  display: grid;
+  place-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px dashed var(--border);
+  background: color-mix(in srgb, var(--muted) 55%, transparent);
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.map-lazy-placeholder > svg {
+  width: 2rem;
+  height: 2rem;
+  color: var(--foreground);
+}
+
+.map-lazy-placeholder > div {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 28rem;
+}
+
+.map-lazy-placeholder strong {
+  color: var(--foreground);
+  font-size: var(--font-size-sm);
+}
+
+.map-lazy-placeholder span {
+  font-size: var(--font-size-xs);
+}
+
 .indexed-workspace__intro,
 .indexed-workspace__columns,
 .indexed-workspace__index,
