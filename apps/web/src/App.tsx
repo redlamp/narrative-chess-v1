@@ -2685,7 +2685,6 @@ export default function App() {
               accountEloRating={sessionProfile?.eloRating ?? null}
               viewAsRole={viewAsRole}
               onViewAsRoleChange={setViewAsRole}
-              canAccessDraftCities={canAccessDraftCities}
               isAuthBusy={isAuthBusy}
               onSignInWithPassword={handleSignInWithPassword}
               onSignUpWithPassword={handleSignUpWithPassword}

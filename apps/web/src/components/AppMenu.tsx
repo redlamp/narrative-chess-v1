@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
   TooltipContent,
@@ -71,7 +72,6 @@ type UserMenuProps = {
   accountEloRating: number | null;
   viewAsRole: AppRole;
   onViewAsRoleChange: (role: AppRole) => void;
-  canAccessDraftCities: boolean;
   isAuthBusy: boolean;
   onSignInWithPassword: (email: string, password: string) => Promise<string>;
   onSignUpWithPassword: (email: string, password: string) => Promise<string>;
@@ -203,7 +203,9 @@ export function AppMenu({
         >
           <CardHeader className="app-menu__section-header">
             <div className="app-menu__header-row">
-              <CardTitle id={titleId}>Workspace</CardTitle>
+              <h2 id={titleId} className="m-0 text-base font-semibold leading-snug">
+                Settings
+              </h2>
               <Button
                 type="button"
                 variant="ghost"
@@ -244,7 +246,7 @@ export function AppMenu({
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="app-menu__panel-title">Highlight color</h3>
+              <h4 className="app-menu__panel-title">Highlight color</h4>
               <div className="app-menu__color-swatches" role="group" aria-label="Highlight color">
                 {highlightColorOptions.map((option) => (
                   <button
@@ -322,7 +324,7 @@ export function AppMenu({
             </div>
 
             <div className="app-menu__panel-section">
-              <h3 className="app-menu__panel-title">Network Details</h3>
+              <h3 className="app-menu__panel-title">Network</h3>
             </div>
 
             <div className="grid gap-1.5">
@@ -369,7 +371,6 @@ export function UserMenu({
   accountEloRating,
   viewAsRole,
   onViewAsRoleChange,
-  canAccessDraftCities,
   isAuthBusy,
   onSignInWithPassword,
   onSignUpWithPassword,
@@ -393,6 +394,8 @@ export function UserMenu({
   const buttonLabel = accountEmail
     ? accountDisplayName || (accountUsername ? `@${accountUsername}` : accountEmail)
     : "SIGN IN";
+  const canEditUsername = accountRole === "admin" || !accountUsername;
+  const showRoleControls = accountRole === "author" || accountRole === "admin";
 
   useDismissiblePanel({ isOpen, onOpenChange, panelRef: menuRef });
 
@@ -422,12 +425,9 @@ export function UserMenu({
     }
 
     try {
-      const message = await onSignInWithPassword(input.email, input.password);
+      await onSignInWithPassword(input.email, input.password);
       setAuthPassword("");
-      setAuthNotice({
-        tone: "success",
-        text: message
-      });
+      setAuthNotice(null);
     } catch (error) {
       setAuthNotice({
         tone: "error",
@@ -522,7 +522,9 @@ export function UserMenu({
         >
           <CardHeader className="app-menu__section-header">
             <div className="app-menu__header-row">
-              <CardTitle id={titleId}>Account Details</CardTitle>
+              <h2 id={titleId} className="m-0 text-base font-semibold leading-snug">
+                Account Details
+              </h2>
               <Button
                 type="button"
                 variant="ghost"
@@ -536,114 +538,134 @@ export function UserMenu({
             </div>
           </CardHeader>
           <CardContent className="app-menu__section">
-            <div className="grid gap-1.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[0.82rem] text-muted-foreground">Signed in</span>
-                <span className="text-[0.9rem]">{accountEmail ?? "No"}</span>
+            {accountEmail ? (
+              <div className="grid gap-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[0.82rem] text-muted-foreground">Email</span>
+                  <span className="text-[0.9rem]">{accountEmail}</span>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[0.82rem] text-muted-foreground">Username</span>
+                  <span className="text-[0.9rem]">{accountUsername ? `@${accountUsername}` : "Unset"}</span>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[0.82rem] text-muted-foreground">Elo</span>
+                  <Badge variant="outline">{accountEloRating ?? 1200}</Badge>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[0.82rem] text-muted-foreground">Role</span>
-                <Badge variant="outline">{roleLabel(accountRole)}</Badge>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[0.82rem] text-muted-foreground">Username</span>
-                <span className="text-[0.9rem]">{accountUsername ? `@${accountUsername}` : "Unset"}</span>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[0.82rem] text-muted-foreground">Elo</span>
-                <Badge variant="outline">{accountEloRating ?? 1200}</Badge>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[0.82rem] text-muted-foreground">View as</span>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button type="button" variant="outline" size="sm" className="min-w-28 justify-between gap-2">
-                      <span>{roleLabel(viewAsRole)}</span>
-                      <ChevronDown data-icon="inline-end" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="min-w-32">
-                    {availableViewAsRoles.map((role) => (
-                      <DropdownMenuItem key={role} onSelect={() => onViewAsRoleChange(role)}>
-                        {roleLabel(role)}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[0.82rem] text-muted-foreground">Draft city access</span>
-                <Badge variant={canAccessDraftCities ? "secondary" : "outline"}>
-                  {canAccessDraftCities ? "Allowed" : "Published only"}
-                </Badge>
-              </div>
-            </div>
+            ) : null}
+
+            {accountEmail && showRoleControls ? (
+              <>
+                <Separator />
+                <div className="grid gap-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[0.82rem] text-muted-foreground">Role</span>
+                    <Badge variant="outline">{roleLabel(accountRole)}</Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[0.82rem] text-muted-foreground">View as</span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" variant="outline" size="sm" className="min-w-28 justify-between gap-2">
+                          <span>{roleLabel(viewAsRole)}</span>
+                          <ChevronDown data-icon="inline-end" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="min-w-32">
+                        {availableViewAsRoles.map((role) => (
+                          <DropdownMenuItem key={role} onSelect={() => onViewAsRoleChange(role)}>
+                            {roleLabel(role)}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              </>
+            ) : null}
 
             {accountEmail ? (
-              <div className="grid gap-2">
-                <Input
-                  type="text"
-                  autoComplete="off"
-                  placeholder="username"
-                  value={profileUsername}
-                  onChange={(event) => setProfileUsername(event.target.value)}
-                  disabled={isAuthBusy}
-                />
-                <Input
-                  type="text"
-                  autoComplete="nickname"
-                  placeholder="Display name"
-                  value={profileDisplayName}
-                  onChange={(event) => setProfileDisplayName(event.target.value)}
-                  disabled={isAuthBusy}
-                />
-                <p className="text-xs leading-[1.45] text-muted-foreground">
-                  Username is for invites and multiplayer identity. Use lowercase letters, numbers,
-                  or underscores.
-                </p>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleProfileSave}
-                  disabled={isAuthBusy}
-                >
-                  <Save data-icon="inline-start" />
-                  {isAuthBusy ? "Saving..." : "Save profile"}
-                </Button>
-              </div>
+              <>
+                <Separator />
+                <div className="grid gap-2">
+                  {canEditUsername ? (
+                    <label className="grid gap-1.5">
+                      <span className="text-xs font-medium text-muted-foreground">Username</span>
+                      <Input
+                        type="text"
+                        autoComplete="off"
+                        placeholder="username"
+                        value={profileUsername}
+                        onChange={(event) => setProfileUsername(event.target.value)}
+                        disabled={isAuthBusy}
+                      />
+                    </label>
+                  ) : null}
+                  <label className="grid gap-1.5">
+                    <span className="text-xs font-medium text-muted-foreground">Display name</span>
+                    <Input
+                      type="text"
+                      autoComplete="nickname"
+                      placeholder="Display name"
+                      value={profileDisplayName}
+                      onChange={(event) => setProfileDisplayName(event.target.value)}
+                      disabled={isAuthBusy}
+                    />
+                  </label>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleProfileSave}
+                    disabled={isAuthBusy}
+                  >
+                    <Save data-icon="inline-start" />
+                    {isAuthBusy ? "Saving..." : "Save profile"}
+                  </Button>
+                </div>
+              </>
             ) : null}
 
             <div className="app-menu__actions">
               {accountEmail ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAccountSignOut}
-                  disabled={isAuthBusy}
-                  className="col-span-full"
-                >
-                  <LogOut data-icon="inline-start" />
-                  {isAuthBusy ? "Signing out..." : "Sign out"}
-                </Button>
+                <>
+                  <Separator className="col-span-full" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAccountSignOut}
+                    disabled={isAuthBusy}
+                    className="col-span-full"
+                  >
+                    <LogOut data-icon="inline-start" />
+                    {isAuthBusy ? "Signing out..." : "Sign out"}
+                  </Button>
+                </>
               ) : (
                 <div className="col-span-full grid gap-2">
                   <div className="grid gap-2">
-                    <Input
-                      type="email"
-                      autoComplete="email"
-                      placeholder="Email"
-                      value={authEmail}
-                      onChange={(event) => setAuthEmail(event.target.value)}
-                      disabled={isAuthBusy}
-                    />
-                    <Input
-                      type="password"
-                      autoComplete="current-password"
-                      placeholder="Password"
-                      value={authPassword}
-                      onChange={(event) => setAuthPassword(event.target.value)}
-                      disabled={isAuthBusy}
-                    />
+                    <label className="grid gap-1.5">
+                      <span className="text-xs font-medium text-muted-foreground">Email</span>
+                      <Input
+                        type="email"
+                        autoComplete="email"
+                        placeholder="Email"
+                        value={authEmail}
+                        onChange={(event) => setAuthEmail(event.target.value)}
+                        disabled={isAuthBusy}
+                      />
+                    </label>
+                    <label className="grid gap-1.5">
+                      <span className="text-xs font-medium text-muted-foreground">Password</span>
+                      <Input
+                        type="password"
+                        autoComplete="current-password"
+                        placeholder="Password"
+                        value={authPassword}
+                        onChange={(event) => setAuthPassword(event.target.value)}
+                        disabled={isAuthBusy}
+                      />
+                    </label>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Button
@@ -665,10 +687,6 @@ export function UserMenu({
                       {isAuthBusy ? "Working..." : "Create account"}
                     </Button>
                   </div>
-                  <p className="text-xs leading-[1.45] text-muted-foreground">
-                    Supabase handles the account. If email confirmation is on, check inbox after
-                    sign-up.
-                  </p>
                 </div>
               )}
             </div>
