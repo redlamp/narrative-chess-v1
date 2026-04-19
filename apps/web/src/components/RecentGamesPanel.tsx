@@ -208,6 +208,234 @@ function activeGameTimeNote(game: ActiveGameRecord) {
     : `Move due ${formatGameTimestamp(game.deadlineAt)}`;
 }
 
+function formatSideLabel(side: ActiveGameRecord["yourSide"] | ActiveGameRecord["currentTurn"]) {
+  if (!side) {
+    return "None";
+  }
+
+  return side === "spectator" ? "Spectator" : side === "white" ? "White" : "Black";
+}
+
+function formatActiveGameTimeControl(game: ActiveGameRecord) {
+  return formatTimeControlLabel({
+    timeControlKind: game.timeControlKind,
+    baseSeconds: game.baseSeconds,
+    incrementSeconds: game.incrementSeconds,
+    moveDeadlineSeconds: game.moveDeadlineSeconds
+  });
+}
+
+function activeGameOpponentLabel(game: ActiveGameRecord) {
+  if (game.opponentDisplayName) {
+    return game.opponentUsername ? `${game.opponentDisplayName} (@${game.opponentUsername})` : game.opponentDisplayName;
+  }
+
+  if (game.opponentUsername) {
+    return `@${game.opponentUsername}`;
+  }
+
+  return game.isOpenGame ? "Waiting for player" : "Unnamed opponent";
+}
+
+function formatMatchOutcome(outcome: SavedMatchRecord["snapshot"]["status"]["outcome"]) {
+  if (outcome === "white-win") {
+    return "White won";
+  }
+
+  if (outcome === "black-win") {
+    return "Black won";
+  }
+
+  if (outcome === "draw") {
+    return "Draw";
+  }
+
+  return "In play";
+}
+
+type ActiveGameDetailsProps = {
+  game: ActiveGameRecord | null;
+  activeMultiplayerGameId: string | null;
+  emptyMessage: string;
+  onJoinOpenGame: (gameId: string) => void;
+  onLoadActiveGame: (gameId: string) => void;
+  onRespondToInvite: (gameId: string, response: "accept" | "decline") => void;
+};
+
+function ActiveGameDetails({
+  game,
+  activeMultiplayerGameId,
+  emptyMessage,
+  onJoinOpenGame,
+  onLoadActiveGame,
+  onRespondToInvite
+}: ActiveGameDetailsProps) {
+  if (!game) {
+    return <p className="recent-games-details recent-games-details--empty muted">{emptyMessage}</p>;
+  }
+
+  const ratingDelta = activeGameRatingDelta(game);
+
+  return (
+    <div className="recent-games-details">
+      <div className="recent-games-details__header">
+        <h4>{activeGameHeading(game)}</h4>
+        <Badge variant={game.status === "completed" ? "outline" : game.isYourTurn ? "secondary" : "outline"}>
+          {game.status === "completed" ? activeGameResultLabel(game) : activeGameStatusLabel(game)}
+        </Badge>
+      </div>
+      <p className="recent-games-details__location-row muted">
+        <span>{game.cityLabel ?? "Default board"}</span>
+        <span className="recent-games-details__year">{formatActiveGameTimeControl(game)}</span>
+      </p>
+      <dl className="recent-games-details__meta-list">
+        <div>
+          <dt>Opponent</dt>
+          <dd>{activeGameOpponentLabel(game)}</dd>
+        </div>
+        <div>
+          <dt>Your side</dt>
+          <dd>{formatSideLabel(game.yourSide)}</dd>
+        </div>
+        <div>
+          <dt>Turn</dt>
+          <dd>{game.status === "completed" ? "Complete" : formatSideLabel(game.currentTurn)}</dd>
+        </div>
+        <div>
+          <dt>Mode</dt>
+          <dd>{game.rated ? "Rated" : "Casual"}</dd>
+        </div>
+        <div>
+          <dt>Updated</dt>
+          <dd>{formatGameTimestamp(game.lastMoveAt ?? game.updatedAt)}</dd>
+        </div>
+        <div>
+          <dt>Opponent Elo</dt>
+          <dd>{game.opponentEloRating}</dd>
+        </div>
+        {ratingDelta !== null ? (
+          <div>
+            <dt>Elo change</dt>
+            <dd>
+              {ratingDelta >= 0 ? "+" : ""}
+              {ratingDelta}
+            </dd>
+          </div>
+        ) : null}
+      </dl>
+      <p className="recent-games-summary">{activeGameTimeNote(game)}</p>
+      <div className="recent-games-details__actions">
+        {game.canJoinOpenGame ? (
+          <Button type="button" variant="secondary" size="sm" onClick={() => onJoinOpenGame(game.gameId)}>
+            <Check data-icon="inline-start" />
+            Join
+          </Button>
+        ) : game.isIncomingInvite ? (
+          <>
+            <Button type="button" variant="outline" size="sm" onClick={() => onLoadActiveGame(game.gameId)}>
+              Open
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => onRespondToInvite(game.gameId, "accept")}
+            >
+              <Check data-icon="inline-start" />
+              Accept
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onRespondToInvite(game.gameId, "decline")}
+            >
+              <X data-icon="inline-start" />
+              Decline
+            </Button>
+          </>
+        ) : (
+          <Button type="button" variant="outline" size="sm" onClick={() => onLoadActiveGame(game.gameId)}>
+            {game.status === "completed" ? "Review" : game.status === "active" ? "Resume" : "Open"}
+          </Button>
+        )}
+        {activeMultiplayerGameId === game.gameId ? <Badge variant="outline">Open</Badge> : null}
+      </div>
+    </div>
+  );
+}
+
+type SavedMatchDetailsProps = {
+  match: SavedMatchRecord | null;
+  onDeleteSelectedSavedMatch: () => void;
+  onLoadSavedMatch: () => void;
+};
+
+function SavedMatchDetails({ match, onDeleteSelectedSavedMatch, onLoadSavedMatch }: SavedMatchDetailsProps) {
+  if (!match) {
+    return <p className="recent-games-details recent-games-details--empty muted">Select a saved game.</p>;
+  }
+
+  return (
+    <div className="recent-games-details">
+      <div className="recent-games-details__header">
+        <h4>{match.name}</h4>
+        <Badge variant="outline">Local save</Badge>
+      </div>
+      <p className="recent-games-details__location-row muted">
+        <span>Saved {formatGameTimestamp(match.savedAt)}</span>
+        <span className="recent-games-details__year">{match.moveCount} moves</span>
+      </p>
+      <dl className="recent-games-details__meta-list">
+        <div>
+          <dt>Status</dt>
+          <dd>{formatMatchOutcome(match.snapshot.status.outcome)}</dd>
+        </div>
+        <div>
+          <dt>Turn</dt>
+          <dd>{formatSideLabel(match.snapshot.status.turn)}</dd>
+        </div>
+        <div>
+          <dt>Check</dt>
+          <dd>{match.snapshot.status.isCheck ? "Yes" : "No"}</dd>
+        </div>
+      </dl>
+      <p className="recent-games-summary">Local browser save. Load it to return the Play board to this position.</p>
+      <div className="recent-games-details__actions">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button type="button" variant="destructive" size="icon-sm" aria-label={`Delete ${match.name}`}>
+              <Trash2 />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete saved game?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently remove {match.name} from local saved games.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={onDeleteSelectedSavedMatch}>
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button type="button" variant="outline" size="icon-sm" onClick={onLoadSavedMatch} aria-label={`Load ${match.name}`}>
+              <FileUp />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Load game</TooltipContent>
+        </Tooltip>
+      </div>
+    </div>
+  );
+}
+
 // Note: RecentGamesPanel does not wrap itself in <Panel> because App.tsx already
 // renders it inside <Panel title="Games">. Adding another Panel here would
 // double-nest the card chrome.
@@ -230,8 +458,13 @@ export function RecentGamesPanel({
   const minimumListWidthPercent = 28;
   const maximumListWidthPercent = 72;
   const [hoveredReferenceGameId, setHoveredReferenceGameId] = useState<string | null>(null);
+  const [hoveredActiveGameId, setHoveredActiveGameId] = useState<string | null>(null);
+  const [selectedActiveGameId, setSelectedActiveGameId] = useState<string | null>(null);
+  const [selectedYoursGameId, setSelectedYoursGameId] = useState<string | null>(null);
+  const [activeListWidthPercent, setActiveListWidthPercent] = useState<number>(46);
+  const [yoursListWidthPercent, setYoursListWidthPercent] = useState<number>(46);
   const [historicListWidthPercent, setHistoricListWidthPercent] = useState<number>(46);
-  const [isDraggingSplit, setIsDraggingSplit] = useState(false);
+  const [draggingSplit, setDraggingSplit] = useState<"active" | "yours" | "historic" | null>(null);
   const [activeGames, setActiveGames] = useState<ActiveGameRecord[]>([]);
   const [isLoadingActiveGames, setIsLoadingActiveGames] = useState(false);
   const [isSubmittingInvite, setIsSubmittingInvite] = useState(false);
@@ -243,8 +476,9 @@ export function RecentGamesPanel({
   const [inviteCreatorSide, setInviteCreatorSide] = useState<InviteCreatorSide>("random");
   const [inviteCasual, setInviteCasual] = useState(true);
   const [inviteIsOpenGame, setInviteIsOpenGame] = useState(false);
-  const splitContentRef = useRef<HTMLDivElement | null>(null);
-  const selectedSavedMatch = savedMatches.find((savedMatch) => savedMatch.id === selectedSavedMatchId);
+  const activeSplitContentRef = useRef<HTMLDivElement | null>(null);
+  const yoursSplitContentRef = useRef<HTMLDivElement | null>(null);
+  const historicSplitContentRef = useRef<HTMLDivElement | null>(null);
   const selectedReferenceGame = useMemo(
     () => referenceGames.find((game) => game.id === selectedReferenceGameId) ?? null,
     [referenceGames, selectedReferenceGameId]
@@ -263,6 +497,41 @@ export function RecentGamesPanel({
     () => activeGames.filter((game) => game.status === "completed"),
     [activeGames]
   );
+  const previewActiveGame = useMemo(
+    () =>
+      currentActiveGames.find((game) => game.gameId === (hoveredActiveGameId ?? selectedActiveGameId)) ??
+      currentActiveGames.find((game) => game.gameId === activeMultiplayerGameId) ??
+      currentActiveGames[0] ??
+      null,
+    [activeMultiplayerGameId, currentActiveGames, hoveredActiveGameId, selectedActiveGameId]
+  );
+  const yoursGameCount = savedMatches.length + completedActiveGames.length;
+  const selectedYoursGame = useMemo(() => {
+    const fallbackId = selectedSavedMatchId ? `saved:${selectedSavedMatchId}` : null;
+    const candidateId = selectedYoursGameId ?? fallbackId;
+
+    if (candidateId?.startsWith("completed:")) {
+      const gameId = candidateId.slice("completed:".length);
+      const game = completedActiveGames.find((completedGame) => completedGame.gameId === gameId);
+      if (game) {
+        return { kind: "completed" as const, game };
+      }
+    }
+
+    if (candidateId?.startsWith("saved:")) {
+      const savedMatchId = candidateId.slice("saved:".length);
+      const match = savedMatches.find((savedMatch) => savedMatch.id === savedMatchId);
+      if (match) {
+        return { kind: "saved" as const, match };
+      }
+    }
+
+    if (completedActiveGames[0]) {
+      return { kind: "completed" as const, game: completedActiveGames[0] };
+    }
+
+    return null;
+  }, [completedActiveGames, savedMatches, selectedSavedMatchId, selectedYoursGameId]);
   const showInlineInviteFallback = false;
 
   const formatSavedAt = (dateString: string): string => {
@@ -275,9 +544,23 @@ export function RecentGamesPanel({
   const historicSplitStyle = useMemo(
     () =>
       ({
-        "--historic-list-width": `${historicListWidthPercent}%`
+        "--recent-games-list-width": `${historicListWidthPercent}%`
       }) as CSSProperties,
     [historicListWidthPercent]
+  );
+  const activeSplitStyle = useMemo(
+    () =>
+      ({
+        "--recent-games-list-width": `${activeListWidthPercent}%`
+      }) as CSSProperties,
+    [activeListWidthPercent]
+  );
+  const yoursSplitStyle = useMemo(
+    () =>
+      ({
+        "--recent-games-list-width": `${yoursListWidthPercent}%`
+      }) as CSSProperties,
+    [yoursListWidthPercent]
   );
   const refreshActiveGames = useCallback(async () => {
     if (!accountEmail) {
@@ -411,13 +694,48 @@ export function RecentGamesPanel({
     }
   }, [refreshActiveGames]);
 
+  const setSplitWidthPercent = useCallback((split: "active" | "yours" | "historic", value: number) => {
+    const clampedValue = Math.min(Math.max(value, minimumListWidthPercent), maximumListWidthPercent);
+
+    if (split === "active") {
+      setActiveListWidthPercent(clampedValue);
+    } else if (split === "yours") {
+      setYoursListWidthPercent(clampedValue);
+    } else {
+      setHistoricListWidthPercent(clampedValue);
+    }
+  }, []);
+
+  const getSplitContentRef = useCallback((split: "active" | "yours" | "historic") => {
+    if (split === "active") {
+      return activeSplitContentRef;
+    }
+
+    if (split === "yours") {
+      return yoursSplitContentRef;
+    }
+
+    return historicSplitContentRef;
+  }, []);
+
+  const adjustSplitWidth = useCallback((split: "active" | "yours" | "historic", delta: number) => {
+    const currentValue =
+      split === "active"
+        ? activeListWidthPercent
+        : split === "yours"
+          ? yoursListWidthPercent
+          : historicListWidthPercent;
+
+    setSplitWidthPercent(split, currentValue + delta);
+  }, [activeListWidthPercent, historicListWidthPercent, setSplitWidthPercent, yoursListWidthPercent]);
+
   useEffect(() => {
-    if (!isDraggingSplit) {
+    if (!draggingSplit) {
       return;
     }
 
     const updateSplitFromPointer = (clientX: number) => {
-      const container = splitContentRef.current;
+      const container = getSplitContentRef(draggingSplit).current;
       if (!container) {
         return;
       }
@@ -429,12 +747,8 @@ export function RecentGamesPanel({
 
       const offsetX = Math.min(Math.max(clientX - rect.left, 0), rect.width);
       const nextPercent = (offsetX / rect.width) * 100;
-      const clampedPercent = Math.min(
-        Math.max(nextPercent, minimumListWidthPercent),
-        maximumListWidthPercent
-      );
 
-      setHistoricListWidthPercent(clampedPercent);
+      setSplitWidthPercent(draggingSplit, nextPercent);
     };
 
     const handlePointerMove = (event: PointerEvent) => {
@@ -442,7 +756,7 @@ export function RecentGamesPanel({
     };
 
     const handlePointerUp = () => {
-      setIsDraggingSplit(false);
+      setDraggingSplit(null);
     };
 
     window.addEventListener("pointermove", handlePointerMove);
@@ -452,14 +766,14 @@ export function RecentGamesPanel({
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [isDraggingSplit]);
+  }, [draggingSplit, getSplitContentRef, setSplitWidthPercent]);
 
   return (
     <TooltipProvider delayDuration={150}>
       <Tabs defaultValue="active" className="recent-games-panel w-full">
       <TabsList className="recent-games-tabs">
         <TabsTrigger value="active">Active</TabsTrigger>
-        <TabsTrigger value="saved">Yours ({savedMatches.length})</TabsTrigger>
+        <TabsTrigger value="saved">Yours ({yoursGameCount})</TabsTrigger>
         <TabsTrigger value="historic">Historic</TabsTrigger>
       </TabsList>
 
@@ -604,9 +918,6 @@ export function RecentGamesPanel({
             <div className="recent-games-active__composer-header">
               <div>
                 <h4>Open Games</h4>
-                <p className="muted">
-                  Create a direct invite or an open game that any signed-in player can join.
-                </p>
               </div>
               <div className="recent-games-active__header-actions">
                 <Button
@@ -741,7 +1052,12 @@ export function RecentGamesPanel({
             ) : null}
           </div>
 
-          <div className="recent-games-active__list-shell">
+          <div className="recent-games-split">
+            <div ref={activeSplitContentRef} className="recent-games-split__content" style={activeSplitStyle}>
+              <div
+                className="recent-games-active__list-shell recent-games-split__list"
+                onMouseLeave={() => setHoveredActiveGameId(null)}
+              >
             {isLoadingActiveGames && !activeGames.length ? (
               <p className="muted">Loading multiplayer games…</p>
             ) : activeGames.length || accountEmail ? (
@@ -750,7 +1066,14 @@ export function RecentGamesPanel({
                   {currentActiveGames.length ? (
                     <ul className="recent-games-active__list">
                       {currentActiveGames.map((game) => (
-                  <li key={game.gameId} className="recent-games-active__entry">
+                  <li
+                    key={game.gameId}
+                    className="recent-games-active__entry"
+                    data-selected={previewActiveGame?.gameId === game.gameId ? "true" : "false"}
+                    onClick={() => setSelectedActiveGameId(game.gameId)}
+                    onFocusCapture={() => setSelectedActiveGameId(game.gameId)}
+                    onMouseEnter={() => setHoveredActiveGameId(game.gameId)}
+                  >
                     <div className="recent-games-active__entry-header">
                       <div className="recent-games-active__entry-main">
                         <div className="recent-games-active__entry-title-row">
@@ -839,63 +1162,6 @@ export function RecentGamesPanel({
                     <p className="muted">No pending or active multiplayer games.</p>
                   )}
                 </section>
-                <section className="recent-games-active__section">
-                  <h4>Completed</h4>
-                  {completedActiveGames.length ? (
-                    <ul className="recent-games-active__list">
-                      {completedActiveGames.map((game) => {
-                        const ratingDelta = activeGameRatingDelta(game);
-
-                        return (
-                          <li key={game.gameId} className="recent-games-active__entry">
-                            <div className="recent-games-active__entry-header">
-                              <div className="recent-games-active__entry-main">
-                                <div className="recent-games-active__entry-title-row">
-                                  <h4>{activeGameHeading(game)}</h4>
-                                  <Badge variant="outline">{activeGameResultLabel(game)}</Badge>
-                                  {ratingDelta !== null ? (
-                                    <Badge variant={ratingDelta >= 0 ? "secondary" : "outline"}>
-                                      Elo {ratingDelta >= 0 ? "+" : ""}
-                                      {ratingDelta}
-                                    </Badge>
-                                  ) : null}
-                                  {activeMultiplayerGameId === game.gameId ? (
-                                    <Badge variant="outline">Open</Badge>
-                                  ) : null}
-                                </div>
-                                <p className="recent-games-active__entry-meta">
-                                  {game.opponentUsername ? `@${game.opponentUsername}` : "Unnamed opponent"} -{" "}
-                                  {game.cityLabel ?? "Default board"} -{" "}
-                                  {formatTimeControlLabel({
-                                    timeControlKind: game.timeControlKind,
-                                    baseSeconds: game.baseSeconds,
-                                    incrementSeconds: game.incrementSeconds,
-                                    moveDeadlineSeconds: game.moveDeadlineSeconds
-                                  })} - {game.rated ? "Rated" : "Casual"}
-                                </p>
-                                <p className="recent-games-active__entry-meta">
-                                  Completed {formatGameTimestamp(game.lastMoveAt ?? game.updatedAt)}
-                                </p>
-                              </div>
-                              <div className="recent-games-active__entry-actions">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => onLoadActiveGame(game.gameId)}
-                                >
-                                  Review
-                                </Button>
-                              </div>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : (
-                    <p className="muted">Completed multiplayer games will appear here.</p>
-                  )}
-                </section>
               </div>
             ) : (
               <p className="muted">
@@ -903,15 +1169,51 @@ export function RecentGamesPanel({
                 want a personal snapshot.
               </p>
             )}
+              </div>
+              <button
+                type="button"
+                className="recent-games-split__splitter"
+                role="separator"
+                aria-label="Resize active games list and details panels"
+                aria-orientation="vertical"
+                aria-valuemin={minimumListWidthPercent}
+                aria-valuemax={maximumListWidthPercent}
+                aria-valuenow={Math.round(activeListWidthPercent)}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  setDraggingSplit("active");
+                }}
+                onKeyDown={(event) => {
+                  const nextStep = event.shiftKey ? 4 : 2;
+                  if (event.key === "ArrowLeft") {
+                    event.preventDefault();
+                    adjustSplitWidth("active", -nextStep);
+                  } else if (event.key === "ArrowRight") {
+                    event.preventDefault();
+                    adjustSplitWidth("active", nextStep);
+                  }
+                }}
+              >
+                <span aria-hidden="true" />
+              </button>
+              <ActiveGameDetails
+                game={previewActiveGame}
+                activeMultiplayerGameId={activeMultiplayerGameId}
+                emptyMessage="Select an active game to see match details."
+                onJoinOpenGame={(gameId) => void handleJoinOpenGame(gameId)}
+                onLoadActiveGame={onLoadActiveGame}
+                onRespondToInvite={(gameId, response) => void handleRespondToInvite(gameId, response)}
+              />
+            </div>
           </div>
         </div>
       </TabsContent>
 
       <TabsContent value="historic" className="recent-games-content">
-        <div className="recent-games-historic">
-          <div ref={splitContentRef} className="recent-games-historic__content" style={historicSplitStyle}>
+        <div className="recent-games-split">
+          <div ref={historicSplitContentRef} className="recent-games-split__content" style={historicSplitStyle}>
             <ul
-              className="recent-games-historic__list"
+              className="recent-games-split__list"
               role="listbox"
               aria-label="Historic games"
               onMouseLeave={() => setHoveredReferenceGameId(null)}
@@ -931,7 +1233,7 @@ export function RecentGamesPanel({
             </ul>
             <button
               type="button"
-              className="recent-games-historic__splitter"
+              className="recent-games-split__splitter"
               role="separator"
               aria-label="Resize historic games list and details panels"
               aria-orientation="vertical"
@@ -940,20 +1242,16 @@ export function RecentGamesPanel({
               aria-valuenow={Math.round(historicListWidthPercent)}
               onPointerDown={(event) => {
                 event.preventDefault();
-                setIsDraggingSplit(true);
+                  setDraggingSplit("historic");
               }}
               onKeyDown={(event) => {
                 const nextStep = event.shiftKey ? 4 : 2;
                 if (event.key === "ArrowLeft") {
                   event.preventDefault();
-                  setHistoricListWidthPercent((current) =>
-                    Math.max(minimumListWidthPercent, current - nextStep)
-                  );
+                  adjustSplitWidth("historic", -nextStep);
                 } else if (event.key === "ArrowRight") {
                   event.preventDefault();
-                  setHistoricListWidthPercent((current) =>
-                    Math.min(maximumListWidthPercent, current + nextStep)
-                  );
+                  adjustSplitWidth("historic", nextStep);
                 }
               }}
             >
@@ -1003,77 +1301,99 @@ export function RecentGamesPanel({
       </TabsContent>
 
       <TabsContent value="saved" className="recent-games-content">
-        {savedMatches.length ? (
-          <div className="recent-games-shell">
-            <ul className="recent-games-list" role="listbox" aria-label="Saved games">
-              {savedMatches.map((savedMatch) => (
-                <RecentGameRow
-                  key={savedMatch.id}
-                  selected={savedMatch.id === selectedSavedMatchId}
-                  onClick={() => onSelectSavedMatch(savedMatch.id)}
-                  title={savedMatch.name}
-                  description={formatSavedAt(savedMatch.savedAt)}
-                  meta={`${savedMatch.moveCount} moves`}
+        {yoursGameCount ? (
+          <div className="recent-games-split">
+            <div ref={yoursSplitContentRef} className="recent-games-split__content" style={yoursSplitStyle}>
+              <div className="recent-games-split__list">
+                {savedMatches.length ? (
+                  <section className="recent-games-active__section">
+                    <h4>Saved</h4>
+                    <ul className="recent-games-list" role="listbox" aria-label="Saved games">
+                      {savedMatches.map((savedMatch) => {
+                        const itemId = `saved:${savedMatch.id}`;
+
+                        return (
+                          <RecentGameRow
+                            key={savedMatch.id}
+                            selected={selectedYoursGame?.kind === "saved" && selectedYoursGame.match.id === savedMatch.id}
+                            onClick={() => {
+                              setSelectedYoursGameId(itemId);
+                              onSelectSavedMatch(savedMatch.id);
+                            }}
+                            title={savedMatch.name}
+                            description={formatSavedAt(savedMatch.savedAt)}
+                            meta={`${savedMatch.moveCount} moves`}
+                          />
+                        );
+                      })}
+                    </ul>
+                  </section>
+                ) : null}
+
+                {completedActiveGames.length ? (
+                  <section className="recent-games-active__section">
+                    <h4>Completed Multiplayer</h4>
+                    <ul className="recent-games-list" role="listbox" aria-label="Completed multiplayer games">
+                      {completedActiveGames.map((game) => (
+                        <RecentGameRow
+                          key={game.gameId}
+                          selected={selectedYoursGame?.kind === "completed" && selectedYoursGame.game.gameId === game.gameId}
+                          onClick={() => setSelectedYoursGameId(`completed:${game.gameId}`)}
+                          title={activeGameHeading(game)}
+                          description={`${activeGameOpponentLabel(game)} - ${game.cityLabel ?? "Default board"}`}
+                          meta={activeGameResultLabel(game)}
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                className="recent-games-split__splitter"
+                role="separator"
+                aria-label="Resize your games list and details panels"
+                aria-orientation="vertical"
+                aria-valuemin={minimumListWidthPercent}
+                aria-valuemax={maximumListWidthPercent}
+                aria-valuenow={Math.round(yoursListWidthPercent)}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  setDraggingSplit("yours");
+                }}
+                onKeyDown={(event) => {
+                  const nextStep = event.shiftKey ? 4 : 2;
+                  if (event.key === "ArrowLeft") {
+                    event.preventDefault();
+                    adjustSplitWidth("yours", -nextStep);
+                  } else if (event.key === "ArrowRight") {
+                    event.preventDefault();
+                    adjustSplitWidth("yours", nextStep);
+                  }
+                }}
+              >
+                <span aria-hidden="true" />
+              </button>
+              {selectedYoursGame?.kind === "completed" ? (
+                <ActiveGameDetails
+                  game={selectedYoursGame.game}
+                  activeMultiplayerGameId={activeMultiplayerGameId}
+                  emptyMessage="Select a completed multiplayer game."
+                  onJoinOpenGame={(gameId) => void handleJoinOpenGame(gameId)}
+                  onLoadActiveGame={onLoadActiveGame}
+                  onRespondToInvite={(gameId, response) => void handleRespondToInvite(gameId, response)}
                 />
-              ))}
-            </ul>
-            <div className="recent-games-actions">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon-sm"
-                    disabled={!selectedSavedMatch}
-                    aria-label={
-                      selectedSavedMatch
-                        ? `Delete saved game ${selectedSavedMatch.name}`
-                        : "Delete selected saved game"
-                    }
-                  >
-                    <Trash2 />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete saved game?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {selectedSavedMatch
-                        ? `This will permanently remove ${selectedSavedMatch.name} from local saved games.`
-                        : "This will permanently remove the selected saved game."}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction variant="destructive" onClick={onDeleteSelectedSavedMatch}>
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon-sm"
-                    disabled={!selectedSavedMatch}
-                    onClick={onLoadSavedMatch}
-                    aria-label={
-                      selectedSavedMatch
-                        ? `Load saved game ${selectedSavedMatch.name}`
-                        : "Load selected saved game"
-                    }
-                  >
-                    <FileUp />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Load game</TooltipContent>
-              </Tooltip>
+              ) : (
+                <SavedMatchDetails
+                  match={selectedYoursGame?.kind === "saved" ? selectedYoursGame.match : null}
+                  onDeleteSelectedSavedMatch={onDeleteSelectedSavedMatch}
+                  onLoadSavedMatch={onLoadSavedMatch}
+                />
+              )}
             </div>
           </div>
         ) : (
-          <p className="muted">No saved games yet. Save the current local game to keep your place.</p>
+          <p className="muted">No saved or completed games yet.</p>
         )}
       </TabsContent>
       </Tabs>

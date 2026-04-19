@@ -3951,6 +3951,11 @@ label:has(> .text-sm.font-medium) {
   min-width: 0;
 }
 
+.recent-games-active__entry[data-selected="true"] {
+  border-color: color-mix(in srgb, var(--ring) 58%, var(--border) 42%);
+  background: var(--selection-surface);
+}
+
 .recent-games-active__entry-title-row {
   flex-wrap: wrap;
   justify-content: flex-start;
@@ -4089,7 +4094,7 @@ label:has(> .text-sm.font-medium) {
   gap: var(--space-2);
 }
 
-.recent-games-historic {
+.recent-games-split {
   display: grid;
   gap: var(--space-3);
   min-width: 0;
@@ -4097,18 +4102,18 @@ label:has(> .text-sm.font-medium) {
   height: 100%;
 }
 
-.recent-games-historic__content {
+.recent-games-split__content {
   display: grid;
   gap: 0;
   min-height: 0;
   height: 100%;
   grid-template-columns:
-    minmax(0, var(--historic-list-width, 46%))
+    minmax(0, var(--recent-games-list-width, 46%))
     var(--space-3)
-    minmax(0, calc(100% - var(--historic-list-width, 46%)));
+    minmax(0, calc(100% - var(--recent-games-list-width, 46%)));
 }
 
-.recent-games-historic__list {
+.recent-games-split__list {
   display: block;
   list-style: none;
   margin: 0;
@@ -4119,7 +4124,7 @@ label:has(> .text-sm.font-medium) {
   container-type: inline-size;
 }
 
-.recent-games-historic__splitter {
+.recent-games-split__splitter {
   border: 0;
   background: transparent;
   cursor: col-resize;
@@ -4128,7 +4133,7 @@ label:has(> .text-sm.font-medium) {
   touch-action: none;
 }
 
-.recent-games-historic__splitter::before {
+.recent-games-split__splitter::before {
   content: "";
   position: absolute;
   left: 50%;
@@ -4140,12 +4145,12 @@ label:has(> .text-sm.font-medium) {
   background: color-mix(in srgb, var(--border) 82%, var(--foreground) 18%);
 }
 
-.recent-games-historic__splitter:hover::before,
-.recent-games-historic__splitter:focus-visible::before {
+.recent-games-split__splitter:hover::before,
+.recent-games-split__splitter:focus-visible::before {
   background: var(--ring);
 }
 
-.recent-games-historic__splitter:focus-visible {
+.recent-games-split__splitter:focus-visible {
   outline: none;
 }
 
@@ -4187,6 +4192,10 @@ label:has(> .text-sm.font-medium) {
   padding-right: 0;
 }
 
+.recent-games-details--empty {
+  align-content: start;
+}
+
 .recent-games-details h4 {
   margin: 0;
   font-size: var(--font-size-lg);
@@ -4205,6 +4214,30 @@ label:has(> .text-sm.font-medium) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.recent-games-details__meta-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.recent-games-details__meta-list div {
+  display: grid;
+  gap: var(--space-0_5);
+}
+
+.recent-games-details__meta-list dt {
+  color: var(--muted-foreground);
+  font-size: var(--font-size-xs);
+  line-height: 1.2;
+}
+
+.recent-games-details__meta-list dd {
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--font-size-sm);
+  line-height: 1.35;
 }
 
 .recent-games-summary {
@@ -5512,16 +5545,16 @@ label:has(> .text-sm.font-medium) {
     grid-column: 1 / -1;
   }
 
-  .recent-games-historic {
+  .recent-games-split {
     height: auto;
   }
 
-  .recent-games-historic__content {
+  .recent-games-split__content {
     grid-template-columns: 1fr;
     height: auto;
   }
 
-  .recent-games-historic__splitter {
+  .recent-games-split__splitter {
     display: none;
   }
 
