@@ -41,9 +41,33 @@ export async function signUpWithPassword(input: {
   return supabase.auth.signUp({
     ...input,
     options: {
-      emailRedirectTo: window.location.href
+      emailRedirectTo: getAuthRedirectUrl()
     }
   });
+}
+
+function getAuthRedirectUrl() {
+  return `${window.location.origin}${window.location.pathname}`;
+}
+
+export async function sendPasswordResetEmail(email: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    throw new Error("Supabase is not configured.");
+  }
+
+  return supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: getAuthRedirectUrl()
+  });
+}
+
+export async function updatePassword(password: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    throw new Error("Supabase is not configured.");
+  }
+
+  return supabase.auth.updateUser({ password });
 }
 
 export async function signOut() {

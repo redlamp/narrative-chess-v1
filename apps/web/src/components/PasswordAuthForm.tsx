@@ -1,5 +1,5 @@
 import { useId, useState, type ComponentPropsWithoutRef, type FormEvent } from "react";
-import { LogIn, UserPlus } from "lucide-react";
+import { LogIn, Mail, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,12 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-type PasswordAuthMode = "sign-in" | "sign-up";
+type PasswordAuthMode = "sign-in" | "sign-up" | "forgot-password";
 
 type PasswordAuthFormProps = ComponentPropsWithoutRef<"div"> & {
   isLoading: boolean;
   onSignInWithPassword: (email: string, password: string) => Promise<string>;
   onSignUpWithPassword: (email: string, password: string) => Promise<string>;
+  onSendPasswordResetEmail: (email: string) => Promise<string>;
 };
 
 type AuthNotice = {
@@ -30,6 +31,7 @@ export function PasswordAuthForm({
   isLoading,
   onSignInWithPassword,
   onSignUpWithPassword,
+  onSendPasswordResetEmail,
   ...props
 }: PasswordAuthFormProps) {
   const emailId = useId();
@@ -42,13 +44,17 @@ export function PasswordAuthForm({
   const [notice, setNotice] = useState<AuthNotice | null>(null);
 
   const isSignUp = mode === "sign-up";
+  const isForgotPassword = mode === "forgot-password";
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const trimmedEmail = email.trim();
-    if (!trimmedEmail || !password) {
-      setNotice({ tone: "error", text: "Email and password both needed." });
+    if (!trimmedEmail || (!isForgotPassword && !password)) {
+      setNotice({
+        tone: "error",
+        text: isForgotPassword ? "Email needed." : "Email and password both needed."
+      });
       return;
     }
 
@@ -58,9 +64,11 @@ export function PasswordAuthForm({
     }
 
     try {
-      const message = isSignUp
-        ? await onSignUpWithPassword(trimmedEmail, password)
-        : await onSignInWithPassword(trimmedEmail, password);
+      const message = isForgotPassword
+        ? await onSendPasswordResetEmail(trimmedEmail)
+        : isSignUp
+          ? await onSignUpWithPassword(trimmedEmail, password)
+          : await onSignInWithPassword(trimmedEmail, password);
       setPassword("");
       setConfirmPassword("");
       setNotice({ tone: "success", text: message });
@@ -87,11 +95,15 @@ export function PasswordAuthForm({
     <div className={cn("flex flex-col gap-3", className)} {...props}>
       <Card size="sm">
         <CardHeader>
-          <CardTitle>{isSignUp ? "Create account" : "Sign in"}</CardTitle>
+          <CardTitle>
+            {isForgotPassword ? "Reset password" : isSignUp ? "Create account" : "Sign in"}
+          </CardTitle>
           <CardDescription>
-            {isSignUp
-              ? "Create an account with email and password."
-              : "Sign in with your email and password."}
+            {isForgotPassword
+              ? "Send a password reset link to your email."
+              : isSignUp
+                ? "Create an account with email and password."
+                : "Sign in with your email and password."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -111,18 +123,20 @@ export function PasswordAuthForm({
                 />
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor={passwordId}>Password</Label>
-                <Input
-                  id={passwordId}
-                  type="password"
-                  autoComplete={isSignUp ? "new-password" : "current-password"}
-                  required
-                  value={password}
-                  onChange={(event) => setPassword(event.currentTarget.value)}
-                  disabled={isLoading}
-                />
-              </div>
+              {!isForgotPassword ? (
+                <div className="grid gap-2">
+                  <Label htmlFor={passwordId}>Password</Label>
+                  <Input
+                    id={passwordId}
+                    type="password"
+                    autoComplete={isSignUp ? "new-password" : "current-password"}
+                    required
+                    value={password}
+                    onChange={(event) => setPassword(event.currentTarget.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+              ) : null}
 
               {isSignUp ? (
                 <div className="grid gap-2">
@@ -151,35 +165,150 @@ export function PasswordAuthForm({
               ) : null}
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isSignUp ? (
+                {isForgotPassword ? (
+                  <Mail data-icon="inline-start" />
+                ) : isSignUp ? (
                   <UserPlus data-icon="inline-start" />
                 ) : (
                   <LogIn data-icon="inline-start" />
                 )}
                 {isLoading
                   ? "Working..."
-                  : isSignUp
-                    ? "Create account"
-                    : "Sign in"}
+                  : isForgotPassword
+                    ? "Send reset email"
+                    : isSignUp
+                      ? "Create account"
+                      : "Sign in"}
               </Button>
             </div>
           </form>
 
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            {isSignUp ? "Already have an account?" : "Need an account?"}{" "}
+          <div className="mt-4 grid gap-2 text-center text-sm text-muted-foreground">
+            <div>
+              {isSignUp ? "Already have an account?" : "Need an account?"}{" "}
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="h-auto px-0"
+                onClick={() => switchMode(isSignUp ? "sign-in" : "sign-up")}
+                disabled={isLoading}
+              >
+                {isSignUp ? "Sign in" : "Create one"}
+              </Button>
+            </div>
             <Button
               type="button"
               variant="link"
               size="sm"
               className="h-auto px-0"
-              onClick={() => switchMode(isSignUp ? "sign-in" : "sign-up")}
+              onClick={() => switchMode(isForgotPassword ? "sign-in" : "forgot-password")}
               disabled={isLoading}
             >
-              {isSignUp ? "Sign in" : "Create one"}
+              {isForgotPassword ? "Back to sign in" : "Forgot password?"}
             </Button>
           </div>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+type PasswordUpdateFormProps = ComponentPropsWithoutRef<"div"> & {
+  isLoading: boolean;
+  onUpdatePassword: (password: string) => Promise<string>;
+};
+
+export function PasswordUpdateForm({
+  className,
+  isLoading,
+  onUpdatePassword,
+  ...props
+}: PasswordUpdateFormProps) {
+  const passwordId = useId();
+  const confirmPasswordId = useId();
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [notice, setNotice] = useState<AuthNotice | null>(null);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!password) {
+      setNotice({ tone: "error", text: "New password needed." });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setNotice({ tone: "error", text: "Passwords do not match." });
+      return;
+    }
+
+    try {
+      const message = await onUpdatePassword(password);
+      setPassword("");
+      setConfirmPassword("");
+      setNotice({ tone: "success", text: message });
+    } catch (error) {
+      setNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Password update failed."
+      });
+    }
+  };
+
+  return (
+    <Card size="sm" className={className} {...props}>
+      <CardHeader>
+        <CardTitle>Update password</CardTitle>
+        <CardDescription>Set a new password for this account.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor={passwordId}>New password</Label>
+              <Input
+                id={passwordId}
+                type="password"
+                autoComplete="new-password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.currentTarget.value)}
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor={confirmPasswordId}>Confirm new password</Label>
+              <Input
+                id={confirmPasswordId}
+                type="password"
+                autoComplete="new-password"
+                required
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.currentTarget.value)}
+                disabled={isLoading}
+              />
+            </div>
+
+            {notice ? (
+              <p
+                className={cn(
+                  "text-xs leading-[1.45]",
+                  notice.tone === "error" ? "text-destructive" : "text-muted-foreground"
+                )}
+              >
+                {notice.text}
+              </p>
+            ) : null}
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Working..." : "Update password"}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

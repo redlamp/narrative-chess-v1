@@ -108,8 +108,10 @@ import {
   loadCurrentUserRole,
   signInWithPassword,
   signUpWithPassword,
+  sendPasswordResetEmail,
   signOut,
   subscribeToAuthChanges,
+  updatePassword,
   type AppRole
 } from "./auth";
 import {
@@ -1229,6 +1231,38 @@ export default function App() {
       setIsAuthBusy(false);
     }
   }, [maybeBootstrapAdmin]);
+
+  const handleSendPasswordResetEmail = useCallback(async (email: string) => {
+    setIsAuthBusy(true);
+    try {
+      const result = await sendPasswordResetEmail(email);
+      if (result.error) {
+        throw result.error;
+      }
+      return "Password reset email sent.";
+    } catch (error) {
+      console.warn("[supabase] Password reset email failed.", error);
+      throw error;
+    } finally {
+      setIsAuthBusy(false);
+    }
+  }, []);
+
+  const handleUpdatePassword = useCallback(async (password: string) => {
+    setIsAuthBusy(true);
+    try {
+      const result = await updatePassword(password);
+      if (result.error) {
+        throw result.error;
+      }
+      return "Password updated.";
+    } catch (error) {
+      console.warn("[supabase] Password update failed.", error);
+      throw error;
+    } finally {
+      setIsAuthBusy(false);
+    }
+  }, []);
 
   const handleSignOut = useCallback(async () => {
     setIsAuthBusy(true);
@@ -2688,6 +2722,8 @@ export default function App() {
               isAuthBusy={isAuthBusy}
               onSignInWithPassword={handleSignInWithPassword}
               onSignUpWithPassword={handleSignUpWithPassword}
+              onSendPasswordResetEmail={handleSendPasswordResetEmail}
+              onUpdatePassword={handleUpdatePassword}
               onSignOut={handleSignOut}
               onSaveProfile={handleSaveProfile}
             />

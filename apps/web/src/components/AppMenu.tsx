@@ -31,7 +31,7 @@ import {
   TooltipTrigger
 } from "@/components/ui/tooltip";
 import { FloatingActionNotice, type FloatingActionNoticeState } from "./FloatingActionNotice";
-import { PasswordAuthForm } from "./PasswordAuthForm";
+import { PasswordAuthForm, PasswordUpdateForm } from "./PasswordAuthForm";
 import { highlightColorOptions, type AppSettings, type HighlightColor } from "../appSettings";
 import type { AppRole } from "../auth";
 
@@ -74,6 +74,8 @@ type UserMenuProps = {
   isAuthBusy: boolean;
   onSignInWithPassword: (email: string, password: string) => Promise<string>;
   onSignUpWithPassword: (email: string, password: string) => Promise<string>;
+  onSendPasswordResetEmail: (email: string) => Promise<string>;
+  onUpdatePassword: (password: string) => Promise<string>;
   onSignOut: () => Promise<string>;
   onSaveProfile: (username: string, displayName: string) => Promise<string>;
 };
@@ -373,6 +375,8 @@ export function UserMenu({
   isAuthBusy,
   onSignInWithPassword,
   onSignUpWithPassword,
+  onSendPasswordResetEmail,
+  onUpdatePassword,
   onSignOut,
   onSaveProfile
 }: UserMenuProps) {
@@ -528,6 +532,11 @@ export function UserMenu({
             {accountEmail ? (
               <>
                 <Separator />
+                <PasswordUpdateForm
+                  isLoading={isAuthBusy}
+                  onUpdatePassword={onUpdatePassword}
+                />
+                <Separator />
                 <div className="grid gap-2">
                   {canEditUsername ? (
                     <label className="grid gap-1.5">
@@ -587,6 +596,7 @@ export function UserMenu({
                     isLoading={isAuthBusy}
                     onSignInWithPassword={onSignInWithPassword}
                     onSignUpWithPassword={onSignUpWithPassword}
+                    onSendPasswordResetEmail={onSendPasswordResetEmail}
                   />
                 </div>
               )}

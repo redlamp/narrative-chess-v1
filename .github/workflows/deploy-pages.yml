@@ -43,6 +43,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY || secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_ENABLE_SUPABASE_PUBLISHED_CITIES: ${{ vars.VITE_ENABLE_SUPABASE_PUBLISHED_CITIES || 'false' }}
         run: pnpm build
 
       - name: Setup Pages
