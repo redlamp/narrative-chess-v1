@@ -76,6 +76,9 @@ export type ActiveGameRecord = {
   incrementSeconds: number;
   moveDeadlineSeconds: number | null;
   deadlineAt: string | null;
+  whiteSecondsRemaining: number | null;
+  blackSecondsRemaining: number | null;
+  turnStartedAt: string | null;
   rated: boolean;
   result: "white" | "black" | "draw" | "abandoned" | "cancelled" | null;
   whiteRatingDelta: number | null;
@@ -115,6 +118,9 @@ export type ActiveGameSession = {
   incrementSeconds: number;
   moveDeadlineSeconds: number | null;
   deadlineAt: string | null;
+  whiteSecondsRemaining: number | null;
+  blackSecondsRemaining: number | null;
+  turnStartedAt: string | null;
 };
 
 type ActiveGameRow = {
@@ -125,6 +131,9 @@ type ActiveGameRow = {
   increment_seconds: number | null;
   move_deadline_seconds: number | null;
   deadline_at: string | null;
+  white_seconds_remaining: number | null;
+  black_seconds_remaining: number | null;
+  turn_started_at: string | null;
   rated: boolean;
   result: ActiveGameRecord["result"];
   white_rating_delta: number | null;
@@ -161,6 +170,9 @@ type ActiveGameSessionThreadRow = {
   increment_seconds: number | null;
   move_deadline_seconds: number | null;
   deadline_at: string | null;
+  white_seconds_remaining: number | null;
+  black_seconds_remaining: number | null;
+  turn_started_at: string | null;
   game_participants:
     | Array<{
         side: ActiveGameRecord["yourSide"];
@@ -183,6 +195,9 @@ function mapActiveGameRow(row: ActiveGameRow): ActiveGameRecord {
     incrementSeconds: row.increment_seconds ?? 0,
     moveDeadlineSeconds: row.move_deadline_seconds,
     deadlineAt: row.deadline_at,
+    whiteSecondsRemaining: row.white_seconds_remaining ?? null,
+    blackSecondsRemaining: row.black_seconds_remaining ?? null,
+    turnStartedAt: row.turn_started_at ?? null,
     rated: row.rated,
     result: row.result,
     whiteRatingDelta: row.white_rating_delta,
@@ -369,7 +384,7 @@ export async function loadActiveGameSessionFromSupabase(
   const { data: threadData, error: threadError } = await auth.supabase
     .from("game_threads")
     .select(
-      "id, city_edition_id, status, rated, current_turn, result, white_rating_delta, black_rating_delta, time_control_kind, base_seconds, increment_seconds, move_deadline_seconds, deadline_at, game_participants!inner(side, participant_status)"
+      "id, city_edition_id, status, rated, current_turn, result, white_rating_delta, black_rating_delta, time_control_kind, base_seconds, increment_seconds, move_deadline_seconds, deadline_at, white_seconds_remaining, black_seconds_remaining, turn_started_at, game_participants!inner(side, participant_status)"
     )
     .eq("id", gameId)
     .eq("game_participants.user_id", auth.user.id)
@@ -428,7 +443,10 @@ export async function loadActiveGameSessionFromSupabase(
     baseSeconds: thread.base_seconds,
     incrementSeconds: thread.increment_seconds ?? 0,
     moveDeadlineSeconds: thread.move_deadline_seconds,
-    deadlineAt: thread.deadline_at
+    deadlineAt: thread.deadline_at,
+    whiteSecondsRemaining: thread.white_seconds_remaining ?? null,
+    blackSecondsRemaining: thread.black_seconds_remaining ?? null,
+    turnStartedAt: thread.turn_started_at ?? null
   };
 }
 

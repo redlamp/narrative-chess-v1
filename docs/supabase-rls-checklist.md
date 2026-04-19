@@ -22,7 +22,7 @@ Direct table access:
 | `layoutCloud.ts` | `user_layout_bundles` | read/upsert current user's layout bundle |
 | `cityBoards.ts` | `city_versions` | read published versions, read latest draft, insert draft version |
 | `cityBoards.ts` | `city_editions` via embedded select | read playable published city metadata |
-| `activeGames.ts` | `game_threads`, `game_participants` | read current participant's game session |
+| `activeGames.ts` | `game_threads`, `game_participants` | read current participant's game session, turn, and clock state |
 | `activeGames.ts` | `game_moves` | read latest move snapshot for current participant's game |
 
 RPC access:
@@ -41,9 +41,10 @@ RPC access:
 
 - `user_saved_matches` has RLS enabled and owner-only select/insert/update/delete policies.
 - `user_layout_bundles` has RLS enabled and owner-only select/insert/update policies.
-- `profiles` has RLS enabled and owner-only select/insert/update policies.
+- `profiles` has RLS enabled, owner-only select policy, and profile edits routed through `upsert_current_profile`.
 - `game_threads`, `game_participants`, and `game_moves` have RLS enabled and participant-only read policies.
 - Multiplayer mutations are routed through `SECURITY DEFINER` RPCs instead of direct table insert/update policies.
+- `20260419093000_add_multiplayer_clock_state.sql` stores live-clock remaining seconds and turn start timestamps on `game_threads`.
 - `list_active_games` is granted only to `authenticated` and joins through the caller's participant row.
 - `create_game_invite` is granted only to `authenticated` and resolves opponent username inside the RPC.
 - `append_game_move` is granted only to `authenticated` and validates participant status, game status, side, turn, square format, promotion, and immutable ply ordering before inserting a move.

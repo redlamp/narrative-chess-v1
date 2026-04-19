@@ -57,6 +57,7 @@ Current direct table access from the frontend:
 Current RPC calls from the frontend:
 
 - `bootstrap_first_admin`
+- `upsert_current_profile`
 - `publish_city_version`
 - `list_active_games`
 - `create_game_invite`

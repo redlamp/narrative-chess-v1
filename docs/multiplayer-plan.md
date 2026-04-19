@@ -251,6 +251,30 @@ Need strict ownership rules:
 9. completed games list in `Games > Active`
 10. creator side choice
 
+## Current Online Turn Loop
+
+Implemented direction:
+
+1. Players create direct username invites from the Games panel.
+2. The invite chooses a published city edition, side, rated/casual mode, and time control.
+3. The accepting player activates the game; the server starts the first turn timer.
+4. The Play surface loads the latest server snapshot and locks local controls unless it is the signed-in player's turn.
+5. After a local legal move, the Play surface locks again while `append_game_move` records the move.
+6. `append_game_move` validates participant, active game status, current turn, square format, promotion, and next ply before inserting.
+7. The server advances `current_turn`, updates `deadline_at`, and stores live-clock remaining seconds when the time control is a clock.
+8. The opponent sees the game as their turn after refresh/polling, loads the updated snapshot, and repeats the loop.
+
+Time-control behavior:
+
+- `live_clock`: each player starts with `base_seconds`; the moving side spends elapsed time since `turn_started_at`, then receives `increment_seconds`; `deadline_at` tracks when the active side's clock would expire.
+- `move_deadline`: each turn gets a fresh `move_deadline_seconds` window; players can still make multiple moves in a day if both keep responding before the current deadline.
+
+UI contract:
+
+- header Turn/State/Moves cards stay in the first row across local, study, and multiplayer modes.
+- multiplayer games add Online, Clock/Due, Cloud sync, and Elo cards after the core three cards.
+- Turn reads `Your turn`, `Syncing move`, or the active color for loaded multiplayer games.
+
 ## Near-term implementation order
 
 1. scaffold `profiles`

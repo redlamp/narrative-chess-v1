@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { getPieceAtSquare } from "@narrative-chess/game-core";
 import { getCharacterEventHistory } from "@narrative-chess/narrative-engine";
-import type { CityBoard, PieceKind, Square } from "@narrative-chess/content-schema";
+import type { CityBoard, GameSnapshot, PieceKind, Square } from "@narrative-chess/content-schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -77,6 +77,7 @@ import {
 } from "./fileSystemAccess";
 import {
   appendActiveGameMoveInSupabase,
+  formatTimeControlLabel,
   loadActiveGameSessionFromSupabase,
   type TimeControlKind
 } from "./activeGames";
@@ -168,7 +169,13 @@ type ActiveMultiplayerSession = {
   currentTurn: "white" | "black" | null;
   syncedMoveCount: number;
   timeControlKind: TimeControlKind;
+  baseSeconds: number | null;
+  incrementSeconds: number;
+  moveDeadlineSeconds: number | null;
   deadlineAt: string | null;
+  whiteSecondsRemaining: number | null;
+  blackSecondsRemaining: number | null;
+  turnStartedAt: string | null;
   result: "white" | "black" | "draw" | "abandoned" | "cancelled" | null;
   whiteRatingDelta: number | null;
   blackRatingDelta: number | null;
@@ -266,6 +273,19 @@ function multiplayerResultLabel(result: ActiveMultiplayerSession["result"]) {
   return "In progress";
 }
 
+function formatClockSeconds(totalSeconds: number) {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
 export default function App() {
   const [page, setPage] = useState<AppPage>(() => getInitialPage());
   const [referenceGamesLibrary, setReferenceGamesLibrary] = useState<ReferenceGameLibrary>(() =>
@@ -329,6 +349,7 @@ export default function App() {
   const [isRefreshingActiveMultiplayerSession, setIsRefreshingActiveMultiplayerSession] = useState(false);
   const [activeMultiplayerRefreshError, setActiveMultiplayerRefreshError] = useState<string | null>(null);
   const [activeMultiplayerLastRefreshAt, setActiveMultiplayerLastRefreshAt] = useState<string | null>(null);
+  const [clockNow, setClockNow] = useState(() => Date.now());
   const activeMultiplayerMoveSyncRef = useRef<string | null>(null);
   const handleCityBoardDraftChange = useCallback((board: CityBoard) => {
     if (useSupabasePublishedCities) {
@@ -368,7 +389,8 @@ export default function App() {
   const isActiveMultiplayerSessionLoaded = activeMultiplayerSession !== null;
   const isActiveMultiplayerTurn =
     activeMultiplayerSession?.status === "active" &&
-    activeMultiplayerSession.currentTurn === activeMultiplayerSession.yourSide;
+    activeMultiplayerSession.currentTurn === activeMultiplayerSession.yourSide &&
+    !isSyncingActiveMultiplayerMove;
   const visiblePageOptions = useMemo(
     () =>
       effectiveRole === "player"
@@ -665,6 +687,19 @@ export default function App() {
       )
     );
   }, [workspaceLayout.collapsed]);
+  const canCommitActiveMultiplayerMove = useCallback((nextSnapshot: GameSnapshot) => {
+    if (!activeMultiplayerSession) {
+      return true;
+    }
+
+    return (
+      activeMultiplayerSession.status === "active" &&
+      activeMultiplayerSession.currentTurn === activeMultiplayerSession.yourSide &&
+      nextSnapshot.moveHistory.length <= activeMultiplayerSession.syncedMoveCount &&
+      !isSyncingActiveMultiplayerMove
+    );
+  }, [activeMultiplayerSession, isSyncingActiveMultiplayerMove]);
+
   const {
     snapshot,
     timelineKey,
@@ -694,7 +729,8 @@ export default function App() {
   } = useChessMatch({
     roleCatalog,
     moveInteractionLocked: isActiveMultiplayerSessionLoaded && !isActiveMultiplayerTurn,
-    localControlsLocked: isActiveMultiplayerSessionLoaded
+    localControlsLocked: isActiveMultiplayerSessionLoaded,
+    canCommitLocalMove: canCommitActiveMultiplayerMove
   });
   const handleLoadActiveMultiplayerGame = useCallback(async (gameId: string) => {
     try {
@@ -723,7 +759,13 @@ export default function App() {
         currentTurn: session.currentTurn,
         syncedMoveCount: session.syncedMoveCount,
         timeControlKind: session.timeControlKind,
+        baseSeconds: session.baseSeconds,
+        incrementSeconds: session.incrementSeconds,
+        moveDeadlineSeconds: session.moveDeadlineSeconds,
         deadlineAt: session.deadlineAt,
+        whiteSecondsRemaining: session.whiteSecondsRemaining,
+        blackSecondsRemaining: session.blackSecondsRemaining,
+        turnStartedAt: session.turnStartedAt,
         result: session.result,
         whiteRatingDelta: session.whiteRatingDelta,
         blackRatingDelta: session.blackRatingDelta
@@ -763,6 +805,9 @@ export default function App() {
               currentTurn: session.currentTurn,
               syncedMoveCount: Math.max(current.syncedMoveCount, session.syncedMoveCount),
               deadlineAt: session.deadlineAt,
+              whiteSecondsRemaining: session.whiteSecondsRemaining,
+              blackSecondsRemaining: session.blackSecondsRemaining,
+              turnStartedAt: session.turnStartedAt,
               result: session.result,
               whiteRatingDelta: session.whiteRatingDelta,
               blackRatingDelta: session.blackRatingDelta
@@ -795,6 +840,21 @@ export default function App() {
       window.clearInterval(intervalId);
     };
   }, [activeMultiplayerSession, isSyncingActiveMultiplayerMove, refreshLoadedActiveMultiplayerGame]);
+
+  useEffect(() => {
+    if (!activeMultiplayerSession) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setClockNow(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [activeMultiplayerSession]);
+
   const motionPlayhead = useMovePlayhead({
     targetPly: selectedPly,
     totalPlies,
@@ -841,6 +901,7 @@ export default function App() {
                 status: result.status,
                 currentTurn: result.currentTurn,
                 deadlineAt: result.deadlineAt,
+                turnStartedAt: result.status === "active" ? new Date().toISOString() : null,
                 syncedMoveCount: result.nextPlyNumber,
                 result: result.result,
                 whiteRatingDelta: result.whiteRatingDelta,
@@ -877,6 +938,9 @@ export default function App() {
 
   const status = snapshot.status;
   const moveHistory = historyMoves;
+  const hasPendingActiveMultiplayerMove =
+    activeMultiplayerSession !== null &&
+    snapshot.moveHistory.length > activeMultiplayerSession.syncedMoveCount;
   const eventByMoveId = new Map(historyEvents.map((event) => [event.moveId, event] as const));
   const selectedMove = selectedPly > 0 ? historyMoves[selectedPly - 1] ?? null : null;
   const selectedEvent = selectedMove ? eventByMoveId.get(selectedMove.id) ?? null : null;
@@ -909,11 +973,69 @@ export default function App() {
     referenceGamesLibrary[0] ??
     null;
   const hasActiveGame = isStudyMode || totalPlies > 0;
+  const headerTurnValue =
+    activeMultiplayerSession?.status === "active" && activeMultiplayerSession.currentTurn
+      ? activeMultiplayerSession.currentTurn === activeMultiplayerSession.yourSide
+        ? hasPendingActiveMultiplayerMove || isSyncingActiveMultiplayerMove
+          ? "Syncing move"
+          : "Your turn"
+        : `${turnLabel(activeMultiplayerSession.currentTurn)} turn`
+      : turnLabel(status.turn);
+  const activeMultiplayerClockSeconds = (() => {
+    if (!activeMultiplayerSession || activeMultiplayerSession.status !== "active") {
+      return null;
+    }
+
+    if (activeMultiplayerSession.timeControlKind === "live_clock") {
+      const currentTurn = activeMultiplayerSession.currentTurn;
+      const storedSeconds =
+        currentTurn === "white"
+          ? activeMultiplayerSession.whiteSecondsRemaining
+          : currentTurn === "black"
+            ? activeMultiplayerSession.blackSecondsRemaining
+            : null;
+      if (storedSeconds === null) {
+        return null;
+      }
+
+      const turnStartedAtMs = activeMultiplayerSession.turnStartedAt
+        ? Date.parse(activeMultiplayerSession.turnStartedAt)
+        : Number.NaN;
+      const elapsedSeconds = Number.isFinite(turnStartedAtMs)
+        ? Math.max(0, Math.floor((clockNow - turnStartedAtMs) / 1000))
+        : 0;
+
+      return Math.max(0, storedSeconds - elapsedSeconds);
+    }
+
+    if (!activeMultiplayerSession.deadlineAt) {
+      return null;
+    }
+
+    const deadlineAtMs = Date.parse(activeMultiplayerSession.deadlineAt);
+    if (!Number.isFinite(deadlineAtMs)) {
+      return null;
+    }
+
+    return Math.max(0, Math.ceil((deadlineAtMs - clockNow) / 1000));
+  })();
+  const multiplayerTimeValue = activeMultiplayerSession
+    ? activeMultiplayerClockSeconds !== null
+      ? formatClockSeconds(activeMultiplayerClockSeconds)
+      : formatTimeControlLabel({
+          timeControlKind: activeMultiplayerSession.timeControlKind,
+          baseSeconds: activeMultiplayerSession.baseSeconds,
+          incrementSeconds: activeMultiplayerSession.incrementSeconds,
+          moveDeadlineSeconds: activeMultiplayerSession.moveDeadlineSeconds
+        })
+    : null;
   const multiplayerStatusValue = activeMultiplayerSession
     ? activeMultiplayerSession.status === "completed"
       ? multiplayerResultLabel(activeMultiplayerSession.result)
       : activeMultiplayerSession.status === "active"
-        ? isActiveMultiplayerTurn
+        ? hasPendingActiveMultiplayerMove || isSyncingActiveMultiplayerMove
+          ? "Syncing"
+          : activeMultiplayerSession.currentTurn === activeMultiplayerSession.yourSide
           ? "Your turn"
           : "Waiting"
         : activeMultiplayerSession.status === "invited"
@@ -2036,7 +2158,7 @@ export default function App() {
               >
                 <div className="app-header__status-card">
                   <span className="app-header__status-label">Turn</span>
-                  <strong className="app-header__status-value">{turnLabel(status.turn)}</strong>
+                  <strong className="app-header__status-value">{headerTurnValue}</strong>
                 </div>
                 <div
                   className={[
@@ -2059,8 +2181,16 @@ export default function App() {
                 </div>
                 {activeMultiplayerSession ? (
                   <div className="app-header__status-card">
-                    <span className="app-header__status-label">Multiplayer</span>
+                    <span className="app-header__status-label">Online</span>
                     <strong className="app-header__status-value">{multiplayerStatusValue}</strong>
+                  </div>
+                ) : null}
+                {activeMultiplayerSession && multiplayerTimeValue ? (
+                  <div className="app-header__status-card">
+                    <span className="app-header__status-label">
+                      {activeMultiplayerSession.timeControlKind === "live_clock" ? "Clock" : "Due"}
+                    </span>
+                    <strong className="app-header__status-value">{multiplayerTimeValue}</strong>
                   </div>
                 ) : null}
                 {activeMultiplayerSession ? (

@@ -176,6 +176,16 @@ function activeGameRatingDelta(game: ActiveGameRecord) {
   return game.yourSide === "white" ? game.whiteRatingDelta : game.yourSide === "black" ? game.blackRatingDelta : null;
 }
 
+function activeGameTimeNote(game: ActiveGameRecord) {
+  if (game.status !== "active" || !game.deadlineAt) {
+    return `Updated ${formatGameTimestamp(game.lastMoveAt ?? game.updatedAt)}`;
+  }
+
+  return game.timeControlKind === "live_clock"
+    ? `Clock expires ${formatGameTimestamp(game.deadlineAt)}`
+    : `Move due ${formatGameTimestamp(game.deadlineAt)}`;
+}
+
 // Note: RecentGamesPanel does not wrap itself in <Panel> because App.tsx already
 // renders it inside <Panel title="Games">. Adding another Panel here would
 // double-nest the card chrome.
@@ -570,11 +580,7 @@ export function RecentGamesPanel({
                             moveDeadlineSeconds: game.moveDeadlineSeconds
                           })} · {game.rated ? "Rated" : "Casual"} · Elo {game.opponentEloRating}
                         </p>
-                        <p className="recent-games-active__entry-meta">
-                          {game.deadlineAt && game.status === "active"
-                            ? `Deadline ${formatGameTimestamp(game.deadlineAt)}`
-                            : `Updated ${formatGameTimestamp(game.lastMoveAt ?? game.updatedAt)}`}
-                        </p>
+                        <p className="recent-games-active__entry-meta">{activeGameTimeNote(game)}</p>
                       </div>
                       {game.isIncomingInvite ? (
                         <div className="recent-games-active__entry-actions">

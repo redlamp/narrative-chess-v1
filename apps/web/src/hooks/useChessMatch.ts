@@ -42,6 +42,7 @@ type UseChessMatchOptions = {
   roleCatalog: RoleCatalog;
   moveInteractionLocked?: boolean;
   localControlsLocked?: boolean;
+  canCommitLocalMove?: (snapshot: GameSnapshot) => boolean;
 };
 
 type StudyReplay = {
@@ -124,7 +125,8 @@ function buildLocalTimelineSnapshots(snapshot: GameSnapshot) {
 export function useChessMatch({
   roleCatalog,
   moveInteractionLocked = false,
-  localControlsLocked = false
+  localControlsLocked = false,
+  canCommitLocalMove
 }: UseChessMatchOptions) {
   const [localSnapshot, setLocalSnapshot] = useState<GameSnapshot>(() => createSnapshot(roleCatalog));
   const [studyReplay, setStudyReplay] = useState<StudyReplay | null>(null);
@@ -260,6 +262,10 @@ export function useChessMatch({
   };
 
   const commitMove = (from: Square, to: Square) => {
+    if (canCommitLocalMove && !canCommitLocalMove(snapshot)) {
+      return false;
+    }
+
     const movingPiece = getPieceAtSquare(snapshot, from);
     if (!movingPiece) {
       return false;
