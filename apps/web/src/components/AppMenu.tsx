@@ -215,7 +215,7 @@ export function AppMenu({
               <h3 className="app-menu__panel-title">Display</h3>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid gap-2">
               <Button
                 type="button"
                 variant={isLayoutModeActive ? "secondary" : "outline"}
@@ -235,6 +235,27 @@ export function AppMenu({
                 {theme === "dark" ? <Sun data-icon="inline-start" /> : <Moon data-icon="inline-start" />}
                 {theme === "dark" ? "Light theme" : "Dark theme"}
               </Button>
+            </div>
+
+            <div className="app-menu__panel-section">
+              <h3 className="app-menu__panel-title">Highlight color</h3>
+            </div>
+
+            <div className="app-menu__color-swatches" role="group" aria-label="Highlight color">
+              {highlightColorOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={[
+                    "app-menu__color-swatch",
+                    highlightColor === option.id ? "app-menu__color-swatch--active" : ""
+                  ].filter(Boolean).join(" ")}
+                  style={{ backgroundColor: option.hex }}
+                  onClick={() => onHighlightColorChange(option.id)}
+                  aria-label={option.label}
+                  aria-pressed={highlightColor === option.id}
+                />
+              ))}
             </div>
 
             <div className="app-menu__panel-section">
@@ -269,27 +290,6 @@ export function AppMenu({
                 <Save data-icon="inline-start" />
                 {isSavingEverything ? "Saving..." : "Save"}
               </Button>
-            </div>
-
-            <div className="app-menu__panel-section">
-              <h3 className="app-menu__panel-title">Highlight color</h3>
-            </div>
-
-            <div className="app-menu__color-swatches" role="group" aria-label="Highlight color">
-              {highlightColorOptions.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  className={[
-                    "app-menu__color-swatch",
-                    highlightColor === option.id ? "app-menu__color-swatch--active" : ""
-                  ].filter(Boolean).join(" ")}
-                  style={{ backgroundColor: option.hex }}
-                  onClick={() => onHighlightColorChange(option.id)}
-                  aria-label={option.label}
-                  aria-pressed={highlightColor === option.id}
-                />
-              ))}
             </div>
 
             <div className="app-menu__panel-section">
