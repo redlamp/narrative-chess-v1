@@ -397,6 +397,13 @@ export default function App() {
     activeMultiplayerSession?.status === "active" &&
     activeMultiplayerSession.currentTurn === activeMultiplayerSession.yourSide &&
     !isSyncingActiveMultiplayerMove;
+  const activeMultiplayerMoveSide =
+    !activeMultiplayerSession
+      ? undefined
+      : isActiveMultiplayerTurn &&
+          (activeMultiplayerSession.yourSide === "white" || activeMultiplayerSession.yourSide === "black")
+        ? activeMultiplayerSession.yourSide
+        : null;
   const visiblePageOptions = useMemo(
     () =>
       effectiveRole === "player"
@@ -736,6 +743,7 @@ export default function App() {
     roleCatalog,
     moveInteractionLocked: isActiveMultiplayerSessionLoaded && !isActiveMultiplayerTurn,
     localControlsLocked: isActiveMultiplayerSessionLoaded,
+    localMoveSide: activeMultiplayerMoveSide,
     canCommitLocalMove: canCommitActiveMultiplayerMove
   });
   const handleLoadActiveMultiplayerGame = useCallback(async (gameId: string) => {

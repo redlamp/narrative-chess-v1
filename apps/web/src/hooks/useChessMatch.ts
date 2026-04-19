@@ -18,6 +18,7 @@ import {
 import type {
   GameSnapshot,
   PieceState,
+  PieceSide,
   ReferenceGame,
   Square
 } from "@narrative-chess/content-schema";
@@ -42,6 +43,7 @@ type UseChessMatchOptions = {
   roleCatalog: RoleCatalog;
   moveInteractionLocked?: boolean;
   localControlsLocked?: boolean;
+  localMoveSide?: PieceSide | null;
   canCommitLocalMove?: (snapshot: GameSnapshot) => boolean;
 };
 
@@ -126,6 +128,7 @@ export function useChessMatch({
   roleCatalog,
   moveInteractionLocked = false,
   localControlsLocked = false,
+  localMoveSide,
   canCommitLocalMove
 }: UseChessMatchOptions) {
   const [localSnapshot, setLocalSnapshot] = useState<GameSnapshot>(() => createSnapshot(roleCatalog));
@@ -158,7 +161,12 @@ export function useChessMatch({
         limit: 3
       })
     : [];
-  const legalMoves = selectedSquare ? listLegalMoves(snapshot, selectedSquare) : [];
+  const canSelectPieceForLocalMove = (piece: PieceState | null) =>
+    Boolean(piece && (localMoveSide === undefined || piece.side === localMoveSide));
+  const legalMoves =
+    selectedSquare && canSelectPieceForLocalMove(selectedPiece)
+      ? listLegalMoves(snapshot, selectedSquare)
+      : [];
   const canInteractWithCurrentPosition = !canCommitLocalMove || canCommitLocalMove(snapshot);
   const boardSquares = getBoardSquares(snapshot);
   const canUndo = !isStudyMode && !localControlsLocked && localSnapshot.moveHistory.length > 0;
@@ -268,7 +276,7 @@ export function useChessMatch({
     }
 
     const movingPiece = getPieceAtSquare(snapshot, from);
-    if (!movingPiece) {
+    if (!canSelectPieceForLocalMove(movingPiece)) {
       return false;
     }
 
@@ -314,11 +322,11 @@ export function useChessMatch({
 
     const piece = getPieceAtSquare(snapshot, square);
     if (piece) {
-      setSelectedSquare(square);
+      setSelectedSquare(canSelectPieceForLocalMove(piece) ? square : null);
       return;
     }
 
-    setSelectedSquare(square);
+    setSelectedSquare(localMoveSide === undefined ? square : null);
   };
 
   const handleUndo = () => {
