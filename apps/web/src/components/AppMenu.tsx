@@ -3,7 +3,6 @@ import {
   ChevronDown,
   Download,
   LayoutDashboard,
-  LogIn,
   LogOut,
   Menu,
   Moon,
@@ -12,7 +11,6 @@ import {
   Save,
   Sun,
   User,
-  UserPlus,
   X
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +31,7 @@ import {
   TooltipTrigger
 } from "@/components/ui/tooltip";
 import { FloatingActionNotice, type FloatingActionNoticeState } from "./FloatingActionNotice";
+import { PasswordAuthForm } from "./PasswordAuthForm";
 import { highlightColorOptions, type AppSettings, type HighlightColor } from "../appSettings";
 import type { AppRole } from "../auth";
 
@@ -380,8 +379,6 @@ export function UserMenu({
   const panelId = useId();
   const titleId = useId();
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const [authEmail, setAuthEmail] = useState("");
-  const [authPassword, setAuthPassword] = useState("");
   const [profileUsername, setProfileUsername] = useState(accountUsername ?? "");
   const [profileDisplayName, setProfileDisplayName] = useState(accountDisplayName ?? "");
   const [authNotice, setAuthNotice] = useState<AuthNotice | null>(null);
@@ -404,67 +401,10 @@ export function UserMenu({
     setProfileDisplayName(accountDisplayName ?? "");
   }, [accountDisplayName, accountUsername]);
 
-  const getAuthInput = () => {
-    const email = authEmail.trim();
-    const password = authPassword;
-    if (!email || !password) {
-      setAuthNotice({
-        tone: "error",
-        text: "Email and password both needed."
-      });
-      return null;
-    }
-
-    return { email, password };
-  };
-
-  const handlePasswordSignIn = async () => {
-    const input = getAuthInput();
-    if (!input) {
-      return;
-    }
-
-    try {
-      await onSignInWithPassword(input.email, input.password);
-      setAuthPassword("");
-      setAuthNotice(null);
-    } catch (error) {
-      setAuthNotice({
-        tone: "error",
-        text: error instanceof Error ? error.message : "Sign-in failed."
-      });
-    }
-  };
-
-  const handlePasswordSignUp = async () => {
-    const input = getAuthInput();
-    if (!input) {
-      return;
-    }
-
-    try {
-      const message = await onSignUpWithPassword(input.email, input.password);
-      setAuthPassword("");
-      setAuthNotice({
-        tone: "success",
-        text: message
-      });
-    } catch (error) {
-      setAuthNotice({
-        tone: "error",
-        text: error instanceof Error ? error.message : "Account creation failed."
-      });
-    }
-  };
-
   const handleAccountSignOut = async () => {
     try {
-      const message = await onSignOut();
-      setAuthPassword("");
-      setAuthNotice({
-        tone: "success",
-        text: message
-      });
+      await onSignOut();
+      setAuthNotice(null);
     } catch (error) {
       setAuthNotice({
         tone: "error",
@@ -642,51 +582,12 @@ export function UserMenu({
                   </Button>
                 </>
               ) : (
-                <div className="col-span-full grid gap-2">
-                  <div className="grid gap-2">
-                    <label className="grid gap-1.5">
-                      <span className="text-xs font-medium text-muted-foreground">Email</span>
-                      <Input
-                        type="email"
-                        autoComplete="email"
-                        placeholder="Email"
-                        value={authEmail}
-                        onChange={(event) => setAuthEmail(event.target.value)}
-                        disabled={isAuthBusy}
-                      />
-                    </label>
-                    <label className="grid gap-1.5">
-                      <span className="text-xs font-medium text-muted-foreground">Password</span>
-                      <Input
-                        type="password"
-                        autoComplete="current-password"
-                        placeholder="Password"
-                        value={authPassword}
-                        onChange={(event) => setAuthPassword(event.target.value)}
-                        disabled={isAuthBusy}
-                      />
-                    </label>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handlePasswordSignIn}
-                      disabled={isAuthBusy}
-                    >
-                      <LogIn data-icon="inline-start" />
-                      {isAuthBusy ? "Working..." : "Sign in"}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={handlePasswordSignUp}
-                      disabled={isAuthBusy}
-                    >
-                      <UserPlus data-icon="inline-start" />
-                      {isAuthBusy ? "Working..." : "Create account"}
-                    </Button>
-                  </div>
+                <div className="col-span-full">
+                  <PasswordAuthForm
+                    isLoading={isAuthBusy}
+                    onSignInWithPassword={onSignInWithPassword}
+                    onSignUpWithPassword={onSignUpWithPassword}
+                  />
                 </div>
               )}
             </div>
