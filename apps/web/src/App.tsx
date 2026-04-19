@@ -1521,8 +1521,8 @@ export default function App() {
   }, [settings.theme]);
 
   useEffect(() => {
-    applyHighlightColor(settings.highlightColor);
-  }, [settings.highlightColor]);
+    applyHighlightColor(settings.highlightColor, settings.customHighlightColor);
+  }, [settings.customHighlightColor, settings.highlightColor]);
 
   useEffect(() => {
     applyPieceStyleSheet(pieceStyleSheet);
@@ -2716,6 +2716,10 @@ export default function App() {
               highlightColor={settings.highlightColor}
               onHighlightColorChange={(color: HighlightColor) =>
                 setSettings((s) => ({ ...s, highlightColor: color }))
+              }
+              customHighlightColor={settings.customHighlightColor}
+              onCustomHighlightColorChange={(color: string) =>
+                setSettings((s) => ({ ...s, customHighlightColor: color }))
               }
               playCitySourceLabel={playCitySourceLabel}
               playCityPreviewModeLabel={

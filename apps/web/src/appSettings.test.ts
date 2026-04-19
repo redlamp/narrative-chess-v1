@@ -13,7 +13,8 @@ describe("appSettings", () => {
       showDistrictLabels: true,
       showRecentCharacterActions: true,
       showLayoutGrid: true,
-      highlightColor: "blue"
+      highlightColor: "blue",
+      customHighlightColor: "#2563eb"
     });
   });
 
@@ -32,7 +33,20 @@ describe("appSettings", () => {
       showDistrictLabels: true,
       showRecentCharacterActions: true,
       showLayoutGrid: true,
-      highlightColor: "blue"
+      highlightColor: "blue",
+      customHighlightColor: "#2563eb"
+    });
+  });
+
+  it("normalizes a persisted custom highlight color", () => {
+    expect(
+      normalizeAppSettings({
+        highlightColor: "custom",
+        customHighlightColor: "#D946EF"
+      })
+    ).toMatchObject({
+      highlightColor: "custom",
+      customHighlightColor: "#d946ef"
     });
   });
 });

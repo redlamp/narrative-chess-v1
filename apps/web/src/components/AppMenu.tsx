@@ -7,6 +7,7 @@ import {
   LogOut,
   Menu,
   Moon,
+  Palette,
   RotateCcw,
   Save,
   Sun,
@@ -52,6 +53,8 @@ type AppMenuProps = {
   onDismissSaveEverythingNotice: () => void;
   highlightColor: HighlightColor;
   onHighlightColorChange: (color: HighlightColor) => void;
+  customHighlightColor: string;
+  onCustomHighlightColorChange: (color: string) => void;
   playCitySourceLabel: string;
   playCityPreviewModeLabel: string;
   playCityEditionLabel: string | null;
@@ -150,6 +153,8 @@ export function AppMenu({
   onDismissSaveEverythingNotice,
   highlightColor,
   onHighlightColorChange,
+  customHighlightColor,
+  onCustomHighlightColorChange,
   playCitySourceLabel,
   playCityPreviewModeLabel,
   playCityEditionLabel,
@@ -158,6 +163,7 @@ export function AppMenu({
   const panelId = useId();
   const titleId = useId();
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const customColorInputRef = useRef<HTMLInputElement | null>(null);
   const [isPanelHovered, setIsPanelHovered] = useState(false);
   const nextTheme = theme === "dark" ? "light" : "dark";
 
@@ -237,25 +243,48 @@ export function AppMenu({
               </Button>
             </div>
 
-            <div className="app-menu__panel-section">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="app-menu__panel-title">Highlight color</h3>
-            </div>
-
-            <div className="app-menu__color-swatches" role="group" aria-label="Highlight color">
-              {highlightColorOptions.map((option) => (
-                <button
-                  key={option.id}
+              <div className="app-menu__color-swatches" role="group" aria-label="Highlight color">
+                {highlightColorOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={[
+                      "app-menu__color-swatch",
+                      highlightColor === option.id ? "app-menu__color-swatch--active" : ""
+                    ].filter(Boolean).join(" ")}
+                    style={{ backgroundColor: option.hex }}
+                    onClick={() => onHighlightColorChange(option.id)}
+                    aria-label={option.label}
+                    aria-pressed={highlightColor === option.id}
+                  />
+                ))}
+                <Button
                   type="button"
-                  className={[
-                    "app-menu__color-swatch",
-                    highlightColor === option.id ? "app-menu__color-swatch--active" : ""
-                  ].filter(Boolean).join(" ")}
-                  style={{ backgroundColor: option.hex }}
-                  onClick={() => onHighlightColorChange(option.id)}
-                  aria-label={option.label}
-                  aria-pressed={highlightColor === option.id}
+                  variant={highlightColor === "custom" ? "secondary" : "outline"}
+                  size="icon-sm"
+                  aria-label="Pick custom highlight color"
+                  aria-pressed={highlightColor === "custom"}
+                  onClick={() => {
+                    onHighlightColorChange("custom");
+                    customColorInputRef.current?.click();
+                  }}
+                >
+                  <Palette />
+                </Button>
+                <input
+                  ref={customColorInputRef}
+                  type="color"
+                  className="sr-only"
+                  value={customHighlightColor}
+                  onChange={(event) => {
+                    onCustomHighlightColorChange(event.currentTarget.value);
+                    onHighlightColorChange("custom");
+                  }}
+                  aria-label="Custom highlight color"
                 />
-              ))}
+              </div>
             </div>
 
             <div className="app-menu__panel-section">

@@ -1,4 +1,4 @@
-export type HighlightColor = "red" | "yellow" | "orange" | "green" | "blue" | "purple" | "grey";
+export type HighlightColor = "red" | "yellow" | "orange" | "green" | "blue" | "purple" | "grey" | "custom";
 
 export type HighlightColorOption = {
   id: HighlightColor;
@@ -24,6 +24,7 @@ export type AppSettings = {
   showRecentCharacterActions: boolean;
   showLayoutGrid: boolean;
   highlightColor: HighlightColor;
+  customHighlightColor: string;
 };
 
 const storageKey = "narrative-chess:app-settings:v1";
@@ -35,7 +36,8 @@ const defaultAppSettings: AppSettings = {
   showDistrictLabels: true,
   showRecentCharacterActions: true,
   showLayoutGrid: true,
-  highlightColor: "blue"
+  highlightColor: "blue",
+  customHighlightColor: "#2563eb"
 };
 
 function getStorage() {
@@ -80,13 +82,23 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       typeof candidate.showLayoutGrid === "boolean"
         ? candidate.showLayoutGrid
         : defaultAppSettings.showLayoutGrid,
-    highlightColor: normalizeHighlightColor(candidate.highlightColor)
+    highlightColor: normalizeHighlightColor(candidate.highlightColor),
+    customHighlightColor: normalizeCustomHighlightColor(candidate.customHighlightColor)
   };
 }
 
 export function normalizeHighlightColor(value: unknown): HighlightColor {
-  const valid: HighlightColor[] = ["red", "yellow", "orange", "green", "blue", "purple", "grey"];
+  const valid: HighlightColor[] = ["red", "yellow", "orange", "green", "blue", "purple", "grey", "custom"];
   return valid.includes(value as HighlightColor) ? (value as HighlightColor) : "blue";
+}
+
+export function normalizeCustomHighlightColor(value: unknown) {
+  if (typeof value !== "string") {
+    return defaultAppSettings.customHighlightColor;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return /^#[0-9a-f]{6}$/.test(normalized) ? normalized : defaultAppSettings.customHighlightColor;
 }
 
 export function applyAppTheme(theme: AppSettings["theme"]) {
@@ -99,13 +111,13 @@ export function applyAppTheme(theme: AppSettings["theme"]) {
   document.documentElement.style.colorScheme = normalizedTheme;
 }
 
-export function applyHighlightColor(color: HighlightColor) {
+export function applyHighlightColor(color: HighlightColor, customColor?: string) {
   if (typeof document === "undefined") {
     return;
   }
 
   const option = highlightColorOptions.find((o) => o.id === color);
-  const hex = option?.hex ?? "#2563eb";
+  const hex = color === "custom" ? normalizeCustomHighlightColor(customColor) : option?.hex ?? "#2563eb";
   document.documentElement.style.setProperty("--selection", hex);
   document.documentElement.style.setProperty("--ring", hex);
 }
