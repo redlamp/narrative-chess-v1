@@ -95,10 +95,10 @@ Open follow-up: inserted draft rows still rely on `cityBoards.ts` supplying `cre
 - `20260420200000_consolidate_and_optimize_rls_policies.sql` wraps `auth.uid()` in `(select auth.uid())` inside every affected policy and removes duplicate permissive SELECT policies, addressing `auth_rls_initplan` + `multiple_permissive_policies` performance lints.
 - `20260420210000_add_missing_foreign_key_indexes.sql` adds covering indexes on `city_versions.created_by`, `game_moves.user_id`, `game_threads.city_edition_id`, `game_threads.winner_user_id`, and `user_saved_matches.user_id`.
 
-### Still Open
+### Deferred By Decision
 
-- Auth leaked-password protection (HIBP) is still disabled. Toggle `Enable leaked password protection` under Supabase Auth → Settings in the dashboard; there is no SQL knob for it.
-- Seven indexes are flagged as unused (`game_threads_status_updated_idx`, `game_threads_created_by_updated_idx`, `game_moves_game_created_idx`, `game_threads_deadline_idx`, `game_threads_open_invited_idx`, `game_participants_user_archived_idx`, and the three `city_versions_*` / `city_editions_city_id_idx` indexes). They are cheap to keep during low-traffic prototype phase, drop once production traffic proves them dead.
+- Auth leaked-password protection (HIBP) stays disabled. Supabase gates the feature behind the Pro plan and the project is staying on Free for now; revisit when the plan upgrades. No SQL knob — it toggles under Supabase Auth → Providers → Email in the dashboard.
+- Seven indexes are flagged as unused (`game_threads_status_updated_idx`, `game_threads_created_by_updated_idx`, `game_moves_game_created_idx`, `game_threads_deadline_idx`, `game_threads_open_invited_idx`, `game_participants_user_archived_idx`, and the three `city_versions_*` / `city_editions_city_id_idx` indexes). Cheap to keep during low-traffic prototype phase; drop once production traffic proves them dead.
 
 ## Recommended Hardening
 
