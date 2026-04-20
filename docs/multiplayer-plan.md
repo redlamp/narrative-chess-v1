@@ -309,13 +309,13 @@ Done:
 10. poll/list active, invited, open, and completed games through `list_active_games`
 11. claim timeouts on expired live clocks and missed correspondence deadlines through `claim_game_timeout`
 12. cancel pending direct and open multiplayer invites through `cancel_game_invite`
+13. `Games > Active` auto-polls every 20s and shows a relative "Updated Xs ago" timestamp beside the manual refresh control
 
 Remaining:
 
 1. apply and verify all checked-in migrations in the live Supabase project
-2. improve polling refresh/stale-state UI
-3. add archive affordances so completed or cancelled games can be hidden from `Games > Yours`
-4. subscribe with Realtime after the polling turn loop is stable
+2. add archive affordances so completed or cancelled games can be hidden from `Games > Yours`
+3. subscribe with Realtime after the polling turn loop is stable
 
 ## Deliberate non-goals for first release
 

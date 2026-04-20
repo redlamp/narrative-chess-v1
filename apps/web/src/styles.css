@@ -3853,6 +3853,11 @@ label:has(> .text-sm.font-medium) {
   justify-content: flex-end;
 }
 
+.recent-games-active__refresh-timestamp {
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
 .recent-games-active__composer-header {
   align-items: start;
 }

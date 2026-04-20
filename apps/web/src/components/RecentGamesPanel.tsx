@@ -117,6 +117,27 @@ type ActiveGamesNotice = {
   text: string;
 };
 
+function formatRelativeTimestamp(timestamp: number | null, now: number) {
+  if (timestamp === null) {
+    return "Not synced";
+  }
+
+  const deltaSeconds = Math.max(0, Math.floor((now - timestamp) / 1000));
+  if (deltaSeconds < 5) {
+    return "Updated just now";
+  }
+
+  if (deltaSeconds < 60) {
+    return `Updated ${deltaSeconds}s ago`;
+  }
+
+  if (deltaSeconds < 3600) {
+    return `Updated ${Math.floor(deltaSeconds / 60)}m ago`;
+  }
+
+  return `Updated ${Math.floor(deltaSeconds / 3600)}h ago`;
+}
+
 function formatGameTimestamp(value: string | null) {
   if (!value) {
     return "Just now";
@@ -521,6 +542,7 @@ export function RecentGamesPanel({
   const [claimingGameId, setClaimingGameId] = useState<string | null>(null);
   const [cancellingGameId, setCancellingGameId] = useState<string | null>(null);
   const [clockNow, setClockNow] = useState(() => Date.now());
+  const [lastActiveGamesRefreshAt, setLastActiveGamesRefreshAt] = useState<number | null>(null);
   const [inviteOpponentUsername, setInviteOpponentUsername] = useState("");
   const [inviteCityEditionId, setInviteCityEditionId] = useState(multiplayerCityOptions[0]?.id ?? "");
   const [inviteTimeControlPresetId, setInviteTimeControlPresetId] = useState("deadline-daily");
@@ -642,23 +664,29 @@ export function RecentGamesPanel({
       }) as CSSProperties,
     [yoursListWidthPercent]
   );
-  const refreshActiveGames = useCallback(async () => {
+  const refreshActiveGames = useCallback(async (options?: { silent?: boolean }) => {
     if (!accountEmail) {
       setActiveGames([]);
+      setLastActiveGamesRefreshAt(null);
       return;
     }
 
-    setIsLoadingActiveGames(true);
+    if (!options?.silent) {
+      setIsLoadingActiveGames(true);
+    }
     try {
       const games = await listActiveGamesFromSupabase();
       setActiveGames(games ?? []);
+      setLastActiveGamesRefreshAt(Date.now());
     } catch (error) {
       setActiveGamesNotice({
         tone: "error",
         text: error instanceof Error ? error.message : "Could not load multiplayer games."
       });
     } finally {
-      setIsLoadingActiveGames(false);
+      if (!options?.silent) {
+        setIsLoadingActiveGames(false);
+      }
     }
   }, [accountEmail]);
 
@@ -680,10 +708,24 @@ export function RecentGamesPanel({
   }, [refreshActiveGames]);
 
   useEffect(() => {
+    if (!accountEmail) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshActiveGames({ silent: true });
+    }, 20000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [accountEmail, refreshActiveGames]);
+
+  useEffect(() => {
     const hasDeadline = activeGames.some(
       (game) => game.status === "active" && Boolean(game.deadlineAt)
     );
-    if (!hasDeadline) {
+    if (!hasDeadline && lastActiveGamesRefreshAt === null) {
       return;
     }
 
@@ -694,7 +736,7 @@ export function RecentGamesPanel({
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [activeGames]);
+  }, [activeGames, lastActiveGamesRefreshAt]);
 
   const handleClaimTimeout = useCallback(async (gameId: string) => {
     setClaimingGameId(gameId);
@@ -1067,12 +1109,17 @@ export function RecentGamesPanel({
                   <Plus data-icon="inline-start" />
                   Make Game
                 </Button>
+                <span className="recent-games-active__refresh-timestamp muted" aria-live="polite">
+                  {formatRelativeTimestamp(lastActiveGamesRefreshAt, clockNow)}
+                </span>
                 <Button
                   type="button"
                   variant="outline"
                   size="icon-sm"
                   onClick={() => void refreshActiveGames()}
+                  disabled={isLoadingActiveGames}
                   aria-label="Refresh active games"
+                  title="Refresh active games"
                 >
                   <RefreshCcw />
                 </Button>
