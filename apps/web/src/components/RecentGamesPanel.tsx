@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { ReferenceGame } from "@narrative-chess/content-schema";
 import {
+  cancelGameInviteInSupabase,
   claimGameTimeoutInSupabase,
   createGameInviteInSupabase,
   formatTimeControlLabel,
@@ -272,10 +273,12 @@ type ActiveGameDetailsProps = {
   activeMultiplayerGameId: string | null;
   emptyMessage: string;
   claimingGameId: string | null;
+  cancellingGameId: string | null;
   onJoinOpenGame: (gameId: string) => void;
   onLoadActiveGame: (gameId: string) => void;
   onRespondToInvite: (gameId: string, response: "accept" | "decline") => void;
   onClaimTimeout: (gameId: string) => void;
+  onCancelInvite: (gameId: string) => void;
 };
 
 function ActiveGameDetails({
@@ -283,10 +286,12 @@ function ActiveGameDetails({
   activeMultiplayerGameId,
   emptyMessage,
   claimingGameId,
+  cancellingGameId,
   onJoinOpenGame,
   onLoadActiveGame,
   onRespondToInvite,
-  onClaimTimeout
+  onClaimTimeout,
+  onCancelInvite
 }: ActiveGameDetailsProps) {
   if (!game) {
     return <p className="recent-games-details recent-games-details--empty muted">{emptyMessage}</p>;
@@ -387,6 +392,18 @@ function ActiveGameDetails({
           >
             <Flag data-icon="inline-start" />
             {claimingGameId === game.gameId ? "Claiming..." : "Claim on time"}
+          </Button>
+        ) : null}
+        {game.isOutgoingInvite && game.status === "invited" ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={cancellingGameId === game.gameId}
+            onClick={() => onCancelInvite(game.gameId)}
+          >
+            <X data-icon="inline-start" />
+            {cancellingGameId === game.gameId ? "Cancelling..." : "Cancel invite"}
           </Button>
         ) : null}
         {activeMultiplayerGameId === game.gameId ? <Badge variant="outline">Open</Badge> : null}
@@ -502,6 +519,7 @@ export function RecentGamesPanel({
   const [isMakeGameDialogOpen, setIsMakeGameDialogOpen] = useState(false);
   const [activeGamesNotice, setActiveGamesNotice] = useState<ActiveGamesNotice | null>(null);
   const [claimingGameId, setClaimingGameId] = useState<string | null>(null);
+  const [cancellingGameId, setCancellingGameId] = useState<string | null>(null);
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [inviteOpponentUsername, setInviteOpponentUsername] = useState("");
   const [inviteCityEditionId, setInviteCityEditionId] = useState(multiplayerCityOptions[0]?.id ?? "");
@@ -695,6 +713,26 @@ export function RecentGamesPanel({
       });
     } finally {
       setClaimingGameId(null);
+    }
+  }, [onActiveGameStateChanged, refreshActiveGames]);
+
+  const handleCancelInvite = useCallback(async (gameId: string) => {
+    setCancellingGameId(gameId);
+    try {
+      await cancelGameInviteInSupabase(gameId);
+      setActiveGamesNotice({
+        tone: "success",
+        text: "Invite cancelled."
+      });
+      await refreshActiveGames();
+      onActiveGameStateChanged?.(gameId);
+    } catch (error) {
+      setActiveGamesNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Could not cancel the invite."
+      });
+    } finally {
+      setCancellingGameId(null);
     }
   }, [onActiveGameStateChanged, refreshActiveGames]);
 
@@ -1263,6 +1301,18 @@ export function RecentGamesPanel({
                               {claimingGameId === game.gameId ? "Claiming..." : "Claim on time"}
                             </Button>
                           ) : null}
+                          {game.isOutgoingInvite && game.status === "invited" ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={cancellingGameId === game.gameId}
+                              onClick={() => void handleCancelInvite(game.gameId)}
+                            >
+                              <X data-icon="inline-start" />
+                              {cancellingGameId === game.gameId ? "Cancelling..." : "Cancel"}
+                            </Button>
+                          ) : null}
                         </div>
                       )}
                     </div>
@@ -1312,10 +1362,12 @@ export function RecentGamesPanel({
                 activeMultiplayerGameId={activeMultiplayerGameId}
                 emptyMessage="Select an active game to see match details."
                 claimingGameId={claimingGameId}
+                cancellingGameId={cancellingGameId}
                 onJoinOpenGame={(gameId) => void handleJoinOpenGame(gameId)}
                 onLoadActiveGame={onLoadActiveGame}
                 onRespondToInvite={(gameId, response) => void handleRespondToInvite(gameId, response)}
                 onClaimTimeout={(gameId) => void handleClaimTimeout(gameId)}
+                onCancelInvite={(gameId) => void handleCancelInvite(gameId)}
               />
             </div>
           </div>
@@ -1493,10 +1545,12 @@ export function RecentGamesPanel({
                   activeMultiplayerGameId={activeMultiplayerGameId}
                   emptyMessage="Select a completed multiplayer game."
                   claimingGameId={claimingGameId}
+                  cancellingGameId={cancellingGameId}
                   onJoinOpenGame={(gameId) => void handleJoinOpenGame(gameId)}
                   onLoadActiveGame={onLoadActiveGame}
                   onRespondToInvite={(gameId, response) => void handleRespondToInvite(gameId, response)}
                   onClaimTimeout={(gameId) => void handleClaimTimeout(gameId)}
+                  onCancelInvite={(gameId) => void handleCancelInvite(gameId)}
                 />
               ) : (
                 <SavedMatchDetails

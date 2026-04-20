@@ -383,6 +383,21 @@ export async function joinOpenGameInSupabase(gameId: string): Promise<void> {
   }
 }
 
+export async function cancelGameInviteInSupabase(gameId: string): Promise<void> {
+  const auth = await requireAuthenticatedUser();
+  if (!auth) {
+    throw new Error("Sign in to cancel multiplayer invites.");
+  }
+
+  const { error } = await auth.supabase.rpc("cancel_game_invite", {
+    p_game_id: gameId
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function respondToGameInviteInSupabase(input: {
   gameId: string;
   response: "accept" | "decline";
