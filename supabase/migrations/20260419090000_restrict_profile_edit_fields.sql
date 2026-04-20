@@ -42,7 +42,7 @@ begin
     v_username,
     v_display_name
   )
-  on conflict (profiles.user_id) do update
+  on conflict (user_id) do update
   set
     username = excluded.username,
     display_name = excluded.display_name
