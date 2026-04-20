@@ -3858,6 +3858,12 @@ label:has(> .text-sm.font-medium) {
   white-space: nowrap;
 }
 
+.recent-games-active__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: var(--space-2);
+}
+
 .recent-games-active__composer-header {
   align-items: start;
 }

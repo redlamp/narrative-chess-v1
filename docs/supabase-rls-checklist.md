@@ -39,6 +39,7 @@ RPC access:
 | `activeGames.ts` | `append_game_move` | authenticated active participant, current turn only |
 | `activeGames.ts` | `claim_game_timeout` | authenticated opposing active participant, after `deadline_at` has passed |
 | `activeGames.ts` | `cancel_game_invite` | authenticated invite creator only, while status is `invited` |
+| `activeGames.ts` | `archive_game` / `unarchive_game` | authenticated self-participant only, finished threads only |
 
 ## Confirmed In Checked-In Migrations
 
@@ -54,6 +55,7 @@ RPC access:
 - `append_game_move` is granted only to `authenticated` and validates participant status, game status, side, turn, square format, promotion, and immutable ply ordering before inserting a move.
 - `claim_game_timeout` is granted only to `authenticated`, requires an active participant on the non-current-turn side, and refuses to settle the thread until `deadline_at` has passed; rated settlements reuse the `calculate_elo_delta` path.
 - `cancel_game_invite` is granted only to `authenticated`, only lets the original `created_by` user cancel a thread whose status is still `invited`, and marks the thread cancelled instead of allowing client-side deletion.
+- `archive_game` / `unarchive_game` are granted only to `authenticated`, only affect the caller's own `game_participants.archived_at`, and require the thread to be in a finished state (`completed`, `cancelled`, `abandoned`).
 - `publish_city_version` checks `auth.uid()` and `has_app_role('admin')` before archiving and publishing city versions.
 
 ## Required Before Production Supabase Use

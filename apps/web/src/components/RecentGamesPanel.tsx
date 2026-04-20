@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { ReferenceGame } from "@narrative-chess/content-schema";
 import {
+  archiveGameInSupabase,
   cancelGameInviteInSupabase,
   claimGameTimeoutInSupabase,
   createGameInviteInSupabase,
@@ -9,6 +10,7 @@ import {
   joinOpenGameInSupabase,
   listActiveGamesFromSupabase,
   respondToGameInviteInSupabase,
+  unarchiveGameInSupabase,
   type ActiveGameRecord
 } from "@/activeGames";
 import type { SavedMatchRecord } from "@/savedMatches";
@@ -46,7 +48,7 @@ import {
   AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Check, ExternalLink, FileUp, Flag, Plus, RefreshCcw, Send, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Check, ExternalLink, FileUp, Flag, Plus, RefreshCcw, Send, Trash2, X } from "lucide-react";
 
 type InviteCreatorSide = "white" | "black" | "random";
 
@@ -295,11 +297,13 @@ type ActiveGameDetailsProps = {
   emptyMessage: string;
   claimingGameId: string | null;
   cancellingGameId: string | null;
+  archivingGameId: string | null;
   onJoinOpenGame: (gameId: string) => void;
   onLoadActiveGame: (gameId: string) => void;
   onRespondToInvite: (gameId: string, response: "accept" | "decline") => void;
   onClaimTimeout: (gameId: string) => void;
   onCancelInvite: (gameId: string) => void;
+  onArchiveGame: (gameId: string, archive: boolean) => void;
 };
 
 function ActiveGameDetails({
@@ -308,11 +312,13 @@ function ActiveGameDetails({
   emptyMessage,
   claimingGameId,
   cancellingGameId,
+  archivingGameId,
   onJoinOpenGame,
   onLoadActiveGame,
   onRespondToInvite,
   onClaimTimeout,
-  onCancelInvite
+  onCancelInvite,
+  onArchiveGame
 }: ActiveGameDetailsProps) {
   if (!game) {
     return <p className="recent-games-details recent-games-details--empty muted">{emptyMessage}</p>;
@@ -427,7 +433,33 @@ function ActiveGameDetails({
             {cancellingGameId === game.gameId ? "Cancelling..." : "Cancel invite"}
           </Button>
         ) : null}
+        {(game.status === "completed" || game.status === "cancelled" || game.status === "abandoned") ? (
+          game.archivedAt ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={archivingGameId === game.gameId}
+              onClick={() => onArchiveGame(game.gameId, false)}
+            >
+              <ArchiveRestore data-icon="inline-start" />
+              {archivingGameId === game.gameId ? "Restoring..." : "Restore"}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={archivingGameId === game.gameId}
+              onClick={() => onArchiveGame(game.gameId, true)}
+            >
+              <Archive data-icon="inline-start" />
+              {archivingGameId === game.gameId ? "Archiving..." : "Archive"}
+            </Button>
+          )
+        ) : null}
         {activeMultiplayerGameId === game.gameId ? <Badge variant="outline">Open</Badge> : null}
+        {game.archivedAt ? <Badge variant="outline">Archived</Badge> : null}
       </div>
     </div>
   );
@@ -541,6 +573,8 @@ export function RecentGamesPanel({
   const [activeGamesNotice, setActiveGamesNotice] = useState<ActiveGamesNotice | null>(null);
   const [claimingGameId, setClaimingGameId] = useState<string | null>(null);
   const [cancellingGameId, setCancellingGameId] = useState<string | null>(null);
+  const [archivingGameId, setArchivingGameId] = useState<string | null>(null);
+  const [showArchivedYours, setShowArchivedYours] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [lastActiveGamesRefreshAt, setLastActiveGamesRefreshAt] = useState<number | null>(null);
   const [inviteOpponentUsername, setInviteOpponentUsername] = useState("");
@@ -675,7 +709,7 @@ export function RecentGamesPanel({
       setIsLoadingActiveGames(true);
     }
     try {
-      const games = await listActiveGamesFromSupabase();
+      const games = await listActiveGamesFromSupabase({ includeArchived: showArchivedYours });
       setActiveGames(games ?? []);
       setLastActiveGamesRefreshAt(Date.now());
     } catch (error) {
@@ -688,7 +722,7 @@ export function RecentGamesPanel({
         setIsLoadingActiveGames(false);
       }
     }
-  }, [accountEmail]);
+  }, [accountEmail, showArchivedYours]);
 
   useEffect(() => {
     if (!multiplayerCityOptions.length) {
@@ -777,6 +811,33 @@ export function RecentGamesPanel({
       setCancellingGameId(null);
     }
   }, [onActiveGameStateChanged, refreshActiveGames]);
+
+  const handleArchiveGame = useCallback(async (gameId: string, archive: boolean) => {
+    setArchivingGameId(gameId);
+    try {
+      if (archive) {
+        await archiveGameInSupabase(gameId);
+      } else {
+        await unarchiveGameInSupabase(gameId);
+      }
+      setActiveGamesNotice({
+        tone: "success",
+        text: archive ? "Game archived." : "Game restored."
+      });
+      await refreshActiveGames();
+    } catch (error) {
+      setActiveGamesNotice({
+        tone: "error",
+        text: error instanceof Error
+          ? error.message
+          : archive
+            ? "Could not archive the game."
+            : "Could not restore the game."
+      });
+    } finally {
+      setArchivingGameId(null);
+    }
+  }, [refreshActiveGames]);
 
   const handleCreateInvite = useCallback(async () => {
     if (!accountUsername) {
@@ -1410,11 +1471,13 @@ export function RecentGamesPanel({
                 emptyMessage="Select an active game to see match details."
                 claimingGameId={claimingGameId}
                 cancellingGameId={cancellingGameId}
+                archivingGameId={archivingGameId}
                 onJoinOpenGame={(gameId) => void handleJoinOpenGame(gameId)}
                 onLoadActiveGame={onLoadActiveGame}
                 onRespondToInvite={(gameId, response) => void handleRespondToInvite(gameId, response)}
                 onClaimTimeout={(gameId) => void handleClaimTimeout(gameId)}
                 onCancelInvite={(gameId) => void handleCancelInvite(gameId)}
+                onArchiveGame={(gameId, archive) => void handleArchiveGame(gameId, archive)}
               />
             </div>
           </div>
@@ -1513,7 +1576,18 @@ export function RecentGamesPanel({
       </TabsContent>
 
       <TabsContent value="saved" className="recent-games-content">
-        {yoursGameCount ? (
+        {accountEmail ? (
+          <div className="recent-games-active__toolbar">
+            <label className="recent-games-active__rated">
+              <Checkbox
+                checked={showArchivedYours}
+                onCheckedChange={(checked) => setShowArchivedYours(checked === true)}
+              />
+              <span>Show archived multiplayer games</span>
+            </label>
+          </div>
+        ) : null}
+        {yoursGameCount || showArchivedYours ? (
           <div className="recent-games-split">
             <div ref={yoursSplitContentRef} className="recent-games-split__content" style={yoursSplitStyle}>
               <div className="recent-games-split__list">
@@ -1553,11 +1627,13 @@ export function RecentGamesPanel({
                           onClick={() => setSelectedYoursGameId(`completed:${game.gameId}`)}
                           title={activeGameHeading(game)}
                           description={`${activeGameOpponentLabel(game)} - ${game.cityLabel ?? "Default board"}`}
-                          meta={activeGameResultLabel(game)}
+                          meta={`${activeGameResultLabel(game)}${game.archivedAt ? " · Archived" : ""}`}
                         />
                       ))}
                     </ul>
                   </section>
+                ) : showArchivedYours ? (
+                  <p className="muted">No archived multiplayer games yet.</p>
                 ) : null}
               </div>
               <button
@@ -1593,11 +1669,13 @@ export function RecentGamesPanel({
                   emptyMessage="Select a completed multiplayer game."
                   claimingGameId={claimingGameId}
                   cancellingGameId={cancellingGameId}
+                  archivingGameId={archivingGameId}
                   onJoinOpenGame={(gameId) => void handleJoinOpenGame(gameId)}
                   onLoadActiveGame={onLoadActiveGame}
                   onRespondToInvite={(gameId, response) => void handleRespondToInvite(gameId, response)}
                   onClaimTimeout={(gameId) => void handleClaimTimeout(gameId)}
                   onCancelInvite={(gameId) => void handleCancelInvite(gameId)}
+                  onArchiveGame={(gameId, archive) => void handleArchiveGame(gameId, archive)}
                 />
               ) : (
                 <SavedMatchDetails

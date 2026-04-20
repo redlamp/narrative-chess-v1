@@ -103,6 +103,7 @@ export type ActiveGameRecord = {
   isOutgoingInvite: boolean;
   isTimedOut: boolean;
   canClaimTimeout: boolean;
+  archivedAt: string | null;
 };
 
 export type ActiveGameSession = {
@@ -162,6 +163,7 @@ type ActiveGameRow = {
   is_outgoing_invite: boolean;
   is_timed_out: boolean | null;
   can_claim_timeout: boolean | null;
+  archived_at: string | null;
 };
 
 type ActiveGameSessionThreadRow = {
@@ -229,7 +231,8 @@ function mapActiveGameRow(row: ActiveGameRow): ActiveGameRecord {
     isIncomingInvite: row.is_incoming_invite,
     isOutgoingInvite: row.is_outgoing_invite,
     isTimedOut: row.is_timed_out === true,
-    canClaimTimeout: row.can_claim_timeout === true
+    canClaimTimeout: row.can_claim_timeout === true,
+    archivedAt: row.archived_at ?? null
   };
 }
 
@@ -259,18 +262,46 @@ async function requireAuthenticatedUser() {
   return { supabase, user };
 }
 
-export async function listActiveGamesFromSupabase(): Promise<ActiveGameRecord[] | null> {
+export async function listActiveGamesFromSupabase(options?: {
+  includeArchived?: boolean;
+}): Promise<ActiveGameRecord[] | null> {
   const auth = await requireAuthenticatedUser();
   if (!auth) {
     return null;
   }
 
-  const { data, error } = await auth.supabase.rpc("list_active_games");
+  const { data, error } = await auth.supabase.rpc("list_active_games", {
+    p_include_archived: options?.includeArchived ?? false
+  });
   if (error) {
     throw error;
   }
 
   return ((data ?? []) as ActiveGameRow[]).map(mapActiveGameRow);
+}
+
+export async function archiveGameInSupabase(gameId: string): Promise<void> {
+  const auth = await requireAuthenticatedUser();
+  if (!auth) {
+    throw new Error("Sign in to archive multiplayer games.");
+  }
+
+  const { error } = await auth.supabase.rpc("archive_game", { p_game_id: gameId });
+  if (error) {
+    throw error;
+  }
+}
+
+export async function unarchiveGameInSupabase(gameId: string): Promise<void> {
+  const auth = await requireAuthenticatedUser();
+  if (!auth) {
+    throw new Error("Sign in to unarchive multiplayer games.");
+  }
+
+  const { error } = await auth.supabase.rpc("unarchive_game", { p_game_id: gameId });
+  if (error) {
+    throw error;
+  }
 }
 
 export function getTimeControlPresetById(id: string) {
