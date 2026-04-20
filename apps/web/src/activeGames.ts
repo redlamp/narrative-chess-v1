@@ -603,6 +603,80 @@ export async function loadActiveGameSessionFromSupabase(
   };
 }
 
+export function subscribeToActiveGameMoveInserts(
+  gameId: string,
+  onInsert: () => void
+): () => void {
+  if (!hasSupabaseConfig) {
+    return () => {};
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return () => {};
+  }
+
+  const channel = supabase
+    .channel(`game-moves-${gameId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "game_moves",
+        filter: `game_id=eq.${gameId}`
+      },
+      () => {
+        onInsert();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
+
+export function subscribeToActiveGamesListChanges(onChange: () => void): () => void {
+  if (!hasSupabaseConfig) {
+    return () => {};
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return () => {};
+  }
+
+  const channel = supabase
+    .channel("active-games-list")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "game_threads" },
+      () => {
+        onChange();
+      }
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "game_participants" },
+      () => {
+        onChange();
+      }
+    )
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "game_moves" },
+      () => {
+        onChange();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
+
 export async function appendActiveGameMoveInSupabase(input: {
   gameId: string;
   move: MoveRecord;

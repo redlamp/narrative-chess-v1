@@ -229,11 +229,11 @@ Remaining:
 - revision history + conflict handling
 
 ### Milestone 7 — Multiplayer 🔄 In Progress
-Done: optional Supabase username/profile foundation, game thread/participant/move schema, direct invites, open games, time-control presets, active game list, turn-aware Play loading, server-side move append validation, live-clock state, basic Elo settlement on rated completion, completed games shown in Games > Yours, timeout claims for expired clocks and missed correspondence deadlines via `claim_game_timeout`, cancel path for pending invites via `cancel_game_invite`, auto-polled Games list with a relative refresh timestamp, per-user archive/unarchive for finished multiplayer games, active-game resignation via `resign_game`
+Done: optional Supabase username/profile foundation, game thread/participant/move schema, direct invites, open games, time-control presets, active game list, turn-aware Play loading, server-side move append validation, live-clock state, basic Elo settlement on rated completion, completed games shown in Games > Yours, timeout claims for expired clocks and missed correspondence deadlines via `claim_game_timeout`, cancel path for pending invites via `cancel_game_invite`, auto-polled Games list with a relative refresh timestamp, per-user archive/unarchive for finished multiplayer games, active-game resignation via `resign_game`, Supabase Realtime subscriptions layered over the polling loop for both the loaded Play game and the Games > Active list
 
 Remaining:
-- apply and verify migrations in the live Supabase project before relying on production multiplayer enforcement
-- Realtime subscription after the polling turn loop is stable
+- apply and verify migrations in the live Supabase project before relying on production multiplayer enforcement, including the new realtime publication migration
+- once Realtime is verified in production, consider reducing Play-surface and Games list poll cadence
 
 ### Milestone 8 — Story Artifact Output ⏳ Not Started
 

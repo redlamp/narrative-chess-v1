@@ -96,6 +96,7 @@ import {
   formatTimeControlLabel,
   loadActiveGameSessionFromSupabase,
   resignGameInSupabase,
+  subscribeToActiveGameMoveInserts,
   type TimeControlKind
 } from "./activeGames";
 import {
@@ -911,6 +912,21 @@ export default function App() {
       window.clearInterval(intervalId);
     };
   }, [activeMultiplayerSession, isSyncingActiveMultiplayerMove, refreshLoadedActiveMultiplayerGame]);
+
+  useEffect(() => {
+    if (!activeMultiplayerSession) {
+      return;
+    }
+
+    const unsubscribe = subscribeToActiveGameMoveInserts(
+      activeMultiplayerSession.gameId,
+      () => {
+        void refreshLoadedActiveMultiplayerGame({ silent: true });
+      }
+    );
+
+    return unsubscribe;
+  }, [activeMultiplayerSession, refreshLoadedActiveMultiplayerGame]);
 
   useEffect(() => {
     if (!activeMultiplayerSession) {

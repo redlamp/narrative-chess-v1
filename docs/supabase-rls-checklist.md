@@ -58,6 +58,7 @@ RPC access:
 - `cancel_game_invite` is granted only to `authenticated`, only lets the original `created_by` user cancel a thread whose status is still `invited`, and marks the thread cancelled instead of allowing client-side deletion.
 - `archive_game` / `unarchive_game` are granted only to `authenticated`, only affect the caller's own `game_participants.archived_at`, and require the thread to be in a finished state (`completed`, `cancelled`, `abandoned`).
 - `resign_game` is granted only to `authenticated`, requires an active participant on the white or black side, and refuses to run on threads that are no longer `active`; rated settlements reuse the shared `calculate_elo_delta` path.
+- `20260420180000_add_multiplayer_realtime_publication.sql` adds `game_threads`, `game_participants`, and `game_moves` to the `supabase_realtime` publication. RLS policies still filter the change stream, so subscribers only see rows they can already read.
 - `publish_city_version` checks `auth.uid()` and `has_app_role('admin')` before archiving and publishing city versions.
 
 ## Required Before Production Supabase Use

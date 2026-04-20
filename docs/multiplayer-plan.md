@@ -299,11 +299,12 @@ Done:
 13. `Games > Active` auto-polls every 20s and shows a relative "Updated Xs ago" timestamp beside the manual refresh control
 14. per-user archive/unarchive of finished multiplayer games through `archive_game` and `unarchive_game`, with an include-archived toggle in `Games > Yours`
 15. resign an active multiplayer game from the Play header through `resign_game`, settling Elo if the match is rated
+16. add `supabase_realtime` publication entries for `game_threads`, `game_participants`, and `game_moves`, then subscribe in the Play surface and `Games > Active` list to trigger silent refreshes; polling remains as a safety net
 
 Remaining:
 
-1. apply and verify all checked-in migrations in the live Supabase project
-2. subscribe with Realtime after the polling turn loop is stable
+1. apply and verify all checked-in migrations in the live Supabase project, including the new realtime publication migration
+2. once Realtime is verified in production, consider reducing the Play-surface and Games list poll cadence
 3. fuller tests around active-game session refresh and append failure states
 4. completed-game review filters if the completed list becomes noisy
 

@@ -10,6 +10,7 @@ import {
   joinOpenGameInSupabase,
   listActiveGamesFromSupabase,
   respondToGameInviteInSupabase,
+  subscribeToActiveGamesListChanges,
   unarchiveGameInSupabase,
   type ActiveGameRecord
 } from "@/activeGames";
@@ -753,6 +754,18 @@ export function RecentGamesPanel({
     return () => {
       window.clearInterval(intervalId);
     };
+  }, [accountEmail, refreshActiveGames]);
+
+  useEffect(() => {
+    if (!accountEmail) {
+      return;
+    }
+
+    const unsubscribe = subscribeToActiveGamesListChanges(() => {
+      void refreshActiveGames({ silent: true });
+    });
+
+    return unsubscribe;
   }, [accountEmail, refreshActiveGames]);
 
   useEffect(() => {
