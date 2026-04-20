@@ -1,6 +1,6 @@
 # Multiplayer Plan
 
-Last updated: April 20, 2026
+Last updated: April 20, 2026 (consolidated remaining work from TODO.md)
 
 ## Goal
 
@@ -251,19 +251,6 @@ Need strict ownership rules:
 9. completed games list in `Games > Yours`
 10. creator side choice
 
-Implemented UI status:
-
-1. username claim UI in account details: done
-2. `Games > Active` invite/create state: done
-3. active game list: done
-4. turn indicators: done
-5. accept/decline invite: done
-6. time control badge: done
-7. rated/casual badge: done
-8. result display with Elo delta: done
-9. completed games list in `Games > Yours`: done
-10. creator side choice, including random side: done
-
 ## Current Online Turn Loop
 
 Implemented direction:
@@ -317,6 +304,8 @@ Remaining:
 
 1. apply and verify all checked-in migrations in the live Supabase project
 2. subscribe with Realtime after the polling turn loop is stable
+3. fuller tests around active-game session refresh and append failure states
+4. completed-game review filters if the completed list becomes noisy
 
 ## Deliberate non-goals for first release
 

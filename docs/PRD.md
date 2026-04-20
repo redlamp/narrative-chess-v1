@@ -1,6 +1,6 @@
 # PRD — Narrative Chess
 
-Last Updated: April 20, 2026
+Last Updated: April 20, 2026 (consolidated residual from supabase-migration-plan.md + TODO.md)
 Status: Active prototype, local-first static deployment with optional Supabase-backed account, cloud save, and multiplayer paths
 
 ---
@@ -378,6 +378,10 @@ Recommended sequence:
 - 3D presentation
 - comic/vignette generation
 - heavier backend before data contracts stable
+
+### Open Questions
+- `content/` checked-in role and classic game files: stay part of normal editing workflow, or demote to seed/export/backup once those entities migrate to Supabase like cities did?
+- Public Play: read published only, or let signed-in editors preview drafts on the real Play surface (behind an explicit toggle)?
 
 ---
 
