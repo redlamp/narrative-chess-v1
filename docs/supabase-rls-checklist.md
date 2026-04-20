@@ -73,35 +73,32 @@ Keep this invariant:
 - browser code must not insert/update `profiles` directly;
 - the rating settlement path in `append_game_move` remains the normal writer for Elo changes.
 
-### P0: Version-Control Missing Base Security Objects
+### Resolved: Version-Control Missing Base Security Objects
 
-The checked-in migrations reference objects that are not defined in the local migration set:
+`20260418060000_recover_base_schema.sql` recreates the foundation that was present in the live project but not checked in: the `set_updated_at` trigger function, the `cities`/`city_editions`/`city_versions`/`user_roles` tables with their updated-at triggers and RLS enablement, the `has_app_role`/`bootstrap_first_admin` helpers, and the initial set of RLS policies authored for those tables. The file uses `create ... if not exists` and `drop policy if exists` + `create policy` so it is safe to re-apply against the live project (where the objects already exist) and is all a fresh Supabase needs to bootstrap before the rest of the repo migrations run.
 
-- `cities`
-- `city_editions`
-- `city_versions`
-- `user_roles`
-- `has_app_role`
-- `bootstrap_first_admin`
-- `set_updated_at`
+`20260418185000_fix_calculate_elo_delta_search_path.sql` mirrors the live-only `fix_calculate_elo_delta_search_path` migration so repo and live converge. On fresh setups it pins `search_path = public` on `calculate_elo_delta` right after `add_multiplayer_game_schema` creates it.
 
-Before relying on a fresh Supabase environment, add or recover migrations for these objects and their grants/RLS policies. Until then, the repo cannot fully reproduce or audit the live database security model.
+### Resolved: City Draft RLS Match Editor Roles
 
-### P0: City Draft RLS Must Match Editor Roles
+`20260420200000_consolidate_and_optimize_rls_policies.sql` consolidates `city_versions` SELECT access into one authenticated policy (`status = 'published' OR public.has_app_role('author')`) plus one anon policy (`status = 'published'`), and the existing author-only INSERT/UPDATE policies remain. Draft rows can only be read by authors/admins, and clients still cannot publish directly because `publish_city_version` is the only path that sets `status = 'published'`.
 
-`cityBoards.ts` directly reads and inserts `city_versions` draft rows. The database must enforce:
+Open follow-up: inserted draft rows still rely on `cityBoards.ts` supplying `created_by`. Adding `default auth.uid()` to `city_versions.created_by` or routing draft save through an RPC (e.g. `save_city_draft_version`) would make the caller record automatic.
 
-- published city versions are readable by anonymous or authenticated users only when intended for Play;
-- draft city versions are readable only by author/admin users;
-- draft inserts are allowed only to author/admin users;
-- inserted draft rows record the caller as creator, ideally with `created_by default auth.uid()`;
-- clients cannot insert rows with `status = 'published'` directly.
+### Resolved: Role Reads Are Self-Only With Admin Escape
 
-If those policies become hard to reason about, move draft save into an RPC like `save_city_draft_version`.
+`20260420200000_consolidate_and_optimize_rls_policies.sql` merges the two overlapping `user_roles` SELECT policies into a single `(select auth.uid()) = user_id OR public.has_app_role('admin')` policy. Write access stays on the admin-only INSERT/UPDATE policies defined in the base schema.
 
-### P0: Role Reads Must Be Self-Only And Writes Server-Controlled
+### Recently Applied Advisor Fixes
 
-`auth.ts` reads `user_roles` directly for the current user. The table policy must allow users to read only their own role and must not allow client-side inserts, updates, or deletes. Admin role assignment should happen through reviewed SQL/admin tooling or a narrow admin RPC.
+- `20260420190000_fix_fen_piece_at_search_path.sql` pins `search_path = public` on `fen_piece_at`, closing the `function_search_path_mutable` security lint.
+- `20260420200000_consolidate_and_optimize_rls_policies.sql` wraps `auth.uid()` in `(select auth.uid())` inside every affected policy and removes duplicate permissive SELECT policies, addressing `auth_rls_initplan` + `multiple_permissive_policies` performance lints.
+- `20260420210000_add_missing_foreign_key_indexes.sql` adds covering indexes on `city_versions.created_by`, `game_moves.user_id`, `game_threads.city_edition_id`, `game_threads.winner_user_id`, and `user_saved_matches.user_id`.
+
+### Still Open
+
+- Auth leaked-password protection (HIBP) is still disabled. Toggle `Enable leaked password protection` under Supabase Auth → Settings in the dashboard; there is no SQL knob for it.
+- Seven indexes are flagged as unused (`game_threads_status_updated_idx`, `game_threads_created_by_updated_idx`, `game_moves_game_created_idx`, `game_threads_deadline_idx`, `game_threads_open_invited_idx`, `game_participants_user_archived_idx`, and the three `city_versions_*` / `city_editions_city_id_idx` indexes). They are cheap to keep during low-traffic prototype phase, drop once production traffic proves them dead.
 
 ## Recommended Hardening
 
