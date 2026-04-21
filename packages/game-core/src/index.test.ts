@@ -75,6 +75,26 @@ describe("game-core", () => {
     expect(getBoardSquares(snapshot).filter((cell) => cell.occupant).length).toBe(3);
   });
 
+  it("reports insufficient-material capture as a draw without flagging stalemate", () => {
+    const snapshot = createSnapshotFromFen("4k3/8/8/8/8/8/4q3/4K3 w - - 0 1");
+    const applied = applyMove(snapshot, { from: "e1", to: "e2" });
+
+    expect(applied).not.toBeNull();
+    expect(applied!.nextState.status.outcome).toBe("draw");
+    expect(applied!.nextState.status.isStalemate).toBe(false);
+    expect(applied!.nextState.status.isCheckmate).toBe(false);
+    expect(applied!.move.isStalemate).toBe(false);
+  });
+
+  it("reports 50-move-rule draw via outcome without flagging stalemate", () => {
+    const snapshot = createSnapshotFromFen("4k3/8/8/8/8/8/8/4K3 w - - 99 60");
+    const applied = applyMove(snapshot, { from: "e1", to: "e2" });
+
+    expect(applied).not.toBeNull();
+    expect(applied!.nextState.status.outcome).toBe("draw");
+    expect(applied!.nextState.status.isStalemate).toBe(false);
+  });
+
   it("loads PGN text into a replay timeline", () => {
     const replay = createReplayFromPgn(`
 [Event "Example"]

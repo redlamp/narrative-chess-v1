@@ -93,6 +93,7 @@ import {
 import {
   appendActiveGameMoveInSupabase,
   claimGameTimeoutInSupabase,
+  describeMultiplayerMoveError,
   formatTimeControlLabel,
   loadActiveGameSessionFromSupabase,
   resignGameInSupabase,
@@ -809,56 +810,68 @@ export default function App() {
     }
   }, [loadSnapshot, playCityOptions]);
 
-  const refreshLoadedActiveMultiplayerGame = useCallback(async (options?: { silent?: boolean }) => {
-    if (!activeMultiplayerSession) {
-      return;
-    }
-
-    if (!options?.silent) {
-      setIsRefreshingActiveMultiplayerSession(true);
-    }
-
-    try {
-      const session = await loadActiveGameSessionFromSupabase(activeMultiplayerSession.gameId);
-      if (!session) {
-        setActiveMultiplayerRefreshError("This multiplayer game is no longer available.");
+  const refreshLoadedActiveMultiplayerGame = useCallback(
+    async (options?: { silent?: boolean; forceSnapshot?: boolean; preserveError?: boolean }) => {
+      if (!activeMultiplayerSession) {
         return;
       }
 
-      if (session.syncedMoveCount > activeMultiplayerSession.syncedMoveCount) {
-        loadSnapshot(session.snapshot);
-        activeMultiplayerMoveSyncRef.current = null;
+      if (!options?.silent) {
+        setIsRefreshingActiveMultiplayerSession(true);
       }
 
-      setActiveMultiplayerSession((current) =>
-        current && current.gameId === session.gameId
-          ? {
-              ...current,
-              status: session.status,
-              currentTurn: session.currentTurn,
-              syncedMoveCount: Math.max(current.syncedMoveCount, session.syncedMoveCount),
-              deadlineAt: session.deadlineAt,
-              whiteSecondsRemaining: session.whiteSecondsRemaining,
-              blackSecondsRemaining: session.blackSecondsRemaining,
-              turnStartedAt: session.turnStartedAt,
-              result: session.result,
-              whiteRatingDelta: session.whiteRatingDelta,
-              blackRatingDelta: session.blackRatingDelta
-            }
-          : current
-      );
-      setActiveMultiplayerRefreshError(null);
-      setActiveMultiplayerLastRefreshAt(new Date().toISOString());
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not refresh multiplayer game.";
-      setActiveMultiplayerRefreshError(message);
-      console.warn("[supabase] Could not refresh multiplayer game session.", error);
-    } finally {
-      if (!options?.silent) {
-        setIsRefreshingActiveMultiplayerSession(false);
+      try {
+        const session = await loadActiveGameSessionFromSupabase(activeMultiplayerSession.gameId);
+        if (!session) {
+          setActiveMultiplayerRefreshError("This multiplayer game is no longer available.");
+          return;
+        }
+
+        const shouldReloadSnapshot =
+          session.snapshot !== null &&
+          (options?.forceSnapshot === true ||
+            session.syncedMoveCount > activeMultiplayerSession.syncedMoveCount);
+
+        if (shouldReloadSnapshot && session.snapshot) {
+          loadSnapshot(session.snapshot);
+          activeMultiplayerMoveSyncRef.current = null;
+        }
+
+        setActiveMultiplayerSession((current) =>
+          current && current.gameId === session.gameId
+            ? {
+                ...current,
+                status: session.status,
+                currentTurn: session.currentTurn,
+                syncedMoveCount: options?.forceSnapshot
+                  ? session.syncedMoveCount
+                  : Math.max(current.syncedMoveCount, session.syncedMoveCount),
+                deadlineAt: session.deadlineAt,
+                whiteSecondsRemaining: session.whiteSecondsRemaining,
+                blackSecondsRemaining: session.blackSecondsRemaining,
+                turnStartedAt: session.turnStartedAt,
+                result: session.result,
+                whiteRatingDelta: session.whiteRatingDelta,
+                blackRatingDelta: session.blackRatingDelta
+              }
+            : current
+        );
+        if (!options?.preserveError) {
+          setActiveMultiplayerRefreshError(null);
+        }
+        setActiveMultiplayerLastRefreshAt(new Date().toISOString());
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Could not refresh multiplayer game.";
+        setActiveMultiplayerRefreshError(message);
+        console.warn("[supabase] Could not refresh multiplayer game session.", error);
+      } finally {
+        if (!options?.silent) {
+          setIsRefreshingActiveMultiplayerSession(false);
+        }
       }
-    }
-  }, [activeMultiplayerSession, loadSnapshot]);
+    },
+    [activeMultiplayerSession, loadSnapshot]
+  );
 
   const claimLoadedActiveMultiplayerTimeout = useCallback(async () => {
     if (!activeMultiplayerSession) {
@@ -997,9 +1010,22 @@ export default function App() {
             : current
         );
       })
-      .catch((error) => {
-        if (!cancelled) {
-          console.warn("[supabase] Could not sync multiplayer move.", error);
+      .catch(async (error) => {
+        if (cancelled) {
+          return;
+        }
+        const description = describeMultiplayerMoveError(error);
+        console.warn("[supabase] Could not sync multiplayer move.", error);
+        setActiveMultiplayerRefreshError(description.message);
+        activeMultiplayerMoveSyncRef.current = null;
+        try {
+          await refreshLoadedActiveMultiplayerGame({
+            silent: true,
+            forceSnapshot: true,
+            preserveError: true
+          });
+        } catch (resyncError) {
+          console.warn("[supabase] Resync after failed move also failed.", resyncError);
         }
       })
       .finally(() => {
@@ -1015,6 +1041,7 @@ export default function App() {
     activeMultiplayerSession,
     isStudyMode,
     isSyncingActiveMultiplayerMove,
+    refreshLoadedActiveMultiplayerGame,
     snapshot
   ]);
 

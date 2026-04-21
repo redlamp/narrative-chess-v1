@@ -677,6 +677,13 @@ export function subscribeToActiveGamesListChanges(onChange: () => void): () => v
   };
 }
 
+export function shouldReportMoveAsDraw(move: MoveRecord, snapshot: GameSnapshot): boolean {
+  if (move.isStalemate) {
+    return true;
+  }
+  return snapshot.status.outcome === "draw";
+}
+
 export async function appendActiveGameMoveInSupabase(input: {
   gameId: string;
   move: MoveRecord;
@@ -704,7 +711,7 @@ export async function appendActiveGameMoveInSupabase(input: {
     p_fen_after: input.move.fenAfter,
     p_snapshot_payload: gameSnapshotSchema.parse(input.snapshot),
     p_is_checkmate: input.move.isCheckmate,
-    p_is_stalemate: input.move.isStalemate
+    p_is_stalemate: shouldReportMoveAsDraw(input.move, input.snapshot)
   });
 
   const row = Array.isArray(data) ? data[0] : data;
@@ -721,4 +728,69 @@ export async function appendActiveGameMoveInSupabase(input: {
     whiteRatingDelta: (row.white_rating_delta as number | null) ?? null,
     blackRatingDelta: (row.black_rating_delta as number | null) ?? null
   };
+}
+
+export type MultiplayerMoveErrorKind =
+  | "resync"
+  | "illegal"
+  | "clock"
+  | "unavailable"
+  | "unknown";
+
+export type MultiplayerMoveErrorDescription = {
+  kind: MultiplayerMoveErrorKind;
+  message: string;
+};
+
+export function describeMultiplayerMoveError(error: unknown): MultiplayerMoveErrorDescription {
+  let raw = "";
+  if (error instanceof Error) {
+    raw = error.message;
+  } else if (typeof error === "string") {
+    raw = error;
+  } else if (error && typeof error === "object" && "message" in error) {
+    const candidate = (error as { message: unknown }).message;
+    raw = typeof candidate === "string" ? candidate : "";
+  }
+
+  const text = raw.toLowerCase();
+
+  if (
+    text.includes("it is not your turn") ||
+    text.includes("snapshot is out of sync") ||
+    text.includes("snapshot must include") ||
+    text.includes("snapshot payload") ||
+    text.includes("submitted move side") ||
+    text.includes("submitted move squares") ||
+    text.includes("submitted move notation") ||
+    text.includes("submitted move position") ||
+    text.includes("move history")
+  ) {
+    return { kind: "resync", message: "Board out of sync with the server — refreshing." };
+  }
+
+  if (text.includes("clock expired")) {
+    return {
+      kind: "clock",
+      message: "Your clock ran out before the move could be recorded."
+    };
+  }
+
+  if (
+    text.includes("not available for this account") ||
+    text.includes("only active multiplayer games")
+  ) {
+    return { kind: "unavailable", message: "This multiplayer game is no longer available." };
+  }
+
+  if (
+    text.includes("no piece to move") ||
+    text.includes("your own pieces") ||
+    text.includes("algebraic coordinates") ||
+    text.includes("promotion must be")
+  ) {
+    return { kind: "illegal", message: "That move was rejected by the server — refreshing." };
+  }
+
+  return { kind: "unknown", message: "Could not sync your move. Refreshing from the server." };
 }
