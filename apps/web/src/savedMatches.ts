@@ -2,6 +2,10 @@ import {
   gameSnapshotSchema,
   type GameSnapshot
 } from "@narrative-chess/content-schema";
+import {
+  parseSavedMatchCityMetadata,
+  type SavedMatchCityMetadata
+} from "./playCityContext";
 
 const storageKey = "narrative-chess:saved-matches";
 const maxSavedMatches = 12;
@@ -11,6 +15,7 @@ export type SavedMatchRecord = {
   name: string;
   savedAt: string;
   moveCount: number;
+  cityMetadata: SavedMatchCityMetadata | null;
   snapshot: GameSnapshot;
 };
 
@@ -22,9 +27,10 @@ function getStorage() {
   return window.localStorage;
 }
 
-function buildDefaultName(savedAt: string, moveCount: number) {
+function buildDefaultName(savedAt: string, moveCount: number, cityMetadata?: SavedMatchCityMetadata | null) {
   const timestamp = savedAt.slice(0, 16).replace("T", " ");
-  return `Edinburgh match ${timestamp} (${moveCount} moves)`;
+  const cityLabel = cityMetadata?.displayLabel?.trim() || "Edinburgh";
+  return `${cityLabel} match ${timestamp} (${moveCount} moves)`;
 }
 
 function parseSavedMatches(value: unknown): SavedMatchRecord[] {
@@ -55,6 +61,7 @@ function parseSavedMatches(value: unknown): SavedMatchRecord[] {
         name: candidate.name,
         savedAt: candidate.savedAt,
         moveCount: candidate.moveCount,
+        cityMetadata: parseSavedMatchCityMetadata(candidate.cityMetadata),
         snapshot: gameSnapshotSchema.parse(candidate.snapshot)
       });
     } catch {
@@ -101,14 +108,19 @@ export function replaceSavedMatches(records: SavedMatchRecord[]) {
   return writeSavedMatches(parseSavedMatches(records));
 }
 
-export function saveMatch(snapshot: GameSnapshot, name?: string): SavedMatchRecord[] {
+export function saveMatch(
+  snapshot: GameSnapshot,
+  name?: string,
+  cityMetadata?: SavedMatchCityMetadata | null
+): SavedMatchRecord[] {
   const savedAt = new Date().toISOString();
   const validatedSnapshot = gameSnapshotSchema.parse(snapshot);
   const nextRecord: SavedMatchRecord = {
     id: `save-${savedAt}-${validatedSnapshot.moveHistory.length}`,
-    name: name?.trim() || buildDefaultName(savedAt, validatedSnapshot.moveHistory.length),
+    name: name?.trim() || buildDefaultName(savedAt, validatedSnapshot.moveHistory.length, cityMetadata),
     savedAt,
     moveCount: validatedSnapshot.moveHistory.length,
+    cityMetadata: cityMetadata ?? null,
     snapshot: validatedSnapshot
   };
   const nextRecords = [nextRecord, ...readSavedMatches()].slice(0, maxSavedMatches);

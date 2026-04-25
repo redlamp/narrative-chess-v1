@@ -49,21 +49,29 @@ Current direct table access from the frontend:
 
 - `profiles`: signed-in profile read for the current user; user-edited profile writes go through `upsert_current_profile`.
 - `user_roles`: role lookup for the current user.
-- `user_saved_matches`: signed-in saved match read/write/delete.
+- `user_saved_matches`: signed-in saved match read/write/delete, including optional `city_metadata`.
 - `user_layout_bundles`: signed-in layout bundle read/write.
-- `city_versions`: published city reads; draft city reads/writes for authorized editors.
-- `game_threads`, `game_participants`, `game_moves`: multiplayer session reads for participating players.
+- `city_versions`: published city reads and draft city reads; draft writes go through `save_city_draft_version`.
+- `game_threads`, `game_participants`, `game_moves`: multiplayer session reads for participating players and realtime-backed updates.
 
 Current RPC calls from the frontend:
 
 - `bootstrap_first_admin`
 - `upsert_current_profile`
+- `save_city_draft_version`
 - `publish_city_version`
 - `list_active_games`
 - `create_game_invite`
 - `join_open_game`
 - `respond_to_game_invite`
 - `append_game_move`
+- `cancel_game_invite`
+- `claim_game_timeout`
+- `archive_game`
+- `unarchive_game`
+- `resign_game`
+
+Multiplayer also depends on Supabase Realtime subscriptions over `game_threads`, `game_participants`, and `game_moves`, with those tables present in the `supabase_realtime` publication so list and active-game views can refresh from change events.
 
 ## Profile Privacy
 
@@ -86,7 +94,7 @@ Before enabling Supabase features for production traffic, confirm RLS is enabled
 - users can read/write/delete only their own `user_saved_matches`.
 - users can read/write only their own `user_layout_bundles`.
 - published city versions can be read by everyone if `VITE_ENABLE_SUPABASE_PUBLISHED_CITIES=true`.
-- draft city versions can be read/written only by authorized author/admin users.
+- draft city versions can be read by authorized author/admin users and written only through the author/admin RPC path.
 - publish/admin functions are restricted to authorized roles.
 - game threads and moves are readable only by participants.
 - game moves are inserted through `append_game_move`, which must validate participant, turn, ply order, and immutable prior moves.

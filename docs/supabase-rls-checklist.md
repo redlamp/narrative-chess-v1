@@ -18,9 +18,9 @@ Direct table access:
 | --- | --- | --- |
 | `auth.ts` | `user_roles` | read current user's role |
 | `profiles.ts` | `profiles` | read current user's profile |
-| `savedMatchesCloud.ts` | `user_saved_matches` | list/upsert/delete current user's saved matches |
+| `savedMatchesCloud.ts` | `user_saved_matches` | list/upsert/delete current user's saved matches, including optional `city_metadata` |
 | `layoutCloud.ts` | `user_layout_bundles` | read/upsert current user's layout bundle |
-| `cityBoards.ts` | `city_versions` | read published versions, read latest draft, insert draft version |
+| `cityBoards.ts` | `city_versions` | read published versions, read latest draft |
 | `cityBoards.ts` | `city_editions` via embedded select | read playable published city metadata |
 | `activeGames.ts` | `game_threads`, `game_participants` | read current participant's game session, turn, and clock state |
 | `activeGames.ts` | `game_moves` | read latest move snapshot for current participant's game |
@@ -30,6 +30,7 @@ RPC access:
 | Module | RPC | Expected privilege boundary |
 | --- | --- | --- |
 | `auth.ts` | `bootstrap_first_admin` | authenticated, internally limited to first-admin bootstrap rule |
+| `cityBoards.ts` | `save_city_draft_version` | authenticated author/admin, allocates draft versions and `created_by` transactionally |
 | `cityBoards.ts` | `publish_city_version` | authenticated admin only |
 | `profiles.ts` | `upsert_current_profile` | authenticated, writes only username/display name |
 | `activeGames.ts` | `list_active_games` | authenticated, returns caller games plus limited open-game listings |
@@ -44,7 +45,7 @@ RPC access:
 
 ## Confirmed In Checked-In Migrations
 
-- `user_saved_matches` has RLS enabled and owner-only select/insert/update/delete policies.
+- `user_saved_matches` has RLS enabled and owner-only select/insert/update/delete policies; the browser record shape now carries optional `city_metadata` alongside the saved snapshot.
 - `user_layout_bundles` has RLS enabled and owner-only select/insert/update policies.
 - `profiles` has RLS enabled, owner-only select policy, and profile edits routed through `upsert_current_profile`.
 - `game_threads`, `game_participants`, and `game_moves` have RLS enabled and participant-only read policies.
@@ -59,6 +60,7 @@ RPC access:
 - `archive_game` / `unarchive_game` are granted only to `authenticated`, only affect the caller's own `game_participants.archived_at`, and require the thread to be in a finished state (`completed`, `cancelled`, `abandoned`).
 - `resign_game` is granted only to `authenticated`, requires an active participant on the white or black side, and refuses to run on threads that are no longer `active`; rated settlements reuse the shared `calculate_elo_delta` path.
 - `20260420180000_add_multiplayer_realtime_publication.sql` adds `game_threads`, `game_participants`, and `game_moves` to the `supabase_realtime` publication. RLS policies still filter the change stream, so subscribers only see rows they can already read.
+- `20260425100000_add_city_draft_rpc_and_saved_match_city_metadata.sql` adds optional saved-match `city_metadata`, routes city draft writes through `save_city_draft_version`, and pins execute grants for both city version RPCs.
 - `publish_city_version` checks `auth.uid()` and `has_app_role('admin')` before archiving and publishing city versions.
 
 ## Required Before Production Supabase Use
@@ -83,7 +85,7 @@ Keep this invariant:
 
 `20260420200000_consolidate_and_optimize_rls_policies.sql` consolidates `city_versions` SELECT access into one authenticated policy (`status = 'published' OR public.has_app_role('author')`) plus one anon policy (`status = 'published'`), and the existing author-only INSERT/UPDATE policies remain. Draft rows can only be read by authors/admins, and clients still cannot publish directly because `publish_city_version` is the only path that sets `status = 'published'`.
 
-Open follow-up: inserted draft rows still rely on `cityBoards.ts` supplying `created_by`. Adding `default auth.uid()` to `city_versions.created_by` or routing draft save through an RPC (e.g. `save_city_draft_version`) would make the caller record automatic.
+Resolved by `20260425100000_add_city_draft_rpc_and_saved_match_city_metadata.sql`: city draft saves now route through `save_city_draft_version`, so version-number allocation, `created_by`, and the draft insert happen transactionally in one RPC instead of in client-side table code.
 
 ### Resolved: Role Reads Are Self-Only With Admin Escape
 
@@ -102,9 +104,9 @@ Open follow-up: inserted draft rows still rely on `cityBoards.ts` supplying `cre
 
 ## Recommended Hardening
 
-- Add explicit `revoke all` / `grant execute to authenticated` statements for `publish_city_version`, matching the multiplayer RPC migrations.
-- Prefer RPC-based city draft saving so version-number allocation and role checks happen in one transaction.
-- Add a unique constraint that prevents more than one `published` city version per `city_edition_id`, or keep enforcing it transactionally in publish RPCs.
+- Keep explicit `revoke all` / `grant execute to authenticated` statements on city version RPCs when those functions change.
+- Keep city draft saving RPC-based so version-number allocation and role checks happen in one transaction.
+- Keep `city_versions_one_published_per_edition_idx` in place so only one published city version can exist per edition.
 - Consider changing `user_saved_matches` from global primary key `id` to `(user_id, id)` so independent users cannot collide on a saved-match id.
 - Keep opponent profile exposure inside `list_active_games`; do not add broad public `profiles` read policies unless the selected columns are intentionally public.
 - Keep direct `game_moves` writes disabled. Moves should continue through `append_game_move`.

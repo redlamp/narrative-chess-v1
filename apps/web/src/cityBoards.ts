@@ -126,42 +126,25 @@ export async function saveCityBoardDraftToSupabase(
     throw new Error("Supabase is not configured.");
   }
 
-  const { data: latestVersionData, error: latestVersionError } = await supabase
-    .from("city_versions")
-    .select("version_number")
-    .eq("city_edition_id", definition.publishedEditionId)
-    .order("version_number", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("save_city_draft_version", {
+    p_city_edition_id: definition.publishedEditionId,
+    p_payload: board,
+    p_content_status: board.contentStatus,
+    p_review_status: board.reviewStatus,
+    p_review_notes: board.reviewNotes,
+    p_last_reviewed_at: board.lastReviewedAt,
+    p_notes: `Draft saved from ${definition.displayLabel} editor`
+  });
 
-  if (latestVersionError) {
-    throw latestVersionError;
-  }
-
-  const nextVersionNumber = (latestVersionData?.version_number ?? 0) + 1;
-  const { data, error } = await supabase
-    .from("city_versions")
-    .insert({
-      city_edition_id: definition.publishedEditionId,
-      version_number: nextVersionNumber,
-      status: "draft",
-      content_status: board.contentStatus,
-      review_status: board.reviewStatus,
-      payload: board,
-      review_notes: board.reviewNotes,
-      last_reviewed_at: board.lastReviewedAt
-    })
-    .select("id, city_edition_id, version_number")
-    .single();
-
-  if (error || !data) {
+  const row = Array.isArray(data) ? data[0] : data;
+  if (error || !row) {
     throw error ?? new Error("Could not save the remote city draft.");
   }
 
   return {
-    cityEditionId: data.city_edition_id,
-    versionId: data.id,
-    versionNumber: data.version_number
+    cityEditionId: row.city_edition_id,
+    versionId: row.version_id,
+    versionNumber: row.version_number
   };
 }
 

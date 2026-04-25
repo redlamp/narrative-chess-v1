@@ -16,13 +16,13 @@ import {
   type NarrativeTonePreset
 } from "@narrative-chess/narrative-engine";
 import type {
+  CityBoard,
   GameSnapshot,
   PieceState,
   PieceSide,
   ReferenceGame,
   Square
 } from "@narrative-chess/content-schema";
-import { edinburghBoard } from "../edinburghBoard";
 import {
   deleteSavedMatch as deleteSavedMatchRecord,
   getSavedMatch,
@@ -38,9 +38,11 @@ import {
 } from "../savedMatchesCloud";
 import { subscribeToAuthChanges } from "../auth";
 import { getRolePoolsOverride, type RoleCatalog } from "../roleCatalog";
+import { getSavedMatchCityMetadata, type PlayCityContext } from "../playCityContext";
 
 type UseChessMatchOptions = {
   roleCatalog: RoleCatalog;
+  playCityContext: PlayCityContext;
   moveInteractionLocked?: boolean;
   localControlsLocked?: boolean;
   localMoveSide?: PieceSide | null;
@@ -64,9 +66,9 @@ function isPromotionMove(piece: PieceState | null, to: Square): boolean {
   return (piece.side === "white" && to.endsWith("8")) || (piece.side === "black" && to.endsWith("1"));
 }
 
-function createCharacters(roleCatalog: RoleCatalog) {
+function createCharacters(roleCatalog: RoleCatalog, cityBoard: CityBoard) {
   return createInitialCharacterRoster({
-    cityBoard: edinburghBoard,
+    cityBoard,
     rolePoolsOverride: getRolePoolsOverride(roleCatalog)
   });
 }
@@ -74,9 +76,10 @@ function createCharacters(roleCatalog: RoleCatalog) {
 function rebuildSnapshot(input: {
   snapshot: GameSnapshot;
   roleCatalog: RoleCatalog;
+  cityBoard: CityBoard;
   tonePreset: NarrativeTonePreset;
 }) {
-  const nextCharacters = createCharacters(input.roleCatalog);
+  const nextCharacters = createCharacters(input.roleCatalog, input.cityBoard);
 
   return {
     ...input.snapshot,
@@ -89,19 +92,21 @@ function rebuildSnapshot(input: {
   };
 }
 
-function createSnapshot(roleCatalog: RoleCatalog): GameSnapshot {
-  return createInitialGameSnapshot(createCharacters(roleCatalog));
+function createSnapshot(roleCatalog: RoleCatalog, cityBoard: CityBoard): GameSnapshot {
+  return createInitialGameSnapshot(createCharacters(roleCatalog, cityBoard));
 }
 
 function withNarrativeHistory(input: {
   snapshots: GameSnapshot[];
   roleCatalog: RoleCatalog;
+  cityBoard: CityBoard;
   tonePreset: NarrativeTonePreset;
 }) {
   return input.snapshots.map((snapshot) =>
     rebuildSnapshot({
       snapshot,
       roleCatalog: input.roleCatalog,
+      cityBoard: input.cityBoard,
       tonePreset: input.tonePreset
     })
   );
@@ -126,12 +131,15 @@ function buildLocalTimelineSnapshots(snapshot: GameSnapshot) {
 
 export function useChessMatch({
   roleCatalog,
+  playCityContext,
   moveInteractionLocked = false,
   localControlsLocked = false,
   localMoveSide,
   canCommitLocalMove
 }: UseChessMatchOptions) {
-  const [localSnapshot, setLocalSnapshot] = useState<GameSnapshot>(() => createSnapshot(roleCatalog));
+  const [localSnapshot, setLocalSnapshot] = useState<GameSnapshot>(() => (
+    createSnapshot(roleCatalog, playCityContext.board)
+  ));
   const [studyReplay, setStudyReplay] = useState<StudyReplay | null>(null);
   const [localPly, setLocalPly] = useState(0);
   const [studyPly, setStudyPly] = useState(0);
@@ -180,6 +188,7 @@ export function useChessMatch({
       rebuildSnapshot({
         snapshot: current,
         roleCatalog,
+        cityBoard: playCityContext.board,
         tonePreset
       })
     );
@@ -190,12 +199,13 @@ export function useChessMatch({
             snapshots: withNarrativeHistory({
               snapshots: current.snapshots,
               roleCatalog,
+              cityBoard: playCityContext.board,
               tonePreset
             })
           }
         : null
     );
-  }, [roleCatalog, tonePreset]);
+  }, [playCityContext.board, roleCatalog, tonePreset]);
 
   useEffect(() => {
     let cancelled = false;
@@ -242,10 +252,11 @@ export function useChessMatch({
     sourceUrl: string | null;
   }) => {
     try {
-      const replay = createReplayFromPgn(input.pgn, createCharacters(roleCatalog));
+      const replay = createReplayFromPgn(input.pgn, createCharacters(roleCatalog, playCityContext.board));
       const snapshots = withNarrativeHistory({
         snapshots: replay.snapshots,
         roleCatalog,
+        cityBoard: playCityContext.board,
         tonePreset
       });
 
@@ -294,6 +305,7 @@ export function useChessMatch({
       rebuildSnapshot({
         snapshot: appliedMove.nextState,
         roleCatalog,
+        cityBoard: playCityContext.board,
         tonePreset
       })
     );
@@ -343,6 +355,7 @@ export function useChessMatch({
       rebuildSnapshot({
         snapshot: previous,
         roleCatalog,
+        cityBoard: playCityContext.board,
         tonePreset
       })
     );
@@ -423,7 +436,11 @@ export function useChessMatch({
       return false;
     }
 
-    const nextSavedMatches = saveMatch(localSnapshot);
+    const nextSavedMatches = saveMatch(
+      localSnapshot,
+      undefined,
+      getSavedMatchCityMetadata(playCityContext)
+    );
     setSavedMatches(nextSavedMatches);
     const nextSavedMatch = nextSavedMatches[0] ?? null;
     if (nextSavedMatch) {
@@ -434,24 +451,30 @@ export function useChessMatch({
     return true;
   };
 
-  const loadSavedMatch = (savedMatchId: string) => {
+  const loadSavedMatch = (
+    savedMatchId: string,
+    options?: { cityBoard?: CityBoard; preserveNarrative?: boolean }
+  ) => {
     const savedMatch = getSavedMatch(savedMatchId);
     if (!savedMatch) {
       setSavedMatches(listSavedMatches());
       return false;
     }
 
+    const snapshotToLoad = options?.preserveNarrative
+      ? savedMatch.snapshot
+      : rebuildSnapshot({
+          snapshot: savedMatch.snapshot,
+          roleCatalog,
+          cityBoard: options?.cityBoard ?? playCityContext.board,
+          tonePreset
+        });
+
     startTransition(() => {
       setStudyReplay(null);
       setStudyPly(0);
       setSelectedSquare(null);
-      setLocalSnapshot(
-        rebuildSnapshot({
-          snapshot: savedMatch.snapshot,
-          roleCatalog,
-          tonePreset
-        })
-      );
+      setLocalSnapshot(snapshotToLoad);
       setLocalPly(savedMatch.snapshot.moveHistory.length);
       setSavedMatches(listSavedMatches());
       setTimelineKey((current) => current + 1);
@@ -467,20 +490,28 @@ export function useChessMatch({
     });
   };
 
-  const loadSnapshot = (nextSnapshot?: GameSnapshot | null) => {
-    const snapshotToLoad = nextSnapshot ?? createSnapshot(roleCatalog);
+  const loadSnapshot = (
+    nextSnapshot?: GameSnapshot | null,
+    options?: { cityBoard?: CityBoard; preserveNarrative?: boolean }
+  ) => {
+    const snapshotToLoad = nextSnapshot ?? createSnapshot(
+      roleCatalog,
+      options?.cityBoard ?? playCityContext.board
+    );
+    const nextLocalSnapshot = options?.preserveNarrative
+      ? snapshotToLoad
+      : rebuildSnapshot({
+          snapshot: snapshotToLoad,
+          roleCatalog,
+          cityBoard: options?.cityBoard ?? playCityContext.board,
+          tonePreset
+        });
 
     startTransition(() => {
       setStudyReplay(null);
       setStudyPly(0);
       setSelectedSquare(null);
-      setLocalSnapshot(
-        rebuildSnapshot({
-          snapshot: snapshotToLoad,
-          roleCatalog,
-          tonePreset
-        })
-      );
+      setLocalSnapshot(nextLocalSnapshot);
       setLocalPly(snapshotToLoad.moveHistory.length);
       setTimelineKey((current) => current + 1);
     });

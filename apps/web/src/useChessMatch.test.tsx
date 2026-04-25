@@ -1,7 +1,9 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { PieceSide, Square } from "@narrative-chess/content-schema";
+import type { CityBoard, PieceSide, Square } from "@narrative-chess/content-schema";
+import { getCityBoardDefinition } from "./cityBoards";
+import type { PlayCityContext } from "./playCityContext";
 import { getDefaultRoleCatalog } from "./roleCatalog";
 import { useChessMatch } from "./hooks/useChessMatch";
 
@@ -19,17 +21,32 @@ type HookResult = ReturnType<typeof useChessMatch>;
 
 type HarnessProps = {
   localMoveSide?: PieceSide | null;
+  cityBoard?: CityBoard;
 };
 
 const testRoleCatalog = getDefaultRoleCatalog();
+const edinburghBoard = getCityBoardDefinition("edinburgh")!.board;
+const londonBoard = getCityBoardDefinition("london")!.board;
 
 let latestHookResult: HookResult | null = null;
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
 
-function Harness({ localMoveSide }: HarnessProps) {
+function createPlayCityContext(cityBoard: CityBoard): PlayCityContext {
+  return {
+    boardId: cityBoard.id,
+    displayLabel: cityBoard.name,
+    source: "fallback",
+    publishedEditionId: null,
+    previewMode: "published",
+    board: cityBoard
+  };
+}
+
+function Harness({ localMoveSide, cityBoard = edinburghBoard }: HarnessProps) {
   latestHookResult = useChessMatch({
     roleCatalog: testRoleCatalog,
+    playCityContext: createPlayCityContext(cityBoard),
     localMoveSide
   });
 
@@ -127,5 +144,18 @@ describe("useChessMatch multiplayer side enforcement", () => {
 
     clickSquare("e7");
     expect(currentHook().selectedSquare).toBeNull();
+  });
+
+  it("rebuilds character origins from the active play city", () => {
+    const hook = renderChessHook({ cityBoard: edinburghBoard });
+    const edinburghQueenDistrict = edinburghBoard.districts.find((district) => district.square === "d1")?.name;
+    const londonQueenDistrict = londonBoard.districts.find((district) => district.square === "d1")?.name;
+
+    expect(currentHook().snapshot.characters["white-queen"]?.districtOfOrigin).toBe(edinburghQueenDistrict);
+
+    hook.rerender({ cityBoard: londonBoard });
+
+    expect(currentHook().snapshot.characters["white-queen"]?.districtOfOrigin).toBe(londonQueenDistrict);
+    expect(londonQueenDistrict).not.toBe(edinburghQueenDistrict);
   });
 });

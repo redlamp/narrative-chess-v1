@@ -24,6 +24,14 @@ const viewportPadding = 16;
 const fallbackPanelWidth = 352;
 const fallbackPanelHeight = 320;
 
+function getViewportHeightUnit() {
+  if (typeof CSS !== "undefined" && CSS.supports("height", "100dvh")) {
+    return "100dvh";
+  }
+
+  return "100vh";
+}
+
 function getInitialPosition(): PanelPosition {
   if (typeof window === "undefined") {
     return {
@@ -130,7 +138,7 @@ export function FloatingLayoutPanel({ children }: FloatingLayoutPanelProps) {
       style={{
         left: `${position.left}px`,
         top: `${position.top}px`,
-        maxHeight: `calc(100vh - ${Math.max(position.top, viewportPadding)}px - ${viewportPadding}px)`
+        maxHeight: `calc(${getViewportHeightUnit()} - ${Math.max(position.top, viewportPadding)}px - ${viewportPadding}px)`
       }}
     >
       {children({

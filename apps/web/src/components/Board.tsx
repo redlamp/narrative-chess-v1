@@ -17,6 +17,7 @@ import {
 } from "../boardNavigation";
 import { getAnimatedBoardPosition, type AnimatedPieceFrame } from "../chessMotion";
 import { useCaptureImpact } from "../hooks/useCaptureImpact";
+import { useCoarsePointer } from "../hooks/use-coarse-pointer";
 
 const pieceMoveAnimationDuration = 420;
 const pieceMoveAnimationEase = "power1.inOut";
@@ -95,6 +96,7 @@ export function Board({
   const [boardSize, setBoardSize] = useState<number | null>(null);
   const [dragOverSquare, setDragOverSquare] = useState<Square | null>(null);
   const dragSourceSquareRef = useRef<Square | null>(null);
+  const isCoarsePointer = useCoarsePointer();
 
   useEffect(() => {
     if (selectedSquare) {
@@ -364,7 +366,7 @@ export function Board({
                     .filter(Boolean)
                     .join(" ")}
                   data-square={square}
-                  draggable={!!onSquareDrop}
+                  draggable={!!onSquareDrop && !isCoarsePointer}
                   aria-pressed={isSelected}
                   aria-colindex={files.indexOf(file) + 1}
                   aria-label={`${square}${labelPiece ? `, ${getPieceDisplayName(labelPiece)}` : ""}${district ? `, ${district.name}` : ""}`}

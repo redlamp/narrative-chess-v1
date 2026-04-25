@@ -1,5 +1,6 @@
 import { gameSnapshotSchema } from "@narrative-chess/content-schema";
 import { getSupabaseClient, hasSupabaseConfig } from "./lib/supabase";
+import { parseSavedMatchCityMetadata } from "./playCityContext";
 import type { SavedMatchRecord } from "./savedMatches";
 
 type SavedMatchRow = {
@@ -7,6 +8,7 @@ type SavedMatchRow = {
   name: string;
   saved_at: string;
   move_count: number;
+  city_metadata: unknown;
   snapshot: unknown;
 };
 
@@ -42,8 +44,9 @@ function mapSavedMatchRow(row: SavedMatchRow): SavedMatchRecord {
     name: row.name,
     savedAt: row.saved_at,
     moveCount: row.move_count,
+    cityMetadata: parseSavedMatchCityMetadata(row.city_metadata),
     snapshot: gameSnapshotSchema.parse(row.snapshot)
-  };
+  } satisfies SavedMatchRecord;
 }
 
 export async function listSavedMatchesFromSupabase(): Promise<SavedMatchRecord[] | null> {
@@ -54,7 +57,7 @@ export async function listSavedMatchesFromSupabase(): Promise<SavedMatchRecord[]
 
   const { data, error } = await auth.supabase
     .from("user_saved_matches")
-    .select("id, name, saved_at, move_count, snapshot")
+    .select("id, name, saved_at, move_count, city_metadata, snapshot")
     .eq("user_id", auth.userId)
     .order("saved_at", { ascending: false });
 
@@ -80,6 +83,7 @@ export async function saveSavedMatchToSupabase(record: SavedMatchRecord): Promis
         name: record.name,
         saved_at: record.savedAt,
         move_count: record.moveCount,
+        city_metadata: record.cityMetadata,
         snapshot: record.snapshot
       },
       {

@@ -62,7 +62,7 @@ Optional backend:
 
 ## Local Development
 
-This repo uses the Bun workspace defined in [`package.json`](/C:/workspace/narrative-chess/package.json).
+This repo uses the Bun workspace defined in [`package.json`](./package.json).
 
 ```bash
 bun install
@@ -96,7 +96,7 @@ VITE_ENABLE_SUPABASE_PUBLISHED_CITIES=false
 
 Do not put Supabase service-role keys in `.env.local`, GitHub Pages variables, GitHub Pages secrets, or any `VITE_*` variable. Vite exposes `VITE_*` values to browser code.
 
-See [`docs/account-auth-setup.md`](/C:/workspace/narrative-chess/docs/account-auth-setup.md) for GitHub Pages variables, Auth redirects, and the expected RLS access model.
+See [`docs/account-auth-setup.md`](./docs/account-auth-setup.md) for GitHub Pages variables, Auth redirects, and the expected RLS access model.
 
 ## Milestone Guidance
 
@@ -130,8 +130,8 @@ The first playable slice is considered successful when:
 ## Working Notes
 
 Before making substantive changes:
-1. read [`AGENTS.md`](/C:/workspace/narrative-chess/AGENTS.md)
-2. read [`docs/prd.md`](/C:/workspace/narrative-chess/docs/prd.md)
+1. read [`AGENTS.md`](./AGENTS.md)
+2. read [`docs/PRD.md`](./docs/PRD.md)
 3. confirm the current milestone
 4. work within a bounded package or folder
 5. call out schema changes explicitly

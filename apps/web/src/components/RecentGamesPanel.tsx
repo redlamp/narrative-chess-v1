@@ -49,7 +49,20 @@ import {
   AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Archive, ArchiveRestore, Check, ExternalLink, FileUp, Flag, Plus, RefreshCcw, Send, Trash2, X } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Check,
+  Clock3,
+  ExternalLink,
+  FileUp,
+  Flag,
+  Plus,
+  RefreshCcw,
+  Send,
+  Trash2,
+  X
+} from "lucide-react";
 
 type InviteCreatorSide = "white" | "black" | "random";
 
@@ -247,6 +260,26 @@ function activeGameTimeNote(game: ActiveGameRecord) {
     : `Move due ${formatGameTimestamp(game.deadlineAt)}`;
 }
 
+function activeGameTimeoutSummary(game: ActiveGameRecord) {
+  if (!game.isTimedOut) {
+    return null;
+  }
+
+  if (game.canClaimTimeout) {
+    return game.timeControlKind === "live_clock"
+      ? "Opponent's clock has expired. Claim the timeout to score the game."
+      : "Opponent missed the move deadline. Claim the timeout to score the game.";
+  }
+
+  if (game.isYourTurn) {
+    return game.timeControlKind === "live_clock"
+      ? "Your clock has expired. Wait for your opponent to claim the result."
+      : "Your move deadline has passed. Wait for your opponent to claim the result.";
+  }
+
+  return game.timeControlKind === "live_clock" ? "Clock expired." : "Move deadline missed.";
+}
+
 function formatSideLabel(side: ActiveGameRecord["yourSide"] | ActiveGameRecord["currentTurn"]) {
   if (!side) {
     return "None";
@@ -303,6 +336,7 @@ type ActiveGameDetailsProps = {
   onLoadActiveGame: (gameId: string) => void;
   onRespondToInvite: (gameId: string, response: "accept" | "decline") => void;
   onClaimTimeout: (gameId: string) => void;
+  onClaimAndArchiveTimeout: (gameId: string) => void;
   onCancelInvite: (gameId: string) => void;
   onArchiveGame: (gameId: string, archive: boolean) => void;
 };
@@ -318,6 +352,7 @@ function ActiveGameDetails({
   onLoadActiveGame,
   onRespondToInvite,
   onClaimTimeout,
+  onClaimAndArchiveTimeout,
   onCancelInvite,
   onArchiveGame
 }: ActiveGameDetailsProps) {
@@ -326,6 +361,7 @@ function ActiveGameDetails({
   }
 
   const ratingDelta = activeGameRatingDelta(game);
+  const timeoutSummary = activeGameTimeoutSummary(game);
 
   return (
     <div className="recent-games-details">
@@ -374,6 +410,12 @@ function ActiveGameDetails({
           </div>
         ) : null}
       </dl>
+      {timeoutSummary ? (
+        <p className="recent-games-timeout-alert">
+          <Clock3 data-icon="inline-start" />
+          <span>{timeoutSummary}</span>
+        </p>
+      ) : null}
       <p className="recent-games-summary">{activeGameTimeNote(game)}</p>
       <div className="recent-games-details__actions">
         {game.canJoinOpenGame ? (
@@ -420,6 +462,18 @@ function ActiveGameDetails({
           >
             <Flag data-icon="inline-start" />
             {claimingGameId === game.gameId ? "Claiming..." : "Claim on time"}
+          </Button>
+        ) : null}
+        {game.canClaimTimeout ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={claimingGameId === game.gameId || archivingGameId === game.gameId}
+            onClick={() => onClaimAndArchiveTimeout(game.gameId)}
+          >
+            <Archive data-icon="inline-start" />
+            {claimingGameId === game.gameId || archivingGameId === game.gameId ? "Removing..." : "Claim & remove"}
           </Button>
         ) : null}
         {game.isOutgoingInvite && game.status === "invited" ? (
@@ -802,6 +856,29 @@ export function RecentGamesPanel({
       });
     } finally {
       setClaimingGameId(null);
+    }
+  }, [onActiveGameStateChanged, refreshActiveGames]);
+
+  const handleClaimAndArchiveTimeout = useCallback(async (gameId: string) => {
+    setClaimingGameId(gameId);
+    setArchivingGameId(gameId);
+    try {
+      await claimGameTimeoutInSupabase(gameId);
+      await archiveGameInSupabase(gameId);
+      setActiveGamesNotice({
+        tone: "success",
+        text: "Timed-out game scored and removed."
+      });
+      await refreshActiveGames();
+      onActiveGameStateChanged?.(gameId);
+    } catch (error) {
+      setActiveGamesNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Could not remove the timed-out game."
+      });
+    } finally {
+      setClaimingGameId(null);
+      setArchivingGameId(null);
     }
   }, [onActiveGameStateChanged, refreshActiveGames]);
 
@@ -1328,6 +1405,7 @@ export function RecentGamesPanel({
                     key={game.gameId}
                     className="recent-games-active__entry"
                     data-selected={previewActiveGame?.gameId === game.gameId ? "true" : "false"}
+                    data-timeout={game.isTimedOut ? "true" : "false"}
                     onClick={() => setSelectedActiveGameId(game.gameId)}
                     onFocusCapture={() => setSelectedActiveGameId(game.gameId)}
                     onMouseEnter={() => setHoveredActiveGameId(game.gameId)}
@@ -1339,6 +1417,12 @@ export function RecentGamesPanel({
                           <Badge variant={game.isIncomingInvite || game.isYourTurn ? "secondary" : "outline"}>
                             {activeGameStatusLabel(game)}
                           </Badge>
+                          {game.isTimedOut ? (
+                            <Badge variant={game.canClaimTimeout ? "secondary" : "outline"}>
+                              <Clock3 data-icon="inline-start" />
+                              Timed out
+                            </Badge>
+                          ) : null}
                           {activeMultiplayerGameId === game.gameId ? (
                             <Badge variant="outline">Open</Badge>
                           ) : null}
@@ -1357,6 +1441,12 @@ export function RecentGamesPanel({
                             moveDeadlineSeconds: game.moveDeadlineSeconds
                           })} · {game.rated ? "Rated" : "Casual"} · Elo {game.opponentEloRating}
                         </p>
+                        {game.isTimedOut ? (
+                          <p className="recent-games-active__entry-timeout">
+                            <Clock3 data-icon="inline-start" />
+                            <span>{activeGameTimeoutSummary(game)}</span>
+                          </p>
+                        ) : null}
                         <p className="recent-games-active__entry-meta">{activeGameTimeNote(game)}</p>
                       </div>
                       {game.canJoinOpenGame ? (
@@ -1420,6 +1510,20 @@ export function RecentGamesPanel({
                             >
                               <Flag data-icon="inline-start" />
                               {claimingGameId === game.gameId ? "Claiming..." : "Claim on time"}
+                            </Button>
+                          ) : null}
+                          {game.canClaimTimeout ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={claimingGameId === game.gameId || archivingGameId === game.gameId}
+                              onClick={() => void handleClaimAndArchiveTimeout(game.gameId)}
+                            >
+                              <Archive data-icon="inline-start" />
+                              {claimingGameId === game.gameId || archivingGameId === game.gameId
+                                ? "Removing..."
+                                : "Claim & remove"}
                             </Button>
                           ) : null}
                           {game.isOutgoingInvite && game.status === "invited" ? (
@@ -1489,6 +1593,7 @@ export function RecentGamesPanel({
                 onLoadActiveGame={onLoadActiveGame}
                 onRespondToInvite={(gameId, response) => void handleRespondToInvite(gameId, response)}
                 onClaimTimeout={(gameId) => void handleClaimTimeout(gameId)}
+                onClaimAndArchiveTimeout={(gameId) => void handleClaimAndArchiveTimeout(gameId)}
                 onCancelInvite={(gameId) => void handleCancelInvite(gameId)}
                 onArchiveGame={(gameId, archive) => void handleArchiveGame(gameId, archive)}
               />
@@ -1687,6 +1792,7 @@ export function RecentGamesPanel({
                   onLoadActiveGame={onLoadActiveGame}
                   onRespondToInvite={(gameId, response) => void handleRespondToInvite(gameId, response)}
                   onClaimTimeout={(gameId) => void handleClaimTimeout(gameId)}
+                  onClaimAndArchiveTimeout={(gameId) => void handleClaimAndArchiveTimeout(gameId)}
                   onCancelInvite={(gameId) => void handleCancelInvite(gameId)}
                   onArchiveGame={(gameId, archive) => void handleArchiveGame(gameId, archive)}
                 />

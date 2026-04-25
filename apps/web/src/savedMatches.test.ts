@@ -8,6 +8,7 @@ import {
   listSavedMatches,
   saveMatch
 } from "./savedMatches";
+import type { SavedMatchCityMetadata } from "./playCityContext";
 
 function createSnapshot() {
   return createInitialGameSnapshot(
@@ -22,12 +23,21 @@ describe("savedMatches", () => {
     window.localStorage.clear();
   });
 
+  const londonMetadata: SavedMatchCityMetadata = {
+    boardId: "london",
+    displayLabel: "London",
+    source: "fallback",
+    publishedEditionId: null,
+    previewMode: "published"
+  };
+
   it("saves and reloads validated match snapshots", () => {
     const snapshot = createSnapshot();
     const savedMatches = saveMatch(snapshot);
 
     expect(savedMatches).toHaveLength(1);
     expect(savedMatches[0]?.moveCount).toBe(0);
+    expect(savedMatches[0]?.cityMetadata).toBeNull();
     expect(listSavedMatches()).toHaveLength(1);
     expect(getSavedMatch(savedMatches[0]!.id)?.snapshot.currentFen).toBe(snapshot.currentFen);
   });
@@ -186,6 +196,34 @@ describe("savedMatches", () => {
       const reloaded = getSavedMatch(saved[0]!.id);
       expect(reloaded?.name).toContain("Edinburgh match");
       expect(reloaded?.name).toContain("0 moves");
+    });
+
+    it("uses saved city metadata in default names", () => {
+      const saved = saveMatch(createSnapshot(), undefined, londonMetadata);
+
+      expect(saved[0]?.name).toContain("London match");
+      expect(getSavedMatch(saved[0]!.id)?.cityMetadata).toEqual(londonMetadata);
+    });
+
+    it("keeps legacy saved matches without city metadata readable", () => {
+      const snapshot = createSnapshot();
+      window.localStorage.setItem(
+        "narrative-chess:saved-matches",
+        JSON.stringify([
+          {
+            id: "legacy-1",
+            name: "Legacy Match",
+            savedAt: "2026-04-06T00:00:00Z",
+            moveCount: 0,
+            snapshot
+          }
+        ])
+      );
+
+      const matches = listSavedMatches();
+      expect(matches).toHaveLength(1);
+      expect(matches[0]?.cityMetadata).toBeNull();
+      expect(matches[0]?.snapshot.currentFen).toBe(snapshot.currentFen);
     });
 
     it("handles whitespace-trimmed custom names", () => {
