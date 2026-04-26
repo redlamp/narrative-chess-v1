@@ -9,16 +9,19 @@ import {
 } from "react";
 import {
   Building2,
+  Check,
   ChessPawn,
   Cloud,
   ChevronDown,
   FileJson,
   Flag,
   Handshake,
+  Network,
   Pencil,
-  RefreshCcw,
+  RefreshCw,
   Scroll,
   Telescope,
+  Undo2,
   UsersRound
 } from "lucide-react";
 import { getPieceAtSquare } from "@narrative-chess/game-core";
@@ -151,6 +154,7 @@ import type {
   PlayCitySource,
   SavedMatchCityMetadata
 } from "./playCityContext";
+import { getMultiplayerDiagnostics } from "./multiplayerDiagnostics";
 
 const CityReviewPage = lazy(() =>
   import("./components/CityReviewPage").then((module) => ({ default: module.CityReviewPage }))
@@ -304,17 +308,31 @@ function multiplayerResultLabel(result: ActiveMultiplayerSession["result"]) {
   return "In progress";
 }
 
-function formatClockSeconds(totalSeconds: number) {
+function formatLargestDurationUnit(totalSeconds: number) {
   const safeSeconds = Math.max(0, Math.floor(totalSeconds));
-  const hours = Math.floor(safeSeconds / 3600);
-  const minutes = Math.floor((safeSeconds % 3600) / 60);
-  const seconds = safeSeconds % 60;
+  const days = Math.floor(safeSeconds / 86400);
+  if (days > 0) return `${days}d`;
 
-  if (hours > 0) {
-    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  const hours = Math.floor(safeSeconds / 3600);
+  if (hours > 0) return `${hours}h`;
+
+  const minutes = Math.floor(safeSeconds / 60);
+  if (minutes > 0) return `${minutes}m`;
+
+  return `${safeSeconds}s`;
+}
+
+function formatRelativeAge(timestamp: string | null, now: number) {
+  if (!timestamp) {
+    return "not synced";
   }
 
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  const timestampMs = Date.parse(timestamp);
+  if (!Number.isFinite(timestampMs)) {
+    return "unknown";
+  }
+
+  return `${formatLargestDurationUnit(Math.max(0, Math.floor((now - timestampMs) / 1000)))} ago`;
 }
 
 export default function App() {
@@ -776,6 +794,7 @@ export default function App() {
     tonePreset,
     lastMove,
     handleSquareClick,
+    clearLatestLocalMove,
     goToPly,
     loadReferenceGame,
     jumpToStart,
@@ -1112,90 +1131,6 @@ export default function App() {
     resetKey: timelineKey
   });
 
-  useEffect(() => {
-    if (
-      !activeMultiplayerSession ||
-      isStudyMode ||
-      isSyncingActiveMultiplayerMove ||
-      snapshot.moveHistory.length <= activeMultiplayerSession.syncedMoveCount
-    ) {
-      return;
-    }
-
-    const latestMove = snapshot.moveHistory.at(-1);
-    if (!latestMove || latestMove.side !== activeMultiplayerSession.yourSide) {
-      return;
-    }
-
-    if (activeMultiplayerMoveSyncRef.current === latestMove.id) {
-      return;
-    }
-
-    let cancelled = false;
-    activeMultiplayerMoveSyncRef.current = latestMove.id;
-    setIsSyncingActiveMultiplayerMove(true);
-
-    void appendActiveGameMoveInSupabase({
-      gameId: activeMultiplayerSession.gameId,
-      move: latestMove,
-      snapshot
-    })
-      .then((result) => {
-        if (cancelled) {
-          return;
-        }
-
-        setActiveMultiplayerSession((current) =>
-          current && current.gameId === activeMultiplayerSession.gameId
-            ? {
-                ...current,
-                status: result.status,
-                currentTurn: result.currentTurn,
-                deadlineAt: result.deadlineAt,
-                turnStartedAt: result.status === "active" ? new Date().toISOString() : null,
-                syncedMoveCount: result.nextPlyNumber,
-                result: result.result,
-                whiteRatingDelta: result.whiteRatingDelta,
-                blackRatingDelta: result.blackRatingDelta
-              }
-            : current
-        );
-      })
-      .catch(async (error) => {
-        if (cancelled) {
-          return;
-        }
-        const description = describeMultiplayerMoveError(error);
-        console.warn("[supabase] Could not sync multiplayer move.", error);
-        setActiveMultiplayerRefreshError(description.message);
-        activeMultiplayerMoveSyncRef.current = null;
-        try {
-          await refreshLoadedActiveMultiplayerGame({
-            silent: true,
-            forceSnapshot: true,
-            preserveError: true
-          });
-        } catch (resyncError) {
-          console.warn("[supabase] Resync after failed move also failed.", resyncError);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsSyncingActiveMultiplayerMove(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    activeMultiplayerSession,
-    isStudyMode,
-    isSyncingActiveMultiplayerMove,
-    refreshLoadedActiveMultiplayerGame,
-    snapshot
-  ]);
-
   const animatedPieces = useMemo(
     () => getAnimatedPieceFrames({ snapshots: historySnapshots, playhead: motionPlayhead }),
     [historySnapshots, motionPlayhead]
@@ -1206,6 +1141,83 @@ export default function App() {
   const hasPendingActiveMultiplayerMove =
     activeMultiplayerSession !== null &&
     snapshot.moveHistory.length > activeMultiplayerSession.syncedMoveCount;
+  const pendingActiveMultiplayerMove =
+    hasPendingActiveMultiplayerMove && activeMultiplayerSession
+      ? snapshot.moveHistory.at(-1) ?? null
+      : null;
+  const confirmPendingActiveMultiplayerMove = useCallback(async () => {
+    if (
+      !activeMultiplayerSession ||
+      !pendingActiveMultiplayerMove ||
+      isStudyMode ||
+      isSyncingActiveMultiplayerMove
+    ) {
+      return;
+    }
+
+    if (pendingActiveMultiplayerMove.side !== activeMultiplayerSession.yourSide) {
+      setActiveMultiplayerRefreshError("Pending move does not match your multiplayer side.");
+      return;
+    }
+
+    if (activeMultiplayerMoveSyncRef.current === pendingActiveMultiplayerMove.id) {
+      return;
+    }
+
+    activeMultiplayerMoveSyncRef.current = pendingActiveMultiplayerMove.id;
+    setIsSyncingActiveMultiplayerMove(true);
+
+    try {
+      const result = await appendActiveGameMoveInSupabase({
+        gameId: activeMultiplayerSession.gameId,
+        move: pendingActiveMultiplayerMove,
+        snapshot
+      });
+
+      setActiveMultiplayerSession((current) =>
+        current && current.gameId === activeMultiplayerSession.gameId
+          ? {
+              ...current,
+              status: result.status,
+              currentTurn: result.currentTurn,
+              deadlineAt: result.deadlineAt,
+              turnStartedAt: result.status === "active" ? new Date().toISOString() : null,
+              syncedMoveCount: result.nextPlyNumber,
+              result: result.result,
+              whiteRatingDelta: result.whiteRatingDelta,
+              blackRatingDelta: result.blackRatingDelta
+          }
+          : current
+      );
+      loadSnapshot(result.snapshot);
+      setActiveMultiplayerRefreshError(null);
+      setActiveMultiplayerLastRefreshAt(new Date().toISOString());
+    } catch (error) {
+      const description = describeMultiplayerMoveError(error);
+      console.warn("[supabase] Could not sync multiplayer move.", error);
+      setActiveMultiplayerRefreshError(description.message);
+      activeMultiplayerMoveSyncRef.current = null;
+      try {
+        await refreshLoadedActiveMultiplayerGame({
+          silent: true,
+          forceSnapshot: true,
+          preserveError: true
+        });
+      } catch (resyncError) {
+        console.warn("[supabase] Resync after failed move also failed.", resyncError);
+      }
+    } finally {
+      setIsSyncingActiveMultiplayerMove(false);
+    }
+  }, [
+    activeMultiplayerSession,
+    isStudyMode,
+    isSyncingActiveMultiplayerMove,
+    pendingActiveMultiplayerMove,
+    refreshLoadedActiveMultiplayerGame,
+    loadSnapshot,
+    snapshot
+  ]);
   const eventByMoveId = new Map(historyEvents.map((event) => [event.moveId, event] as const));
   const selectedMove = selectedPly > 0 ? historyMoves[selectedPly - 1] ?? null : null;
   const selectedEvent = selectedMove ? eventByMoveId.get(selectedMove.id) ?? null : null;
@@ -1286,7 +1298,7 @@ export default function App() {
   })();
   const multiplayerTimeValue = activeMultiplayerSession
     ? activeMultiplayerClockSeconds !== null
-      ? formatClockSeconds(activeMultiplayerClockSeconds)
+      ? formatLargestDurationUnit(activeMultiplayerClockSeconds)
       : formatTimeControlLabel({
           timeControlKind: activeMultiplayerSession.timeControlKind,
           baseSeconds: activeMultiplayerSession.baseSeconds,
@@ -1360,6 +1372,51 @@ export default function App() {
             second: "2-digit"
           })
         : "Not synced";
+  const multiplayerLastSyncValue = formatRelativeAge(activeMultiplayerLastRefreshAt, clockNow);
+  const multiplayerTurnCardValue = activeMultiplayerSession?.currentTurn
+    ? `${turnLabel(activeMultiplayerSession.currentTurn)} (${
+        activeMultiplayerSession.currentTurn === activeMultiplayerSession.yourSide ? "you" : "opponent"
+      })`
+    : activeMultiplayerSession
+      ? multiplayerStatusValue ?? "Online"
+      : headerTurnValue;
+  const multiplayerDiagnostics = getMultiplayerDiagnostics({
+    session: activeMultiplayerSession,
+    accountEmail: sessionEmail,
+    accountUsername: sessionProfile?.username ?? null,
+    totalPlies,
+    isSyncingMove: isSyncingActiveMultiplayerMove,
+    hasPendingMove: hasPendingActiveMultiplayerMove
+  });
+  const multiplayerBoardHeaderAction =
+    activeMultiplayerSession && pendingActiveMultiplayerMove ? (
+      <div className="board-panel__move-actions" aria-label="Pending multiplayer move actions">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isSyncingActiveMultiplayerMove}
+          onClick={() => {
+            activeMultiplayerMoveSyncRef.current = null;
+            setActiveMultiplayerRefreshError(null);
+            clearLatestLocalMove();
+          }}
+        >
+          <Undo2 data-icon="inline-start" />
+          Clear
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={isSyncingActiveMultiplayerMove}
+          onClick={() => void confirmPendingActiveMultiplayerMove()}
+        >
+          <Check data-icon="inline-start" />
+          {isSyncingActiveMultiplayerMove ? "Confirming..." : "Confirm"}
+        </Button>
+      </div>
+    ) : null;
 
   useEffect(() => {
     if (!isHistoryPlaying) {
@@ -2457,9 +2514,14 @@ export default function App() {
                     : "app-header__status-grid"
                 }
               >
-                <div className="app-header__status-card">
-                  <span className="app-header__status-label">Turn</span>
-                  <strong className="app-header__status-value">{headerTurnValue}</strong>
+                <div className="app-header__status-card app-header__status-card--turn">
+                  <span className="app-header__status-label app-header__status-label--split">
+                    <span>Turn</span>
+                    {activeMultiplayerSession && multiplayerTimeValue ? (
+                      <span>{multiplayerTimeValue}</span>
+                    ) : null}
+                  </span>
+                  <strong className="app-header__status-value">{multiplayerTurnCardValue}</strong>
                 </div>
                 <div
                   className={[
@@ -2481,40 +2543,69 @@ export default function App() {
                   </strong>
                 </div>
                 {activeMultiplayerSession ? (
-                  <div className="app-header__status-card">
-                    <span className="app-header__status-label">Online</span>
-                    <strong className="app-header__status-value">{multiplayerStatusValue}</strong>
-                  </div>
-                ) : null}
-                {activeMultiplayerSession && multiplayerTimeValue ? (
-                  <div className="app-header__status-card">
-                    <span className="app-header__status-label">
-                      {activeMultiplayerSession.timeControlKind === "live_clock" ? "Clock" : "Due"}
-                    </span>
-                    <strong className="app-header__status-value">{multiplayerTimeValue}</strong>
-                  </div>
-                ) : null}
-                {activeMultiplayerSession ? (
-                  <div
-                    className={[
-                      "app-header__status-card",
-                      activeMultiplayerRefreshError ? "app-header__status-card--warning" : ""
-                    ].filter(Boolean).join(" ")}
-                  >
-                    <span className="app-header__status-label">Cloud sync</span>
-                    <strong className="app-header__status-value app-header__status-value--inline">
-                      {multiplayerRefreshValue}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => void refreshLoadedActiveMultiplayerGame()}
-                        disabled={isRefreshingActiveMultiplayerSession}
-                        aria-label="Refresh multiplayer game"
-                        title={activeMultiplayerRefreshError ?? "Refresh multiplayer game"}
-                      >
-                        <RefreshCcw />
-                      </Button>
+                  <TooltipProvider delayDuration={150}>
+                    <div className="app-header__status-actions">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant={activeMultiplayerRefreshError ? "secondary" : "outline"}
+                            size="icon-sm"
+                            onClick={() => void refreshLoadedActiveMultiplayerGame()}
+                            disabled={isRefreshingActiveMultiplayerSession}
+                            aria-label="Refresh multiplayer game"
+                          >
+                            <RefreshCw />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="app-header__sync-tooltip">
+                          <span>{activeMultiplayerRefreshError ?? "Last sync:"}</span>
+                          <span>{activeMultiplayerRefreshError ? multiplayerRefreshValue : multiplayerLastSyncValue}</span>
+                        </TooltipContent>
+                      </Tooltip>
+                      {multiplayerDiagnostics ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon-sm"
+                              aria-label="Open multiplayer diagnostics"
+                            >
+                              <Network />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="app-header__diagnostic-menu">
+                            <DropdownMenuLabel>MP diagnostics</DropdownMenuLabel>
+                            <dl className="app-header__diagnostics">
+                              <div>
+                                <dt>Account</dt>
+                                <dd>{multiplayerDiagnostics.accountLabel}</dd>
+                              </div>
+                              <div>
+                                <dt>Side</dt>
+                                <dd>{multiplayerDiagnostics.sideLabel}</dd>
+                              </div>
+                              <div>
+                                <dt>Turn</dt>
+                                <dd>{multiplayerDiagnostics.turnLabel}</dd>
+                              </div>
+                              <div>
+                                <dt>Status</dt>
+                                <dd>{multiplayerDiagnostics.statusLabel}</dd>
+                              </div>
+                              <div>
+                                <dt>Synced</dt>
+                                <dd>{multiplayerDiagnostics.syncedPlyLabel}</dd>
+                              </div>
+                              <div>
+                                <dt>Input</dt>
+                                <dd>{multiplayerDiagnostics.lockLabel}</dd>
+                              </div>
+                            </dl>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : null}
                       {activeMultiplayerCanClaimTimeout ? (
                         <Button
                           type="button"
@@ -2570,8 +2661,8 @@ export default function App() {
                           </AlertDialogContent>
                         </AlertDialog>
                       ) : null}
-                    </strong>
-                  </div>
+                    </div>
+                  </TooltipProvider>
                 ) : null}
                 {multiplayerEloValue ? (
                   <div className="app-header__status-card">
@@ -2682,6 +2773,7 @@ export default function App() {
             playMapCityMenu={playMapCityMenu}
             playHeaderActions={renderPlayHeaderActions()}
             playHeaderDistrictBadge={renderPlayHeaderDistrictBadge()}
+            boardHeaderAction={multiplayerBoardHeaderAction}
             playCityBoard={playCityBoard}
             selectedDistrict={selectedDistrict}
             focusedDistrict={focusedDistrict}

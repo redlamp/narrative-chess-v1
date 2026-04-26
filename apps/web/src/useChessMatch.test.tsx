@@ -21,6 +21,7 @@ type HookResult = ReturnType<typeof useChessMatch>;
 
 type HarnessProps = {
   localMoveSide?: PieceSide | null;
+  localControlsLocked?: boolean;
   cityBoard?: CityBoard;
 };
 
@@ -43,11 +44,12 @@ function createPlayCityContext(cityBoard: CityBoard): PlayCityContext {
   };
 }
 
-function Harness({ localMoveSide, cityBoard = edinburghBoard }: HarnessProps) {
+function Harness({ localMoveSide, localControlsLocked = false, cityBoard = edinburghBoard }: HarnessProps) {
   latestHookResult = useChessMatch({
     roleCatalog: testRoleCatalog,
     playCityContext: createPlayCityContext(cityBoard),
-    localMoveSide
+    localMoveSide,
+    localControlsLocked
   });
 
   return null;
@@ -144,6 +146,27 @@ describe("useChessMatch multiplayer side enforcement", () => {
 
     clickSquare("e7");
     expect(currentHook().selectedSquare).toBeNull();
+  });
+
+  it("clears a pending local move even when normal controls are locked", () => {
+    renderChessHook({ localMoveSide: "white", localControlsLocked: true });
+
+    clickSquare("e2");
+    clickSquare("e4");
+
+    expect(currentHook().snapshot.moveHistory).toHaveLength(1);
+
+    act(() => {
+      currentHook().handleUndo();
+    });
+
+    expect(currentHook().snapshot.moveHistory).toHaveLength(1);
+
+    act(() => {
+      expect(currentHook().clearLatestLocalMove()).toBe(true);
+    });
+
+    expect(currentHook().snapshot.moveHistory).toHaveLength(0);
   });
 
   it("rebuilds character origins from the active play city", () => {

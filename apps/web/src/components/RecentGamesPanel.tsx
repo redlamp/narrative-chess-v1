@@ -133,6 +133,28 @@ type ActiveGamesNotice = {
   text: string;
 };
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string" &&
+    (error as { message: string }).message.length > 0
+  ) {
+    return (error as { message: string }).message;
+  }
+
+  if (typeof error === "string" && error.length > 0) {
+    return error;
+  }
+
+  return fallback;
+}
+
 function formatRelativeTimestamp(timestamp: number | null, now: number) {
   if (timestamp === null) {
     return "Not synced";
@@ -770,7 +792,7 @@ export function RecentGamesPanel({
     } catch (error) {
       setActiveGamesNotice({
         tone: "error",
-        text: error instanceof Error ? error.message : "Could not load multiplayer games."
+        text: getErrorMessage(error, "Could not load multiplayer games.")
       });
     } finally {
       if (!options?.silent) {
@@ -852,7 +874,7 @@ export function RecentGamesPanel({
     } catch (error) {
       setActiveGamesNotice({
         tone: "error",
-        text: error instanceof Error ? error.message : "Could not claim the timeout."
+        text: getErrorMessage(error, "Could not claim the timeout.")
       });
     } finally {
       setClaimingGameId(null);
@@ -874,7 +896,7 @@ export function RecentGamesPanel({
     } catch (error) {
       setActiveGamesNotice({
         tone: "error",
-        text: error instanceof Error ? error.message : "Could not remove the timed-out game."
+        text: getErrorMessage(error, "Could not remove the timed-out game.")
       });
     } finally {
       setClaimingGameId(null);
@@ -895,7 +917,7 @@ export function RecentGamesPanel({
     } catch (error) {
       setActiveGamesNotice({
         tone: "error",
-        text: error instanceof Error ? error.message : "Could not cancel the invite."
+        text: getErrorMessage(error, "Could not cancel the invite.")
       });
     } finally {
       setCancellingGameId(null);
@@ -918,11 +940,10 @@ export function RecentGamesPanel({
     } catch (error) {
       setActiveGamesNotice({
         tone: "error",
-        text: error instanceof Error
-          ? error.message
-          : archive
-            ? "Could not archive the game."
-            : "Could not restore the game."
+        text: getErrorMessage(
+          error,
+          archive ? "Could not archive the game." : "Could not restore the game."
+        )
       });
     } finally {
       setArchivingGameId(null);
@@ -975,7 +996,7 @@ export function RecentGamesPanel({
     } catch (error) {
       setActiveGamesNotice({
         tone: "error",
-        text: error instanceof Error ? error.message : "Could not create the multiplayer invite."
+        text: getErrorMessage(error, "Could not create the multiplayer invite.")
       });
     } finally {
       setIsSubmittingInvite(false);
@@ -1003,7 +1024,7 @@ export function RecentGamesPanel({
     } catch (error) {
       setActiveGamesNotice({
         tone: "error",
-        text: error instanceof Error ? error.message : "Could not join the open game."
+        text: getErrorMessage(error, "Could not join the open game.")
       });
     }
   }, [onLoadActiveGame, refreshActiveGames]);
@@ -1019,7 +1040,7 @@ export function RecentGamesPanel({
     } catch (error) {
       setActiveGamesNotice({
         tone: "error",
-        text: error instanceof Error ? error.message : "Could not update the multiplayer invite."
+        text: getErrorMessage(error, "Could not update the multiplayer invite.")
       });
     }
   }, [refreshActiveGames]);

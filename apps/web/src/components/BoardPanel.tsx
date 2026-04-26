@@ -13,6 +13,8 @@ type BoardPanelProps = {
   // Header badge
   districtName?: string | null;
   districtSquare?: Square | null;
+  headerAction?: ReactNode;
+  showHeaderLocationBadge?: boolean;
   // Layout
   layoutMode?: boolean;
   className?: string;
@@ -27,6 +29,8 @@ export function BoardPanel({
   onShowPiecesChange,
   districtName,
   districtSquare,
+  headerAction,
+  showHeaderLocationBadge = true,
   layoutMode = false,
   className,
   children,
@@ -58,18 +62,26 @@ export function BoardPanel({
     </div>
   ) : null;
 
+  const action: ReactNode =
+    headerAction || showHeaderLocationBadge ? (
+      <div className="board-panel__header-actions">
+        {headerAction}
+        {showHeaderLocationBadge ? (
+          <LocationBadge
+            name={districtName ?? null}
+            square={districtSquare ?? null}
+            className="district-badge--header"
+          />
+        ) : null}
+      </div>
+    ) : null;
+
   return (
     <Panel
       className={["board-panel", className].filter(Boolean).join(" ")}
       bodyClassName="board-panel__content"
       title="Board"
-      action={
-        <LocationBadge
-          name={districtName ?? null}
-          square={districtSquare ?? null}
-          className="district-badge--header"
-        />
-      }
+      action={action}
       footer={footer}
     >
       {children}

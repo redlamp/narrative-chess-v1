@@ -73,6 +73,8 @@ Current RPC calls from the frontend:
 
 Multiplayer also depends on Supabase Realtime subscriptions over `game_threads`, `game_participants`, and `game_moves`, with those tables present in the `supabase_realtime` publication so list and active-game views can refresh from change events.
 
+For solo multiplayer testing, use two separate browser profiles or two different browsers with two different accounts. Two tabs in the same browser profile share one Supabase session and are not a valid two-player test. See [`multiplayer-self-test.md`](multiplayer-self-test.md).
+
 ## Profile Privacy
 
 Treat Supabase Auth email, provider metadata, and session data as private.
@@ -98,6 +100,7 @@ Before enabling Supabase features for production traffic, confirm RLS is enabled
 - publish/admin functions are restricted to authorized roles.
 - game threads and moves are readable only by participants.
 - game moves are inserted through `append_game_move`, which must validate participant, turn, ply order, and immutable prior moves.
+- hosted dev projects have all multiplayer migrations applied, especially `20260419114500_validate_multiplayer_move_side.sql` or a later `append_game_move` definition with equivalent side and turn checks.
 
 See [`supabase-rls-checklist.md`](supabase-rls-checklist.md) for the current frontend query/RPC audit and hardening checklist.
 

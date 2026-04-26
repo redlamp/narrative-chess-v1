@@ -696,6 +696,7 @@ export async function appendActiveGameMoveInSupabase(input: {
   result: ActiveGameSession["result"];
   whiteRatingDelta: number | null;
   blackRatingDelta: number | null;
+  snapshot: GameSnapshot;
 }> {
   const auth = await requireAuthenticatedUser();
   if (!auth) {
@@ -726,7 +727,8 @@ export async function appendActiveGameMoveInSupabase(input: {
     nextPlyNumber: row.next_ply_number as number,
     result: (row.result as ActiveGameSession["result"]) ?? null,
     whiteRatingDelta: (row.white_rating_delta as number | null) ?? null,
-    blackRatingDelta: (row.black_rating_delta as number | null) ?? null
+    blackRatingDelta: (row.black_rating_delta as number | null) ?? null,
+    snapshot: input.snapshot
   };
 }
 

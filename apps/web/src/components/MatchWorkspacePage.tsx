@@ -55,6 +55,7 @@ type MatchWorkspacePageProps = {
   playMapCityMenu: ReactNode;
   playHeaderActions: ReactNode;
   playHeaderDistrictBadge: ReactNode;
+  boardHeaderAction: ReactNode;
   playCityBoard: CityBoard;
   selectedDistrict: CityBoard["districts"][number] | null;
   focusedDistrict: CityBoard["districts"][number] | null;
@@ -122,6 +123,7 @@ export function MatchWorkspacePage({
   playMapCityMenu,
   playHeaderActions,
   playHeaderDistrictBadge,
+  boardHeaderAction,
   playCityBoard,
   selectedDistrict,
   focusedDistrict,
@@ -180,6 +182,8 @@ export function MatchWorkspacePage({
             <BoardPanel
               districtName={playHeaderDistrict?.name ?? null}
               districtSquare={playHeaderDistrict?.square ?? null}
+              headerAction={boardHeaderAction}
+              showHeaderLocationBadge={false}
               showDistrictLabels={showDistrictLabels}
               onShowDistrictLabelsChange={onShowDistrictLabelsChange}
               showPieces={true}

@@ -363,6 +363,29 @@ export function useChessMatch({
     setSelectedSquare(null);
   };
 
+  const clearLatestLocalMove = () => {
+    if (isStudyMode) {
+      return false;
+    }
+
+    const previous = undoLastMove(snapshot);
+    if (!previous) {
+      return false;
+    }
+
+    setLocalSnapshot(
+      rebuildSnapshot({
+        snapshot: previous,
+        roleCatalog,
+        cityBoard: playCityContext.board,
+        tonePreset
+      })
+    );
+    setLocalPly(previous.moveHistory.length);
+    setSelectedSquare(null);
+    return true;
+  };
+
   const loadReferenceGame = (game: ReferenceGame) => {
     return loadStudyReplay({
       pgn: game.pgn,
@@ -552,6 +575,7 @@ export function useChessMatch({
     lastMove,
     handleSquareClick,
     handleUndo,
+    clearLatestLocalMove,
     goToPly,
     loadReferenceGame,
     exitStudyMode,
