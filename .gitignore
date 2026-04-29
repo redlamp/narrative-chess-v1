@@ -23,3 +23,7 @@ Thumbs.db
 # Local plugin/vendor checkouts
 /caveman/
 /playright@latest/
+
+# Tool caches
+.fallow/
+supabase/.temp/
