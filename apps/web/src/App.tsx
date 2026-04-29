@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { getPieceAtSquare } from "@narrative-chess/game-core";
 import { getCharacterEventHistory } from "@narrative-chess/narrative-engine";
-import type { CityBoard, GameSnapshot, PieceKind, Square } from "@narrative-chess/content-schema";
+import type { CityBoard, GameSnapshot, Square } from "@narrative-chess/content-schema";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,13 +74,10 @@ import { listKnownWorkspaceLayoutFiles } from "./layoutFiles";
 import { savePieceStyleSheet } from "./pieceStyles";
 import { listReferenceGames, saveReferenceGames, type ReferenceGameLibrary } from "./referenceGames";
 import {
-  connectRoleCatalogDirectory,
-  getConnectedRoleCatalogDirectoryName,
   loadClassicGamesFromDirectory,
   loadCityDraftFromDirectory,
   loadRoleCatalogFromDirectory,
   saveRoleCatalogDraftToDirectory,
-  supportsDirectoryWrite as supportsRoleCatalogDirectory,
   saveClassicGamesDraftToDirectory,
   saveCityDraftToDirectory,
   getConnectedWorkspaceLayoutDirectoryName,
@@ -101,6 +98,7 @@ import {
 } from "./activeGames";
 import { useAuthSession } from "./hooks/useAuthSession";
 import { usePieceStyleSheet } from "./hooks/usePieceStyleSheet";
+import { useRoleCatalog } from "./hooks/useRoleCatalog";
 import {
   cityBoardDefinitions,
   getCityBoardDefinition,
@@ -118,15 +116,7 @@ import type { LayoutNavigation } from "./components/IndexedWorkspace";
 import { DistrictBadge } from "./components/DistrictBadge";
 import { useChessMatch } from "./hooks/useChessMatch";
 import { useMovePlayhead } from "./hooks/useMovePlayhead";
-import {
-  addRoleCatalogEntry,
-  duplicateRoleCatalogEntry,
-  listRoleCatalog,
-  removeRoleCatalogEntry,
-  resetRoleCatalog,
-  saveRoleCatalog,
-  updateRoleCatalogEntry
-} from "./roleCatalog";
+import { listRoleCatalog, saveRoleCatalog } from "./roleCatalog";
 import type {
   PlayCityContext,
   PlayCityPreviewMode,
@@ -317,11 +307,23 @@ export default function App() {
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const [hoveredSquare, setHoveredSquare] = useState<Square | null>(null);
   const [inspectedSquare, setInspectedSquare] = useState<Square | null>(null);
-  const [roleCatalog, setRoleCatalog] = useState(() => listRoleCatalog());
-  const [roleCatalogDirectoryName, setRoleCatalogDirectoryName] = useState<string | null>(null);
-  const [roleCatalogFileBusyAction, setRoleCatalogFileBusyAction] = useState<string | null>(null);
-  const [roleCatalogFileNotice, setRoleCatalogFileNotice] = useState<LayoutFileNotice | null>(null);
-  const [isRoleCatalogDirectorySupported, setIsRoleCatalogDirectorySupported] = useState(false);
+  const {
+    roleCatalog,
+    setRoleCatalog,
+    roleCatalogDirectoryName,
+    setRoleCatalogDirectoryName,
+    roleCatalogFileBusyAction,
+    roleCatalogFileNotice,
+    isRoleCatalogDirectorySupported,
+    handleRoleCatalogChange,
+    handleRoleCatalogAdd,
+    handleRoleCatalogDuplicate,
+    handleRoleCatalogRemove,
+    handleRoleCatalogReset,
+    handleConnectRoleCatalogDirectory,
+    handleSaveRoleCatalogFile,
+    handleLoadRoleCatalogFile
+  } = useRoleCatalog();
   const [workspaceLayout, setWorkspaceLayout] = useState(() => listWorkspaceLayoutState());
   const [layoutFileName, setLayoutFileName] = useState("match-workspace");
   const [, setLayoutDirectoryName] = useState<string | null>(null);
@@ -1394,14 +1396,6 @@ export default function App() {
 
     let cancelled = false;
 
-    setIsRoleCatalogDirectorySupported(supportsRoleCatalogDirectory());
-
-    void getConnectedRoleCatalogDirectoryName().then((directoryName) => {
-      if (!cancelled) {
-        setRoleCatalogDirectoryName(directoryName);
-      }
-    });
-
     void getConnectedWorkspaceLayoutDirectoryName().then((directoryName) => {
       if (!cancelled) {
         setLayoutDirectoryName(directoryName);
@@ -1490,140 +1484,6 @@ export default function App() {
     clearActiveMultiplayerSession();
     loadChosenReferenceGame(referenceGameId);
     setPage("match");
-  };
-
-  const handleRoleCatalogChange = (
-    roleId: string,
-    field:
-      | "pieceKind"
-      | "name"
-      | "summary"
-      | "traits"
-      | "verbs"
-      | "notes"
-      | "contentStatus"
-      | "reviewStatus"
-      | "reviewNotes"
-      | "lastReviewedAt",
-    value:
-      | PieceKind
-      | string
-      | string[]
-      | null
-      | "empty"
-      | "procedural"
-      | "authored"
-      | "needs review"
-      | "reviewed"
-      | "approved"
-  ) => {
-    setRoleCatalog((current) =>
-      saveRoleCatalog(
-        updateRoleCatalogEntry({
-          roleCatalog: current,
-          roleId,
-          field,
-          value
-        })
-      )
-    );
-  };
-
-  const handleRoleCatalogAdd = (pieceKind?: PieceKind) => {
-    setRoleCatalog((current) =>
-      saveRoleCatalog(
-        addRoleCatalogEntry({
-          roleCatalog: current,
-          pieceKind
-        })
-      )
-    );
-  };
-
-  const handleRoleCatalogDuplicate = (roleId: string) => {
-    setRoleCatalog((current) =>
-      saveRoleCatalog(
-        duplicateRoleCatalogEntry({
-          roleCatalog: current,
-          roleId
-        })
-      )
-    );
-  };
-
-  const handleRoleCatalogRemove = (roleId: string) => {
-    setRoleCatalog((current) =>
-      saveRoleCatalog(
-        removeRoleCatalogEntry({
-          roleCatalog: current,
-          roleId
-        })
-      )
-    );
-  };
-
-  const handleRoleCatalogReset = () => {
-    setRoleCatalog(resetRoleCatalog());
-  };
-
-  const runRoleCatalogFileAction = async (actionName: string, action: () => Promise<void>) => {
-    setRoleCatalogFileBusyAction(actionName);
-    setRoleCatalogFileNotice(null);
-
-    try {
-      await action();
-    } catch (error) {
-      setRoleCatalogFileNotice({
-        tone: "error",
-        text: error instanceof Error
-          ? error.message
-          : "Something went wrong while working with the role catalog file."
-      });
-    } finally {
-      setRoleCatalogFileBusyAction(null);
-    }
-  };
-
-  const handleConnectRoleCatalogDirectory = () => {
-    void runRoleCatalogFileAction("connect-role-catalog-directory", async () => {
-      const result = await connectRoleCatalogDirectory();
-      setRoleCatalogDirectoryName(result.directoryName);
-      setRoleCatalogFileNotice({
-        tone: "success",
-        text: `Connected role catalog files to ${result.directoryName}.`
-      });
-    });
-  };
-
-  const handleSaveRoleCatalogFile = () => {
-    void runRoleCatalogFileAction("save-role-catalog-file", async () => {
-      const result = await saveRoleCatalogDraftToDirectory(roleCatalog);
-      setRoleCatalogDirectoryName(result.directoryName);
-      setRoleCatalogFileNotice({
-        tone: "success",
-        text: `Saved role catalog to ${result.displayPath}.`
-      });
-    });
-  };
-
-  const handleLoadRoleCatalogFile = () => {
-    void runRoleCatalogFileAction("load-role-catalog-file", async () => {
-      const result = await loadRoleCatalogFromDirectory();
-      if (!result) {
-        setRoleCatalogFileNotice({
-          tone: "neutral",
-          text: "No role catalog file matched that name in the connected folder."
-        });
-        return;
-      }
-
-      setRoleCatalog(saveRoleCatalog(result.roleCatalog));
-      setRoleCatalogDirectoryName(result.directoryName);
-      setRoleCatalogFileNotice({
-        tone: "success",
-        text: `Loaded role catalog from ${result.relativePath}.`
-      });
-    });
   };
 
   const handleThemeChange = (theme: AppSettings["theme"]) => {
