@@ -63,7 +63,6 @@ import {
   type AppSettings,
   type HighlightColor
 } from "./appSettings";
-import { edinburghBoard } from "./edinburghBoard";
 import {
   listWorkspaceLayoutState,
   saveWorkspaceLayoutState,
@@ -71,21 +70,8 @@ import {
   type CollapsibleWorkspacePanelId
 } from "./layoutState";
 import { listKnownWorkspaceLayoutFiles } from "./layoutFiles";
-import { savePieceStyleSheet } from "./pieceStyles";
-import { listReferenceGames, saveReferenceGames, type ReferenceGameLibrary } from "./referenceGames";
-import {
-  loadClassicGamesFromDirectory,
-  loadCityDraftFromDirectory,
-  loadRoleCatalogFromDirectory,
-  saveRoleCatalogDraftToDirectory,
-  saveClassicGamesDraftToDirectory,
-  saveCityDraftToDirectory,
-  getConnectedWorkspaceLayoutDirectoryName,
-  loadWorkspaceLayoutFileFromDirectory,
-  saveWorkspaceLayoutFileToDirectory,
-  savePageLayoutFileToDirectory,
-  savePieceStylesDraftToDirectory
-} from "./fileSystemAccess";
+import { listReferenceGames, type ReferenceGameLibrary } from "./referenceGames";
+import { getConnectedWorkspaceLayoutDirectoryName } from "./fileSystemAccess";
 import {
   appendActiveGameMoveInSupabase,
   claimGameTimeoutInSupabase,
@@ -99,24 +85,21 @@ import {
 import { useAuthSession } from "./hooks/useAuthSession";
 import { usePieceStyleSheet } from "./hooks/usePieceStyleSheet";
 import { useRoleCatalog } from "./hooks/useRoleCatalog";
+import { loadEverything, resetEverything, saveEverything } from "./persistEverything";
 import {
-  cityBoardDefinitions,
   getCityBoardDefinition,
   loadLatestDraftCityBoard,
   loadPublishedCityBoard,
   type PlayableCityOption
 } from "./cityBoards";
-import { listCityBoardDraft, saveCityBoardDraft } from "./cityReviewState";
+import { listCityBoardDraft } from "./cityReviewState";
 import { usePlayCityBoard } from "./hooks/usePlayCityBoard";
 import { getAnimatedPieceFrames } from "./chessMotion";
-import { allPageLayoutTargets, listPageLayoutState, savePageLayoutState } from "./pageLayoutState";
-import { getBundledPageLayout, getBundledWorkspaceLayout } from "./bundledLayouts";
 import { AppMenu, UserMenu } from "./components/AppMenu";
 import type { LayoutNavigation } from "./components/IndexedWorkspace";
 import { DistrictBadge } from "./components/DistrictBadge";
 import { useChessMatch } from "./hooks/useChessMatch";
 import { useMovePlayhead } from "./hooks/useMovePlayhead";
-import { listRoleCatalog, saveRoleCatalog } from "./roleCatalog";
 import type {
   PlayCityContext,
   PlayCityPreviewMode,
@@ -183,8 +166,6 @@ const pageOptions: Array<{ value: AppPage; label: string; icon?: React.ReactNode
   { value: "research", label: "Research", icon: <Telescope className="size-4" /> },
   { value: "design", label: "Design", icon: <Pencil className="size-4" /> }
 ];
-
-const pageLayoutSaveTargets = allPageLayoutTargets;
 
 function isAppPage(value: string | null): value is AppPage {
   return (
@@ -1514,271 +1495,40 @@ export default function App() {
     }));
   };
 
-  const handleResetEverything = () => {
-    if (isSavingEverything || isLoadingEverything || isResettingEverything) {
-      return;
-    }
-
-    setIsResettingEverything(true);
-
-    try {
-      // Restore workspace layout from the committed/bundled default
-      const bundledWorkspace = getBundledWorkspaceLayout("match-workspace");
-      if (bundledWorkspace) {
-        saveWorkspaceLayoutState(bundledWorkspace.layoutState);
-        setWorkspaceLayout(bundledWorkspace.layoutState);
-      }
-
-      // Restore each page layout from its committed/bundled default
-      for (const target of pageLayoutSaveTargets) {
-        const bundledLayout = getBundledPageLayout({
-          layoutKey: target.layoutKey,
-          layoutVariant: target.layoutVariant,
-          panelIds: target.panelIds
-        });
-        if (bundledLayout) {
-          savePageLayoutState({
-            layoutKey: target.layoutKey,
-            layoutState: bundledLayout.layoutState,
-            variant: target.layoutVariant,
-            panelIds: target.panelIds
-          });
-        }
-      }
-
-      // Reload so all IndexedWorkspace components re-initialize from the restored state
-      window.location.reload();
-    } finally {
-      setIsResettingEverything(false);
-    }
+  const persistDeps = {
+    isSavingEverything,
+    isLoadingEverything,
+    isResettingEverything,
+    setIsSavingEverything,
+    setIsLoadingEverything,
+    setIsResettingEverything,
+    setSaveEverythingNotice,
+    settings,
+    workspaceLayout,
+    setWorkspaceLayout,
+    roleCatalog,
+    setRoleCatalog,
+    setRoleCatalogDirectoryName,
+    pieceStyleSheet,
+    setPieceStyleDirectoryName,
+    referenceGamesLibrary,
+    setReferenceGamesLibrary,
+    setSelectedReferenceGameId,
+    setPlayCityBoard,
+    layoutFileName,
+    setLayoutFileName,
+    setKnownLayoutFiles,
+    setLayoutDirectoryName
   };
 
+  const handleResetEverything = () => resetEverything(persistDeps);
+
   const handleSaveEverything = () => {
-    if (isSavingEverything || isLoadingEverything) {
-      return;
-    }
-
-    void (async () => {
-      setIsSavingEverything(true);
-      setSaveEverythingNotice(null);
-
-      const savedItems: string[] = [];
-      const failedItems: string[] = [];
-      const recordSave = async (label: string, action: () => Promise<void>) => {
-        try {
-          await action();
-          savedItems.push(label);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "unknown error";
-          failedItems.push(`${label}: ${message}`);
-        }
-      };
-
-      try {
-        saveAppSettings(settings);
-        saveWorkspaceLayoutState(workspaceLayout);
-        saveRoleCatalog(roleCatalog);
-        savePieceStyleSheet(pieceStyleSheet);
-        saveReferenceGames(referenceGamesLibrary);
-        cityBoardDefinitions.forEach((definition) => {
-          saveCityBoardDraft(listCityBoardDraft(definition.id, definition.board));
-        });
-        savedItems.push("browser state");
-
-        await recordSave("Play layout", async () => {
-          const result = await saveWorkspaceLayoutFileToDirectory({
-            name: layoutFileName,
-            layoutState: workspaceLayout
-          });
-          setKnownLayoutFiles(result.knownFiles);
-          setLayoutDirectoryName(result.directoryName);
-          setLayoutFileName(result.layoutName);
-        });
-
-        for (const target of pageLayoutSaveTargets) {
-          await recordSave(`${target.name} layout`, async () => {
-            const layoutState = listPageLayoutState({
-              layoutKey: target.layoutKey,
-              variant: target.layoutVariant,
-              panelIds: target.panelIds
-            });
-            savePageLayoutState({
-              layoutKey: target.layoutKey,
-              layoutState,
-              variant: target.layoutVariant,
-              panelIds: target.panelIds
-            });
-            await savePageLayoutFileToDirectory({
-              layoutKey: target.layoutKey,
-              layoutVariant: target.layoutVariant,
-              panelIds: target.panelIds,
-              name: target.name,
-              layoutState
-            });
-          });
-        }
-
-        for (const definition of cityBoardDefinitions) {
-          await recordSave(`${definition.displayLabel} city data`, async () => {
-            const board = listCityBoardDraft(definition.id, definition.board);
-            const result = await saveCityDraftToDirectory(board);
-            saveCityBoardDraft(board);
-            setSaveEverythingNotice({
-              tone: "neutral",
-              text: `Saving ${result.relativePath}...`
-            });
-          });
-        }
-
-        await recordSave("Historic games", async () => {
-          await saveClassicGamesDraftToDirectory(referenceGamesLibrary);
-        });
-
-        await recordSave("Character roles", async () => {
-          const result = await saveRoleCatalogDraftToDirectory(roleCatalog);
-          setRoleCatalogDirectoryName(result.directoryName);
-        });
-
-        await recordSave("Piece styles", async () => {
-          const result = await savePieceStylesDraftToDirectory(pieceStyleSheet);
-          setPieceStyleDirectoryName(result.directoryName);
-        });
-
-        setSaveEverythingNotice({
-          tone: failedItems.length ? "error" : "success",
-          text: failedItems.length
-            ? `Saved ${savedItems.length} item(s). ${failedItems.length} item(s) need a connected folder: ${failedItems.join(" | ")}`
-            : `Saved everything: ${savedItems.join(", ")}.`
-        });
-      } finally {
-        setIsSavingEverything(false);
-      }
-    })();
+    void saveEverything(persistDeps);
   };
 
   const handleLoadEverything = () => {
-    if (isSavingEverything || isLoadingEverything) {
-      return;
-    }
-
-    void (async () => {
-      setIsLoadingEverything(true);
-      setSaveEverythingNotice(null);
-
-      const loadedItems: string[] = [];
-      const skippedItems: string[] = [];
-      const failedItems: string[] = [];
-      const recordLoad = async (
-        label: string,
-        action: () => Promise<boolean>
-      ) => {
-        try {
-          const didLoad = await action();
-          if (didLoad) {
-            loadedItems.push(label);
-          } else {
-            skippedItems.push(label);
-          }
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "unknown error";
-          failedItems.push(`${label}: ${message}`);
-        }
-      };
-
-      try {
-        const nextWorkspaceLayout = listWorkspaceLayoutState();
-        const nextRoleCatalog = listRoleCatalog();
-        const nextReferenceGames = listReferenceGames();
-
-        setWorkspaceLayout(nextWorkspaceLayout);
-        setKnownLayoutFiles(listKnownWorkspaceLayoutFiles());
-        setRoleCatalog(nextRoleCatalog);
-        setReferenceGamesLibrary(nextReferenceGames);
-        setSelectedReferenceGameId((currentId) =>
-          nextReferenceGames.some((game) => game.id === currentId)
-            ? currentId
-            : nextReferenceGames[0]?.id ?? ""
-        );
-
-        cityBoardDefinitions.forEach((definition) => {
-          const board = listCityBoardDraft(definition.id, definition.board);
-          saveCityBoardDraft(board);
-          if (definition.id === edinburghBoard.id) {
-            setPlayCityBoard(board);
-          }
-        });
-
-        loadedItems.push("browser state");
-
-        await recordLoad("Play layout", async () => {
-          const result = await loadWorkspaceLayoutFileFromDirectory(layoutFileName);
-          if (!result) {
-            return false;
-          }
-
-          saveWorkspaceLayoutState(result.layoutState);
-          setWorkspaceLayout(result.layoutState);
-          setKnownLayoutFiles(result.knownFiles);
-          setLayoutDirectoryName(result.directoryName);
-          setLayoutFileName(result.layoutName);
-          return true;
-        });
-
-        for (const definition of cityBoardDefinitions) {
-          await recordLoad(`${definition.displayLabel} city data`, async () => {
-            const result = await loadCityDraftFromDirectory(definition.board);
-            if (!result) {
-              return false;
-            }
-
-            const nextBoard = saveCityBoardDraft(result.board);
-            if (definition.id === edinburghBoard.id) {
-              setPlayCityBoard(nextBoard);
-            }
-            return true;
-          });
-        }
-
-        await recordLoad("Historic games", async () => {
-          const result = await loadClassicGamesFromDirectory();
-          if (!result) {
-            return false;
-          }
-
-          const nextGames = saveReferenceGames(result.games);
-          setReferenceGamesLibrary(nextGames);
-          setSelectedReferenceGameId((currentId) =>
-            nextGames.some((game) => game.id === currentId)
-              ? currentId
-              : nextGames[0]?.id ?? ""
-          );
-          return true;
-        });
-
-        await recordLoad("Character roles", async () => {
-          const result = await loadRoleCatalogFromDirectory();
-          if (!result) {
-            return false;
-          }
-
-          const nextCatalog = saveRoleCatalog(result.roleCatalog);
-          setRoleCatalog(nextCatalog);
-          setRoleCatalogDirectoryName(result.directoryName);
-          return true;
-        });
-
-        setSaveEverythingNotice({
-          tone: failedItems.length ? "error" : "success",
-          text: failedItems.length
-            ? `Loaded ${loadedItems.length} item(s). ${failedItems.length} failed: ${failedItems.join(" | ")}`
-            : skippedItems.length
-              ? `Loaded ${loadedItems.join(", ")}. Skipped: ${skippedItems.join(", ")}.`
-              : `Loaded ${loadedItems.join(", ")}.`
-        });
-      } finally {
-        setIsLoadingEverything(false);
-      }
-    })();
+    void loadEverything(persistDeps);
   };
 
   const handleLoadSelectedSavedMatch = () => {
