@@ -71,7 +71,7 @@ import {
   type CollapsibleWorkspacePanelId
 } from "./layoutState";
 import { listKnownWorkspaceLayoutFiles } from "./layoutFiles";
-import { applyPieceStyleSheet, listPieceStyleSheet, resetPieceStyleSheet, savePieceStyleSheet } from "./pieceStyles";
+import { savePieceStyleSheet } from "./pieceStyles";
 import { listReferenceGames, saveReferenceGames, type ReferenceGameLibrary } from "./referenceGames";
 import {
   connectRoleCatalogDirectory,
@@ -87,11 +87,7 @@ import {
   loadWorkspaceLayoutFileFromDirectory,
   saveWorkspaceLayoutFileToDirectory,
   savePageLayoutFileToDirectory,
-  connectPieceStylesDirectory,
-  getConnectedPieceStylesDirectoryName,
-  loadPieceStylesFromDirectory,
-  savePieceStylesDraftToDirectory,
-  supportsWorkspaceLayoutDirectory
+  savePieceStylesDraftToDirectory
 } from "./fileSystemAccess";
 import {
   appendActiveGameMoveInSupabase,
@@ -104,6 +100,7 @@ import {
   type TimeControlKind
 } from "./activeGames";
 import { useAuthSession } from "./hooks/useAuthSession";
+import { usePieceStyleSheet } from "./hooks/usePieceStyleSheet";
 import {
   cityBoardDefinitions,
   getCityBoardDefinition,
@@ -333,11 +330,19 @@ export default function App() {
   const [isLoadingEverything, setIsLoadingEverything] = useState(false);
   const [isResettingEverything, setIsResettingEverything] = useState(false);
   const [, setKnownLayoutFiles] = useState(() => listKnownWorkspaceLayoutFiles());
-  const [pieceStyleSheet, setPieceStyleSheet] = useState(() => listPieceStyleSheet());
-  const [pieceStyleDirectoryName, setPieceStyleDirectoryName] = useState<string | null>(null);
-  const [pieceStyleFileBusyAction, setPieceStyleFileBusyAction] = useState<string | null>(null);
-  const [pieceStyleFileNotice, setPieceStyleFileNotice] = useState<LayoutFileNotice | null>(null);
-  const [isPieceStyleDirectorySupported, setIsPieceStyleDirectorySupported] = useState(false);
+  const {
+    pieceStyleSheet,
+    pieceStyleDirectoryName,
+    setPieceStyleDirectoryName,
+    pieceStyleFileBusyAction,
+    pieceStyleFileNotice,
+    isPieceStyleDirectorySupported,
+    handlePieceStyleSheetChange,
+    handleConnectPieceStyleDirectory,
+    handleLoadPieceStyleSheetFromDirectory,
+    handleSavePieceStyleSheetToDirectory,
+    handleResetPieceStyleSheet
+  } = usePieceStyleSheet();
   const [selectedSavedMatchId, setSelectedSavedMatchId] = useState<string | null>(null);
   const [isHistoryPlaying, setIsHistoryPlaying] = useState(false);
   const {
@@ -1367,10 +1372,6 @@ export default function App() {
   }, [settings.customHighlightColor, settings.highlightColor]);
 
   useEffect(() => {
-    applyPieceStyleSheet(pieceStyleSheet);
-  }, [pieceStyleSheet]);
-
-  useEffect(() => {
     saveAppSettings(settings);
   }, [settings]);
 
@@ -1385,8 +1386,6 @@ export default function App() {
   }, [savedMatches, selectedSavedMatchId]);
 
   useEffect(() => {
-    setIsPieceStyleDirectorySupported(supportsWorkspaceLayoutDirectory());
-
     const rememberedLayoutFiles = listKnownWorkspaceLayoutFiles();
     if (rememberedLayoutFiles.length) {
       setKnownLayoutFiles(rememberedLayoutFiles);
@@ -1406,12 +1405,6 @@ export default function App() {
     void getConnectedWorkspaceLayoutDirectoryName().then((directoryName) => {
       if (!cancelled) {
         setLayoutDirectoryName(directoryName);
-      }
-    });
-
-    void getConnectedPieceStylesDirectoryName().then((directoryName) => {
-      if (!cancelled) {
-        setPieceStyleDirectoryName(directoryName);
       }
     });
 
@@ -1659,78 +1652,6 @@ export default function App() {
       ...current,
       [key]: value
     }));
-  };
-
-  const runPieceStyleFileAction = async (actionName: string, action: () => Promise<void>) => {
-    setPieceStyleFileBusyAction(actionName);
-    setPieceStyleFileNotice(null);
-
-    try {
-      await action();
-    } catch (error) {
-      setPieceStyleFileNotice({
-        tone: "error",
-        text: error instanceof Error ? error.message : "Something went wrong while working with the piece style file."
-      });
-    } finally {
-      setPieceStyleFileBusyAction(null);
-    }
-  };
-
-  const handleConnectPieceStyleDirectory = () => {
-    void runPieceStyleFileAction("connect-piece-style-directory", async () => {
-      const result = await connectPieceStylesDirectory();
-      setPieceStyleDirectoryName(result.directoryName);
-      setPieceStyleFileNotice({
-        tone: "success",
-        text: `Connected piece styles to ${result.directoryName}.`
-      });
-    });
-  };
-
-  const handleSavePieceStyleSheetToDirectory = () => {
-    void runPieceStyleFileAction("save-piece-style-file", async () => {
-      const result = await savePieceStylesDraftToDirectory(pieceStyleSheet);
-      setPieceStyleDirectoryName(result.directoryName);
-      setPieceStyleFileNotice({
-        tone: "success",
-        text: `Saved piece styles to ${result.relativePath}.`
-      });
-    });
-  };
-
-  const handleLoadPieceStyleSheetFromDirectory = () => {
-    void runPieceStyleFileAction("load-piece-style-file", async () => {
-      const result = await loadPieceStylesFromDirectory();
-      if (!result) {
-        setPieceStyleFileNotice({
-          tone: "neutral",
-          text: "No saved piece-styles.local.css file was found in the connected folder."
-        });
-        return;
-      }
-
-      const nextSheet = savePieceStyleSheet(result.cssText);
-      setPieceStyleSheet(nextSheet);
-      setPieceStyleDirectoryName(result.directoryName);
-      setPieceStyleFileNotice({
-        tone: "success",
-        text: `Loaded ${result.relativePath} into the live app stylesheet.`
-      });
-    });
-  };
-
-  const handleResetPieceStyleSheet = () => {
-    const nextSheet = resetPieceStyleSheet();
-    setPieceStyleSheet(nextSheet);
-    setPieceStyleFileNotice({
-      tone: "neutral",
-      text: "Reset the piece stylesheet back to the bundled defaults."
-    });
-  };
-
-  const handlePieceStyleSheetChange = (value: string) => {
-    setPieceStyleSheet(savePieceStyleSheet(value));
   };
 
   const handleResetEverything = () => {
