@@ -1,3 +1,5 @@
+import { clamp, getStorage, roundOrFallback } from "./layoutMath";
+
 export const storyPanelSectionIds = [
   "beat",
   "tile",
@@ -60,22 +62,6 @@ const defaultStoryPanelLayoutState: StoryPanelLayoutState = {
     tone: { x: 1, y: 9, w: 4, h: 3 }
   }
 };
-
-function getStorage() {
-  if (typeof window === "undefined" || !window.localStorage) {
-    return null;
-  }
-
-  return window.localStorage;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
-function roundOrFallback(value: unknown, fallback: number) {
-  return typeof value === "number" && Number.isFinite(value) ? Math.round(value) : fallback;
-}
 
 function normalizeColumnCount(value: unknown) {
   return clamp(roundOrFallback(value, defaultColumnCount), minimumColumns, maximumColumns);
@@ -208,28 +194,3 @@ export function getStoryPanelLayoutRowCount(layoutState: StoryPanelLayoutState) 
   return Math.max(minimumRows, maxRow);
 }
 
-export function getSnappedStoryPanelColumn(input: {
-  offsetX: number;
-  width: number;
-  columnCount: number;
-  columnGap: number;
-}) {
-  const safeWidth = Math.max(input.width, 1);
-  const totalGapWidth = Math.max(0, input.columnCount - 1) * Math.max(0, input.columnGap);
-  const availableColumnWidth = Math.max(1, safeWidth - totalGapWidth);
-  const columnWidth = availableColumnWidth / Math.max(1, input.columnCount);
-  const stride = columnWidth + Math.max(0, input.columnGap);
-  const clampedOffset = clamp(input.offsetX, 0, safeWidth);
-
-  return clamp(Math.floor(clampedOffset / Math.max(stride, 1)) + 1, 1, input.columnCount);
-}
-
-export function getSnappedStoryPanelRow(input: {
-  offsetY: number;
-  rowHeight: number;
-  rowGap: number;
-}) {
-  const safeRowHeight = Math.max(input.rowHeight, 1);
-  const stride = safeRowHeight + Math.max(0, input.rowGap);
-  return Math.max(1, Math.floor(Math.max(input.offsetY, 0) / Math.max(stride, 1)) + 1);
-}
