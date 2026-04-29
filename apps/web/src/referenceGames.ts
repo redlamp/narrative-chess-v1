@@ -6,80 +6,19 @@ import {
   type ReferenceLink,
   type ReviewStatus
 } from "@narrative-chess/content-schema";
+import { getStorage } from "./layoutMath";
+import {
+  isRecord,
+  readNullableString,
+  readReferenceLinks,
+  readString,
+  readTrimmedStringArray,
+  readYear
+} from "./parsers";
 
 const storageKey = "narrative-chess:reference-games";
 const legacyStorageKey = "narrative-chess:classic-games";
 const defaultReferenceGames = referenceGameLibrarySchema.parse(classicGamesData);
-
-function getStorage() {
-  if (typeof window === "undefined" || !window.localStorage) {
-    return null;
-  }
-
-  return window.localStorage;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function readString(value: unknown, fallback: string) {
-  return typeof value === "string" ? value : fallback;
-}
-
-function readNullableString(value: unknown, fallback: string | null) {
-  return value === null || typeof value === "string" ? value : fallback;
-}
-
-function readStringArray(value: unknown, fallback: string[]) {
-  if (!Array.isArray(value)) {
-    return fallback;
-  }
-
-  return value
-    .filter((entry): entry is string => typeof entry === "string")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-}
-
-function readYear(value: unknown, fallback: number) {
-  if (typeof value === "number" && Number.isInteger(value)) {
-    return value;
-  }
-
-  if (typeof value === "string") {
-    const parsedValue = Number.parseInt(value, 10);
-    if (Number.isInteger(parsedValue)) {
-      return parsedValue;
-    }
-  }
-
-  return fallback;
-}
-
-function readReferenceLinks(value: unknown, fallback: ReferenceLink[]) {
-  if (!Array.isArray(value)) {
-    return fallback;
-  }
-
-  const nextLinks: ReferenceLink[] = [];
-
-  value.forEach((candidate) => {
-    if (!isRecord(candidate)) {
-      return;
-    }
-
-    const label = readString(candidate.label, "").trim();
-    const url = readString(candidate.url, "").trim();
-    if (!label || !url) {
-      return;
-    }
-
-    nextLinks.push({ label, url });
-  });
-
-  return nextLinks;
-}
 
 function cloneReferenceGame(game: ReferenceGame): ReferenceGame {
   return {
@@ -151,7 +90,7 @@ function normalizeReferenceGame(candidate: unknown, index: number): ReferenceGam
       candidate.historicalSignificance,
       fallback.historicalSignificance
     ),
-    teachingFocus: readStringArray(candidate.teachingFocus, fallback.teachingFocus),
+    teachingFocus: readTrimmedStringArray(candidate.teachingFocus, fallback.teachingFocus),
     sourceUrl: readNullableString(candidate.sourceUrl, fallback.sourceUrl),
     detailLinks: readReferenceLinks(candidate.detailLinks, fallback.detailLinks),
     pgn: readString(candidate.pgn, fallback.pgn),
