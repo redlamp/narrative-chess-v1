@@ -107,14 +107,12 @@ import { useAuthSession } from "./hooks/useAuthSession";
 import {
   cityBoardDefinitions,
   getCityBoardDefinition,
-  isSupabasePublishedCitiesEnabled,
-  listFallbackPlayableCityOptions,
-  listPlayableCityOptions,
   loadLatestDraftCityBoard,
   loadPublishedCityBoard,
   type PlayableCityOption
 } from "./cityBoards";
-import { getCityBoardDraftStatus, listCityBoardDraft, saveCityBoardDraft } from "./cityReviewState";
+import { listCityBoardDraft, saveCityBoardDraft } from "./cityReviewState";
+import { usePlayCityBoard } from "./hooks/usePlayCityBoard";
 import { getAnimatedPieceFrames } from "./chessMotion";
 import { allPageLayoutTargets, listPageLayoutState, savePageLayoutState } from "./pageLayoutState";
 import { getBundledPageLayout, getBundledWorkspaceLayout } from "./bundledLayouts";
@@ -135,7 +133,6 @@ import {
 import type {
   PlayCityContext,
   PlayCityPreviewMode,
-  PlayCitySource,
   SavedMatchCityMetadata
 } from "./playCityContext";
 import { getMultiplayerDiagnostics } from "./multiplayerDiagnostics";
@@ -167,17 +164,6 @@ type LayoutFileNotice = {
 };
 
 type SaveEverythingNotice = LayoutFileNotice;
-
-type PlayCityBoardLoadResult = {
-  board: CityBoard;
-  source: PlayCitySource;
-  publishedEditionId: string | null;
-  matchesFallback: boolean | null;
-};
-
-function getLocalPlayCitySource(cityId: string): PlayCitySource {
-  return getCityBoardDraftStatus(cityId) === "published" ? "fallback" : "local-draft";
-}
 
 type ActiveMultiplayerSession = {
   gameId: string;
@@ -354,24 +340,6 @@ export default function App() {
   const [isPieceStyleDirectorySupported, setIsPieceStyleDirectorySupported] = useState(false);
   const [selectedSavedMatchId, setSelectedSavedMatchId] = useState<string | null>(null);
   const [isHistoryPlaying, setIsHistoryPlaying] = useState(false);
-  const useSupabasePublishedCities = isSupabasePublishedCitiesEnabled();
-  const [playCityOptions, setPlayCityOptions] = useState<PlayableCityOption[]>(() =>
-    listFallbackPlayableCityOptions()
-  );
-  const [playCityOptionId, setPlayCityOptionId] = useState<string>(() =>
-    listFallbackPlayableCityOptions()[0]?.id ?? edinburghBoard.id
-  );
-  const [playCityBoard, setPlayCityBoard] = useState<CityBoard>(() =>
-    useSupabasePublishedCities ? edinburghBoard : listCityBoardDraft(edinburghBoard.id, edinburghBoard)
-  );
-  const [playCitySource, setPlayCitySource] = useState<PlayCitySource>(
-    useSupabasePublishedCities ? "fallback" : getLocalPlayCitySource(edinburghBoard.id)
-  );
-  const [playCityPreviewMode, setPlayCityPreviewMode] = useState<PlayCityPreviewMode>("published");
-  const [playCityPublishedEditionId, setPlayCityPublishedEditionId] = useState<string | null>(
-    listFallbackPlayableCityOptions()[0]?.publishedEditionId ?? null
-  );
-  const [playCityMatchesFallback, setPlayCityMatchesFallback] = useState<boolean | null>(null);
   const {
     sessionEmail,
     sessionRole,
@@ -386,6 +354,31 @@ export default function App() {
     handleSignOut,
     handleSaveProfile
   } = useAuthSession();
+  const effectiveRole = viewAsRole;
+  const canAccessDraftCities = effectiveRole === "author" || effectiveRole === "admin";
+  const canPublishCities = effectiveRole === "admin";
+  const {
+    useSupabasePublishedCities,
+    playCityOptions,
+    playCityOptionId,
+    setPlayCityOptionId,
+    playCityBoard,
+    setPlayCityBoard,
+    playCitySource,
+    setPlayCitySource,
+    setPlayCityPreviewMode,
+    playCityPublishedEditionId,
+    setPlayCityPublishedEditionId,
+    playCityMatchesFallback,
+    setPlayCityMatchesFallback,
+    selectedPlayCityOption,
+    multiplayerCityOptions,
+    canPreviewDraftPlayCity,
+    effectivePlayCityPreviewMode,
+    playCitySourceLabel,
+    playCityContext,
+    getLocalPlayCitySource
+  } = usePlayCityBoard(canAccessDraftCities);
   const [activeMultiplayerSession, setActiveMultiplayerSession] = useState<ActiveMultiplayerSession | null>(null);
   const [isSyncingActiveMultiplayerMove, setIsSyncingActiveMultiplayerMove] = useState(false);
   const [isRefreshingActiveMultiplayerSession, setIsRefreshingActiveMultiplayerSession] = useState(false);
@@ -405,33 +398,14 @@ export default function App() {
       setPlayCityBoard(board);
       setPlayCitySource(getLocalPlayCitySource(board.id));
     }
-  }, [playCityBoard.id, useSupabasePublishedCities]);
+  }, [
+    getLocalPlayCitySource,
+    playCityBoard.id,
+    setPlayCityBoard,
+    setPlayCitySource,
+    useSupabasePublishedCities
+  ]);
 
-  const selectedPlayCityOption = useMemo(
-    () => playCityOptions.find((option) => option.id === playCityOptionId) ?? playCityOptions[0] ?? null,
-    [playCityOptionId, playCityOptions]
-  );
-  const multiplayerCityOptions = useMemo(() => {
-    const seen = new Set<string>();
-
-    return playCityOptions
-      .filter((option) => option.publishedEditionId)
-      .map((option) => ({
-        id: option.publishedEditionId ?? option.id,
-        label: option.displayLabel
-      }))
-      .filter((option) => {
-        if (seen.has(option.id)) {
-          return false;
-        }
-
-        seen.add(option.id);
-        return true;
-      });
-  }, [playCityOptions]);
-  const effectiveRole = viewAsRole;
-  const canAccessDraftCities = effectiveRole === "author" || effectiveRole === "admin";
-  const canPublishCities = effectiveRole === "admin";
   const isActiveMultiplayerSessionLoaded = activeMultiplayerSession !== null;
   const isActiveMultiplayerTurn =
     activeMultiplayerSession?.status === "active" &&
@@ -451,36 +425,6 @@ export default function App() {
         : pageOptions,
     [effectiveRole]
   );
-  const canPreviewDraftPlayCity =
-    canAccessDraftCities &&
-    useSupabasePublishedCities &&
-    Boolean(selectedPlayCityOption?.publishedEditionId);
-  const effectivePlayCityPreviewMode: PlayCityPreviewMode =
-    canPreviewDraftPlayCity && playCityPreviewMode === "draft" ? "draft" : "published";
-  const playCitySourceLabel =
-    playCitySource === "supabase-draft"
-      ? "Supabase draft"
-      : playCitySource === "supabase-published"
-        ? "Supabase published"
-        : playCitySource === "local-draft"
-          ? "Local draft"
-          : "Bundled fallback";
-  const actualPlayCityPreviewMode: PlayCityPreviewMode =
-    playCitySource === "supabase-draft" || playCitySource === "local-draft" ? "draft" : "published";
-  const playCityContext = useMemo<PlayCityContext>(() => ({
-    boardId: selectedPlayCityOption?.boardId ?? playCityBoard.id,
-    displayLabel: selectedPlayCityOption?.displayLabel ?? playCityBoard.name,
-    source: playCitySource,
-    publishedEditionId: playCityPublishedEditionId,
-    previewMode: actualPlayCityPreviewMode,
-    board: playCityBoard
-  }), [
-    actualPlayCityPreviewMode,
-    playCityBoard,
-    playCityPublishedEditionId,
-    playCitySource,
-    selectedPlayCityOption
-  ]);
   const playCityMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [playCityMenuMaxWidth, setPlayCityMenuMaxWidth] = useState<number>(320);
 
@@ -490,119 +434,6 @@ export default function App() {
     setActiveMultiplayerRefreshError(null);
     setActiveMultiplayerLastRefreshAt(null);
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void listPlayableCityOptions()
-      .then((options) => {
-        if (!cancelled) {
-          setPlayCityOptions(options);
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          console.warn("[supabase] Could not load playable city options.", error);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (canPreviewDraftPlayCity) {
-      return;
-    }
-
-    setPlayCityPreviewMode("published");
-  }, [canPreviewDraftPlayCity]);
-
-  useEffect(() => {
-    if (!selectedPlayCityOption) {
-      return;
-    }
-
-    if (playCityOptions.some((option) => option.id === playCityOptionId)) {
-      return;
-    }
-
-    setPlayCityOptionId(selectedPlayCityOption.id);
-  }, [playCityOptionId, playCityOptions, selectedPlayCityOption]);
-
-  useEffect(() => {
-    if (!selectedPlayCityOption) {
-      return;
-    }
-
-    const definition = getCityBoardDefinition(selectedPlayCityOption.boardId);
-    if (!definition) {
-      return;
-    }
-
-    let cancelled = false;
-
-    if (!useSupabasePublishedCities) {
-      const nextBoard = listCityBoardDraft(definition.id, definition.board);
-      setPlayCityBoard(nextBoard);
-      setPlayCitySource(getLocalPlayCitySource(definition.id));
-      setPlayCityPublishedEditionId(selectedPlayCityOption.publishedEditionId);
-      setPlayCityMatchesFallback(null);
-      return;
-    }
-
-    const loadRemoteBoard = async (): Promise<PlayCityBoardLoadResult> => {
-      if (effectivePlayCityPreviewMode === "draft") {
-        const draftResult = await loadLatestDraftCityBoard(definition);
-        if (draftResult) {
-          return {
-            board: draftResult.board,
-            source: "supabase-draft",
-            publishedEditionId: draftResult.cityEditionId,
-            matchesFallback: null
-          };
-        }
-      }
-
-      const result = await loadPublishedCityBoard(definition, selectedPlayCityOption.publishedEditionId);
-      return {
-        ...result,
-        source: result.source === "supabase" ? "supabase-published" : "fallback"
-      };
-    };
-
-    void loadRemoteBoard()
-      .then((result) => {
-        if (cancelled) {
-          return;
-        }
-
-        if (result.source === "supabase-published" && result.matchesFallback === false) {
-          console.warn(
-            `[supabase] Published city board for ${selectedPlayCityOption.id} differs from bundled fallback ${definition.boardFileStem}.`
-          );
-        }
-
-        setPlayCityBoard(result.board);
-        setPlayCitySource(result.source);
-        setPlayCityPublishedEditionId(result.publishedEditionId);
-        setPlayCityMatchesFallback(result.matchesFallback);
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          console.warn(`[supabase] Could not load published city board for ${selectedPlayCityOption.id}.`, error);
-          setPlayCityBoard(definition.board);
-          setPlayCitySource("fallback");
-          setPlayCityPublishedEditionId(selectedPlayCityOption.publishedEditionId);
-          setPlayCityMatchesFallback(null);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [effectivePlayCityPreviewMode, selectedPlayCityOption, useSupabasePublishedCities]);
 
   useEffect(() => {
     if (sessionEmail) {
