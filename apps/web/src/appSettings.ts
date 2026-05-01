@@ -52,7 +52,7 @@ export function getDefaultAppSettings(): AppSettings {
   return { ...defaultAppSettings };
 }
 
-export function normalizeAppTheme(value: unknown): AppSettings["theme"] {
+function normalizeAppTheme(value: unknown): AppSettings["theme"] {
   return value === "dark" ? "dark" : "light";
 }
 
@@ -87,12 +87,12 @@ export function normalizeAppSettings(value: unknown): AppSettings {
   };
 }
 
-export function normalizeHighlightColor(value: unknown): HighlightColor {
+function normalizeHighlightColor(value: unknown): HighlightColor {
   const valid: HighlightColor[] = ["red", "yellow", "orange", "green", "blue", "purple", "grey", "custom"];
   return valid.includes(value as HighlightColor) ? (value as HighlightColor) : "blue";
 }
 
-export function normalizeCustomHighlightColor(value: unknown) {
+function normalizeCustomHighlightColor(value: unknown) {
   if (typeof value !== "string") {
     return defaultAppSettings.customHighlightColor;
   }
@@ -151,7 +151,7 @@ export function saveAppSettings(settings: AppSettings): AppSettings {
   return nextSettings;
 }
 
-export function resetAppSettings(): AppSettings {
+function resetAppSettings(): AppSettings {
   const nextSettings = getDefaultAppSettings();
   const storage = getStorage();
 

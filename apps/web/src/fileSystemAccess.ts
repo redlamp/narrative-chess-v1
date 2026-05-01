@@ -261,6 +261,140 @@ async function readTextFile(directoryHandle: LocalDirectoryHandle, name: string)
   }
 }
 
+function makeTarget(
+  directoryHandle: LocalDirectoryHandle,
+  fileName: string,
+  pathPrefix: string,
+  fileExists: boolean
+): LocalSaveTarget {
+  return {
+    directoryHandle,
+    fileName,
+    displayPath: pathPrefix ? `${pathPrefix}/${fileName}` : fileName,
+    fileExists
+  };
+}
+
+async function buildTargetWithExistenceCheck(
+  directoryHandle: LocalDirectoryHandle,
+  fileName: string,
+  pathPrefix: string
+): Promise<LocalSaveTarget> {
+  const existing = await getOptionalFileHandle(directoryHandle, fileName);
+  return makeTarget(directoryHandle, fileName, pathPrefix, Boolean(existing));
+}
+
+type ResolveTargetOptions = {
+  createInContent?: boolean;
+  matchRootName?: boolean;
+  matchRootNameFirst?: boolean;
+  createInRoot?: boolean;
+};
+
+async function resolveSubdirSaveTarget(
+  rootDirectoryHandle: LocalDirectoryHandle,
+  subdir: string,
+  fileName: string,
+  options: ResolveTargetOptions = {}
+): Promise<LocalSaveTarget> {
+  const {
+    createInContent = false,
+    matchRootName = false,
+    matchRootNameFirst = false,
+    createInRoot = false
+  } = options;
+
+  if (matchRootNameFirst && rootDirectoryHandle.name.toLowerCase() === subdir) {
+    return buildTargetWithExistenceCheck(rootDirectoryHandle, fileName, "");
+  }
+
+  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
+  if (contentDirectory) {
+    const subDirectory = createInContent
+      ? await getOrCreateDirectoryHandle(contentDirectory, subdir)
+      : await getOptionalDirectoryHandle(contentDirectory, subdir);
+    if (subDirectory) {
+      return buildTargetWithExistenceCheck(subDirectory, fileName, `content/${subdir}`);
+    }
+  }
+
+  const directSubDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, subdir);
+  if (directSubDirectory) {
+    return buildTargetWithExistenceCheck(directSubDirectory, fileName, subdir);
+  }
+
+  if (matchRootName && rootDirectoryHandle.name.toLowerCase() === subdir) {
+    return buildTargetWithExistenceCheck(rootDirectoryHandle, fileName, "");
+  }
+
+  if (createInRoot) {
+    const newSubDirectory = await getOrCreateDirectoryHandle(rootDirectoryHandle, subdir);
+    return buildTargetWithExistenceCheck(newSubDirectory, fileName, subdir);
+  }
+
+  return buildTargetWithExistenceCheck(rootDirectoryHandle, fileName, "");
+}
+
+async function collectExistingSubdirTargets(
+  rootDirectoryHandle: LocalDirectoryHandle,
+  subdir: string,
+  fileName: string,
+  options: {
+    matchRootName?: boolean;
+    matchRootNameFirst?: boolean;
+    includeRootFile?: boolean;
+  } = {}
+): Promise<LocalSaveTarget[]> {
+  const {
+    matchRootName = false,
+    matchRootNameFirst = false,
+    includeRootFile = true
+  } = options;
+  const targets: LocalSaveTarget[] = [];
+
+  if (matchRootNameFirst && rootDirectoryHandle.name.toLowerCase() === subdir) {
+    const file = await getOptionalFileHandle(rootDirectoryHandle, fileName);
+    if (file) {
+      targets.push(makeTarget(rootDirectoryHandle, fileName, "", true));
+    }
+  }
+
+  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
+  if (contentDirectory) {
+    const subDirectory = await getOptionalDirectoryHandle(contentDirectory, subdir);
+    if (subDirectory) {
+      const file = await getOptionalFileHandle(subDirectory, fileName);
+      if (file) {
+        targets.push(makeTarget(subDirectory, fileName, `content/${subdir}`, true));
+      }
+    }
+  }
+
+  const directSubDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, subdir);
+  if (directSubDirectory) {
+    const file = await getOptionalFileHandle(directSubDirectory, fileName);
+    if (file) {
+      targets.push(makeTarget(directSubDirectory, fileName, subdir, true));
+    }
+  }
+
+  if (matchRootName && rootDirectoryHandle.name.toLowerCase() === subdir) {
+    const file = await getOptionalFileHandle(rootDirectoryHandle, fileName);
+    if (file) {
+      targets.push(makeTarget(rootDirectoryHandle, fileName, "", true));
+    }
+  }
+
+  if (includeRootFile) {
+    const directFile = await getOptionalFileHandle(rootDirectoryHandle, fileName);
+    if (directFile) {
+      targets.push(makeTarget(rootDirectoryHandle, fileName, "", true));
+    }
+  }
+
+  return targets;
+}
+
 async function ensureReadWritePermission(handle: LocalFileSystemHandle) {
   const descriptor = { mode: "readwrite" as const };
 
@@ -284,38 +418,7 @@ async function ensureReadWritePermission(handle: LocalFileSystemHandle) {
 async function resolveEdinburghBoardTarget(
   rootDirectoryHandle: LocalDirectoryHandle
 ): Promise<LocalSaveTarget> {
-  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
-  if (contentDirectory) {
-    const citiesDirectory = await getOptionalDirectoryHandle(contentDirectory, "cities");
-    if (citiesDirectory) {
-      const existingFile = await getOptionalFileHandle(citiesDirectory, localDraftFileName);
-      return {
-        directoryHandle: citiesDirectory,
-        fileName: localDraftFileName,
-        displayPath: `content/cities/${localDraftFileName}`,
-        fileExists: Boolean(existingFile)
-      };
-    }
-  }
-
-  const directCitiesDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "cities");
-  if (directCitiesDirectory) {
-    const existingFile = await getOptionalFileHandle(directCitiesDirectory, localDraftFileName);
-    return {
-      directoryHandle: directCitiesDirectory,
-      fileName: localDraftFileName,
-      displayPath: `cities/${localDraftFileName}`,
-      fileExists: Boolean(existingFile)
-    };
-  }
-
-  const directFile = await getOptionalFileHandle(rootDirectoryHandle, localDraftFileName);
-  return {
-    directoryHandle: rootDirectoryHandle,
-    fileName: localDraftFileName,
-    displayPath: localDraftFileName,
-    fileExists: Boolean(directFile)
-  };
+  return resolveSubdirSaveTarget(rootDirectoryHandle, "cities", localDraftFileName);
 }
 
 function createCityFileStem(cityId: string) {
@@ -337,492 +440,86 @@ async function resolveCityBoardTarget(
   rootDirectoryHandle: LocalDirectoryHandle,
   cityId: string
 ): Promise<LocalSaveTarget> {
-  const fileName = createCityDraftFileName(cityId);
-
-  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
-  if (contentDirectory) {
-    const citiesDirectory = await getOptionalDirectoryHandle(contentDirectory, "cities");
-    if (citiesDirectory) {
-      const existingFile = await getOptionalFileHandle(citiesDirectory, fileName);
-      return {
-        directoryHandle: citiesDirectory,
-        fileName,
-        displayPath: `content/cities/${fileName}`,
-        fileExists: Boolean(existingFile)
-      };
-    }
-  }
-
-  const directCitiesDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "cities");
-  if (directCitiesDirectory) {
-    const existingFile = await getOptionalFileHandle(directCitiesDirectory, fileName);
-    return {
-      directoryHandle: directCitiesDirectory,
-      fileName,
-      displayPath: `cities/${fileName}`,
-      fileExists: Boolean(existingFile)
-    };
-  }
-
-  const directFile = await getOptionalFileHandle(rootDirectoryHandle, fileName);
-  return {
-    directoryHandle: rootDirectoryHandle,
-    fileName,
-    displayPath: fileName,
-    fileExists: Boolean(directFile)
-  };
+  return resolveSubdirSaveTarget(rootDirectoryHandle, "cities", createCityDraftFileName(cityId));
 }
 
 async function resolveCityBoardSearchTargets(
   rootDirectoryHandle: LocalDirectoryHandle,
   cityId: string
 ) {
-  const fileName = createCityDraftFileName(cityId);
-  const targets: LocalSaveTarget[] = [];
-
-  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
-  if (contentDirectory) {
-    const citiesDirectory = await getOptionalDirectoryHandle(contentDirectory, "cities");
-    if (citiesDirectory) {
-      const existingFile = await getOptionalFileHandle(citiesDirectory, fileName);
-      if (existingFile) {
-        targets.push({
-          directoryHandle: citiesDirectory,
-          fileName,
-          displayPath: `content/cities/${fileName}`,
-          fileExists: true
-        });
-      }
-    }
-  }
-
-  const directCitiesDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "cities");
-  if (directCitiesDirectory) {
-    const existingFile = await getOptionalFileHandle(directCitiesDirectory, fileName);
-    if (existingFile) {
-      targets.push({
-        directoryHandle: directCitiesDirectory,
-        fileName,
-        displayPath: `cities/${fileName}`,
-        fileExists: true
-      });
-    }
-  }
-
-  const directFile = await getOptionalFileHandle(rootDirectoryHandle, fileName);
-  if (directFile) {
-    targets.push({
-      directoryHandle: rootDirectoryHandle,
-      fileName,
-      displayPath: fileName,
-      fileExists: true
-    });
-  }
-
-  return targets;
+  return collectExistingSubdirTargets(
+    rootDirectoryHandle,
+    "cities",
+    createCityDraftFileName(cityId)
+  );
 }
 
 async function resolveClassicGamesTarget(
   rootDirectoryHandle: LocalDirectoryHandle
 ): Promise<LocalSaveTarget> {
-  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
-  if (contentDirectory) {
-    const gamesDirectory = await getOptionalDirectoryHandle(contentDirectory, "games");
-    if (gamesDirectory) {
-      const existingFile = await getOptionalFileHandle(gamesDirectory, localClassicGamesFileName);
-      return {
-        directoryHandle: gamesDirectory,
-        fileName: localClassicGamesFileName,
-        displayPath: `content/games/${localClassicGamesFileName}`,
-        fileExists: Boolean(existingFile)
-      };
-    }
-  }
-
-  const directGamesDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "games");
-  if (directGamesDirectory) {
-    const existingFile = await getOptionalFileHandle(directGamesDirectory, localClassicGamesFileName);
-    return {
-      directoryHandle: directGamesDirectory,
-      fileName: localClassicGamesFileName,
-      displayPath: `games/${localClassicGamesFileName}`,
-      fileExists: Boolean(existingFile)
-    };
-  }
-
-  const directFile = await getOptionalFileHandle(rootDirectoryHandle, localClassicGamesFileName);
-  return {
-    directoryHandle: rootDirectoryHandle,
-    fileName: localClassicGamesFileName,
-    displayPath: localClassicGamesFileName,
-    fileExists: Boolean(directFile)
-  };
+  return resolveSubdirSaveTarget(rootDirectoryHandle, "games", localClassicGamesFileName);
 }
 
 async function resolveClassicGamesSearchTargets(
   rootDirectoryHandle: LocalDirectoryHandle
 ) {
-  const targets: LocalSaveTarget[] = [];
-
-  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
-  if (contentDirectory) {
-    const gamesDirectory = await getOptionalDirectoryHandle(contentDirectory, "games");
-    if (gamesDirectory) {
-      const existingFile = await getOptionalFileHandle(gamesDirectory, localClassicGamesFileName);
-      if (existingFile) {
-        targets.push({
-          directoryHandle: gamesDirectory,
-          fileName: localClassicGamesFileName,
-          displayPath: `content/games/${localClassicGamesFileName}`,
-          fileExists: true
-        });
-      }
-    }
-  }
-
-  const directGamesDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "games");
-  if (directGamesDirectory) {
-    const existingFile = await getOptionalFileHandle(directGamesDirectory, localClassicGamesFileName);
-    if (existingFile) {
-      targets.push({
-        directoryHandle: directGamesDirectory,
-        fileName: localClassicGamesFileName,
-        displayPath: `games/${localClassicGamesFileName}`,
-        fileExists: true
-      });
-    }
-  }
-
-  const directFile = await getOptionalFileHandle(rootDirectoryHandle, localClassicGamesFileName);
-  if (directFile) {
-    targets.push({
-      directoryHandle: rootDirectoryHandle,
-      fileName: localClassicGamesFileName,
-      displayPath: localClassicGamesFileName,
-      fileExists: true
-    });
-  }
-
-  return targets;
+  return collectExistingSubdirTargets(rootDirectoryHandle, "games", localClassicGamesFileName);
 }
 
 async function resolveRoleCatalogTarget(
   rootDirectoryHandle: LocalDirectoryHandle
 ): Promise<LocalSaveTarget> {
-  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
-  if (contentDirectory) {
-    const rolesDirectory = await getOrCreateDirectoryHandle(contentDirectory, "roles");
-    const existingFile = await getOptionalFileHandle(rolesDirectory, localRoleCatalogFileName);
-    return {
-      directoryHandle: rolesDirectory,
-      fileName: localRoleCatalogFileName,
-      displayPath: `content/roles/${localRoleCatalogFileName}`,
-      fileExists: Boolean(existingFile)
-    };
-  }
-
-  const directRolesDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "roles");
-  if (directRolesDirectory) {
-    const existingFile = await getOptionalFileHandle(directRolesDirectory, localRoleCatalogFileName);
-    return {
-      directoryHandle: directRolesDirectory,
-      fileName: localRoleCatalogFileName,
-      displayPath: `roles/${localRoleCatalogFileName}`,
-      fileExists: Boolean(existingFile)
-    };
-  }
-
-  if (rootDirectoryHandle.name.toLowerCase() === "roles") {
-    const existingFile = await getOptionalFileHandle(rootDirectoryHandle, localRoleCatalogFileName);
-    return {
-      directoryHandle: rootDirectoryHandle,
-      fileName: localRoleCatalogFileName,
-      displayPath: localRoleCatalogFileName,
-      fileExists: Boolean(existingFile)
-    };
-  }
-
-  const rootRolesDirectory = await getOrCreateDirectoryHandle(rootDirectoryHandle, "roles");
-  const existingFile = await getOptionalFileHandle(rootRolesDirectory, localRoleCatalogFileName);
-  return {
-    directoryHandle: rootRolesDirectory,
-    fileName: localRoleCatalogFileName,
-    displayPath: `roles/${localRoleCatalogFileName}`,
-    fileExists: Boolean(existingFile)
-  };
+  return resolveSubdirSaveTarget(rootDirectoryHandle, "roles", localRoleCatalogFileName, {
+    createInContent: true,
+    matchRootName: true,
+    createInRoot: true
+  });
 }
 
 async function resolveRoleCatalogSearchTargets(
   rootDirectoryHandle: LocalDirectoryHandle
 ) {
-  const targets: LocalSaveTarget[] = [];
-
-  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
-  if (contentDirectory) {
-    const rolesDirectory = await getOptionalDirectoryHandle(contentDirectory, "roles");
-    if (rolesDirectory) {
-      const existingFile = await getOptionalFileHandle(rolesDirectory, localRoleCatalogFileName);
-      if (existingFile) {
-        targets.push({
-          directoryHandle: rolesDirectory,
-          fileName: localRoleCatalogFileName,
-          displayPath: `content/roles/${localRoleCatalogFileName}`,
-          fileExists: true
-        });
-      }
-    }
-  }
-
-  const directRolesDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "roles");
-  if (directRolesDirectory) {
-    const existingFile = await getOptionalFileHandle(directRolesDirectory, localRoleCatalogFileName);
-    if (existingFile) {
-      targets.push({
-        directoryHandle: directRolesDirectory,
-        fileName: localRoleCatalogFileName,
-        displayPath: `roles/${localRoleCatalogFileName}`,
-        fileExists: true
-      });
-    }
-  }
-
-  if (rootDirectoryHandle.name.toLowerCase() === "roles") {
-    const directFile = await getOptionalFileHandle(rootDirectoryHandle, localRoleCatalogFileName);
-    if (directFile) {
-      targets.push({
-        directoryHandle: rootDirectoryHandle,
-        fileName: localRoleCatalogFileName,
-        displayPath: localRoleCatalogFileName,
-        fileExists: true
-      });
-    }
-  }
-
-  const directFile = await getOptionalFileHandle(rootDirectoryHandle, localRoleCatalogFileName);
-  if (directFile) {
-    targets.push({
-      directoryHandle: rootDirectoryHandle,
-      fileName: localRoleCatalogFileName,
-      displayPath: localRoleCatalogFileName,
-      fileExists: true
-    });
-  }
-
-  return targets;
+  return collectExistingSubdirTargets(rootDirectoryHandle, "roles", localRoleCatalogFileName, {
+    matchRootName: true
+  });
 }
 
 async function resolveWorkspaceLayoutTarget(
   rootDirectoryHandle: LocalDirectoryHandle,
   fileName: string
 ): Promise<LocalSaveTarget> {
-  if (rootDirectoryHandle.name.toLowerCase() === "layouts") {
-    const existingFile = await getOptionalFileHandle(rootDirectoryHandle, fileName);
-    return {
-      directoryHandle: rootDirectoryHandle,
-      fileName,
-      displayPath: fileName,
-      fileExists: Boolean(existingFile)
-    };
-  }
-
-  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
-  if (contentDirectory) {
-    const layoutsDirectory = await getOrCreateDirectoryHandle(contentDirectory, "layouts");
-    const existingFile = await getOptionalFileHandle(layoutsDirectory, fileName);
-    return {
-      directoryHandle: layoutsDirectory,
-      fileName,
-      displayPath: `content/layouts/${fileName}`,
-      fileExists: Boolean(existingFile)
-    };
-  }
-
-  const directCitiesDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "cities");
-  if (directCitiesDirectory || rootDirectoryHandle.name.toLowerCase() === "content") {
-    const layoutsDirectory = await getOrCreateDirectoryHandle(rootDirectoryHandle, "layouts");
-    const existingFile = await getOptionalFileHandle(layoutsDirectory, fileName);
-    return {
-      directoryHandle: layoutsDirectory,
-      fileName,
-      displayPath: `layouts/${fileName}`,
-      fileExists: Boolean(existingFile)
-    };
-  }
-
-  const rootLayoutsDirectory = await getOrCreateDirectoryHandle(rootDirectoryHandle, "layouts");
-  const existingFile = await getOptionalFileHandle(rootLayoutsDirectory, fileName);
-  return {
-    directoryHandle: rootLayoutsDirectory,
-    fileName,
-    displayPath: `layouts/${fileName}`,
-    fileExists: Boolean(existingFile)
-  };
+  return resolveSubdirSaveTarget(rootDirectoryHandle, "layouts", fileName, {
+    createInContent: true,
+    matchRootNameFirst: true,
+    createInRoot: true
+  });
 }
 
 async function resolveWorkspaceLayoutSearchTargets(
   rootDirectoryHandle: LocalDirectoryHandle,
   fileName: string
 ) {
-  const targets: LocalSaveTarget[] = [];
-
-  if (rootDirectoryHandle.name.toLowerCase() === "layouts") {
-    const existingFile = await getOptionalFileHandle(rootDirectoryHandle, fileName);
-    if (existingFile) {
-      targets.push({
-        directoryHandle: rootDirectoryHandle,
-        fileName,
-        displayPath: fileName,
-        fileExists: true
-      });
-    }
-  }
-
-  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
-  if (contentDirectory) {
-    const layoutsDirectory = await getOptionalDirectoryHandle(contentDirectory, "layouts");
-    if (layoutsDirectory) {
-      const existingFile = await getOptionalFileHandle(layoutsDirectory, fileName);
-      if (existingFile) {
-        targets.push({
-          directoryHandle: layoutsDirectory,
-          fileName,
-          displayPath: `content/layouts/${fileName}`,
-          fileExists: true
-        });
-      }
-    }
-  }
-
-  const directLayoutsDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "layouts");
-  if (directLayoutsDirectory) {
-    const existingFile = await getOptionalFileHandle(directLayoutsDirectory, fileName);
-    if (existingFile) {
-      targets.push({
-        directoryHandle: directLayoutsDirectory,
-        fileName,
-        displayPath: `layouts/${fileName}`,
-        fileExists: true
-      });
-    }
-  }
-
-  const directFile = await getOptionalFileHandle(rootDirectoryHandle, fileName);
-  if (directFile) {
-    targets.push({
-      directoryHandle: rootDirectoryHandle,
-      fileName,
-      displayPath: fileName,
-      fileExists: true
-    });
-  }
-
-  return targets;
+  return collectExistingSubdirTargets(rootDirectoryHandle, "layouts", fileName, {
+    matchRootNameFirst: true
+  });
 }
+
+const pieceStylesDraftFileName = "piece-styles.local.css";
 
 async function resolvePieceStylesTarget(
   rootDirectoryHandle: LocalDirectoryHandle
 ): Promise<LocalSaveTarget> {
-  const fileName = "piece-styles.local.css";
-
-  if (rootDirectoryHandle.name.toLowerCase() === "styles") {
-    const existingFile = await getOptionalFileHandle(rootDirectoryHandle, fileName);
-    return {
-      directoryHandle: rootDirectoryHandle,
-      fileName,
-      displayPath: fileName,
-      fileExists: Boolean(existingFile)
-    };
-  }
-
-  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
-  if (contentDirectory) {
-    const stylesDirectory = await getOrCreateDirectoryHandle(contentDirectory, "styles");
-    const existingFile = await getOptionalFileHandle(stylesDirectory, fileName);
-    return {
-      directoryHandle: stylesDirectory,
-      fileName,
-      displayPath: `content/styles/${fileName}`,
-      fileExists: Boolean(existingFile)
-    };
-  }
-
-  const directStylesDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "styles");
-  if (directStylesDirectory) {
-    const existingFile = await getOptionalFileHandle(directStylesDirectory, fileName);
-    return {
-      directoryHandle: directStylesDirectory,
-      fileName,
-      displayPath: `styles/${fileName}`,
-      fileExists: Boolean(existingFile)
-    };
-  }
-
-  const rootStylesDirectory = await getOrCreateDirectoryHandle(rootDirectoryHandle, "styles");
-  const existingFile = await getOptionalFileHandle(rootStylesDirectory, fileName);
-  return {
-    directoryHandle: rootStylesDirectory,
-    fileName,
-    displayPath: `styles/${fileName}`,
-    fileExists: Boolean(existingFile)
-  };
+  return resolveSubdirSaveTarget(rootDirectoryHandle, "styles", pieceStylesDraftFileName, {
+    createInContent: true,
+    matchRootNameFirst: true,
+    createInRoot: true
+  });
 }
 
 async function resolvePieceStylesSearchTargets(rootDirectoryHandle: LocalDirectoryHandle) {
-  const targets: LocalSaveTarget[] = [];
-  const fileName = "piece-styles.local.css";
-
-  if (rootDirectoryHandle.name.toLowerCase() === "styles") {
-    const existingFile = await getOptionalFileHandle(rootDirectoryHandle, fileName);
-    if (existingFile) {
-      targets.push({
-        directoryHandle: rootDirectoryHandle,
-        fileName,
-        displayPath: fileName,
-        fileExists: true
-      });
-    }
-  }
-
-  const contentDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "content");
-  if (contentDirectory) {
-    const stylesDirectory = await getOptionalDirectoryHandle(contentDirectory, "styles");
-    if (stylesDirectory) {
-      const existingFile = await getOptionalFileHandle(stylesDirectory, fileName);
-      if (existingFile) {
-        targets.push({
-          directoryHandle: stylesDirectory,
-          fileName,
-          displayPath: `content/styles/${fileName}`,
-          fileExists: true
-        });
-      }
-    }
-  }
-
-  const directStylesDirectory = await getOptionalDirectoryHandle(rootDirectoryHandle, "styles");
-  if (directStylesDirectory) {
-    const existingFile = await getOptionalFileHandle(directStylesDirectory, fileName);
-    if (existingFile) {
-      targets.push({
-        directoryHandle: directStylesDirectory,
-        fileName,
-        displayPath: `styles/${fileName}`,
-        fileExists: true
-      });
-    }
-  }
-
-  const directFile = await getOptionalFileHandle(rootDirectoryHandle, fileName);
-  if (directFile) {
-    targets.push({
-      directoryHandle: rootDirectoryHandle,
-      fileName,
-      displayPath: fileName,
-      fileExists: true
-    });
-  }
-
-  return targets;
+  return collectExistingSubdirTargets(rootDirectoryHandle, "styles", pieceStylesDraftFileName, {
+    matchRootNameFirst: true
+  });
 }
 
 export function supportsDirectoryWrite() {
@@ -835,7 +532,7 @@ export function supportsDirectoryWrite() {
 export const supportsLocalContentDirectory = supportsDirectoryWrite;
 export const supportsWorkspaceLayoutDirectory = supportsDirectoryWrite;
 
-export async function pickLocalDirectory() {
+async function pickLocalDirectory() {
   const localWindow = window as LocalWindowWithDirectoryPicker;
 
   if (!supportsDirectoryWrite() || !localWindow.showDirectoryPicker) {
@@ -849,7 +546,7 @@ export async function pickLocalDirectory() {
   });
 }
 
-export async function connectEdinburghReviewDirectory() {
+async function connectEdinburghReviewDirectory() {
   const handle = await pickLocalDirectory();
   await writeStoredDirectoryHandle(edinburghDirectoryHandleKey, handle);
 
@@ -858,7 +555,7 @@ export async function connectEdinburghReviewDirectory() {
   };
 }
 
-export async function getConnectedEdinburghReviewDirectoryName() {
+async function getConnectedEdinburghReviewDirectoryName() {
   const handle = await readStoredDirectoryHandle(edinburghDirectoryHandleKey);
   return handle?.name ?? null;
 }
@@ -891,7 +588,7 @@ export async function getConnectedRoleCatalogDirectoryName() {
   return handle?.name ?? null;
 }
 
-export async function saveEdinburghBoardToDirectory(
+async function saveEdinburghBoardToDirectory(
   rootDirectoryHandle: LocalDirectoryHandle,
   board: CityBoard
 ) {
@@ -938,7 +635,7 @@ async function requireStoredDirectoryHandle() {
   return handle;
 }
 
-export async function saveEdinburghDraftToDirectory(board: CityBoard) {
+async function saveEdinburghDraftToDirectory(board: CityBoard) {
   const handle = await requireStoredDirectoryHandle();
   const result = await saveEdinburghBoardToDirectory(handle, board);
 
@@ -985,7 +682,7 @@ export async function saveClassicGamesDraftToDirectory(games: ReferenceGame[]) {
   } as const;
 }
 
-export async function saveClassicGamesToDirectory(
+async function saveClassicGamesToDirectory(
   rootDirectoryHandle: LocalDirectoryHandle,
   games: ReferenceGame[]
 ) {
@@ -1094,7 +791,7 @@ export async function saveRoleCatalogDraftToDirectory(roleCatalog: RoleCatalog) 
   };
 }
 
-export async function loadRoleCatalogFromDirectoryHandle(
+async function loadRoleCatalogFromDirectoryHandle(
   rootDirectoryHandle: LocalDirectoryHandle
 ): Promise<LoadedRoleCatalogLibrary | null> {
   await ensureReadWritePermission(rootDirectoryHandle);
@@ -1139,7 +836,7 @@ export async function loadRoleCatalogFromDirectory(): Promise<LoadedRoleCatalogL
   return loadRoleCatalogFromDirectoryHandle(handle);
 }
 
-export async function loadEdinburghDraftFromDirectory(
+async function loadEdinburghDraftFromDirectory(
   fallback: CityBoard
 ): Promise<LoadedDirectoryDraft | null> {
   const rootDirectoryHandle = await readStoredDirectoryHandle(edinburghDirectoryHandleKey);
@@ -1185,7 +882,7 @@ async function requireCityReviewDirectoryHandle() {
   return handle;
 }
 
-export async function connectCityReviewDirectory() {
+async function connectCityReviewDirectory() {
   const handle = await pickLocalDirectory();
   await writeStoredDirectoryHandle(cityReviewDirectoryHandleKey, handle);
 
@@ -1194,12 +891,12 @@ export async function connectCityReviewDirectory() {
   };
 }
 
-export async function getConnectedCityReviewDirectoryName() {
+async function getConnectedCityReviewDirectoryName() {
   const handle = await readStoredDirectoryHandle(cityReviewDirectoryHandleKey);
   return handle?.name ?? null;
 }
 
-export async function saveCityBoardToDirectory(
+async function saveCityBoardToDirectory(
   rootDirectoryHandle: LocalDirectoryHandle,
   board: CityBoard
 ) {
@@ -1334,7 +1031,7 @@ export async function saveWorkspaceLayoutFileToDirectory(input: {
   } as const;
 }
 
-export async function deleteWorkspaceLayoutFileFromDirectory(name: string) {
+async function deleteWorkspaceLayoutFileFromDirectory(name: string) {
   const handle = await requireWorkspaceLayoutDirectoryHandle();
   const normalizedName = normalizeWorkspaceLayoutName(name);
   const fileName = createWorkspaceLayoutFileName(normalizedName);
@@ -1446,7 +1143,7 @@ export async function savePageLayoutFileToDirectory(input: {
   } as const;
 }
 
-export async function deletePageLayoutFileFromDirectory(input: {
+async function deletePageLayoutFileFromDirectory(input: {
   layoutKey: string;
   name: string;
 }) {
@@ -1479,7 +1176,7 @@ export async function deletePageLayoutFileFromDirectory(input: {
   } as const;
 }
 
-export async function loadPageLayoutFileFromDirectory(input: {
+async function loadPageLayoutFileFromDirectory(input: {
   layoutKey: string;
   layoutVariant: PageLayoutVariant;
   panelIds: PageLayoutPanelId[];
@@ -1614,7 +1311,7 @@ export async function getConnectedPieceStylesDirectoryName() {
   return handle?.name ?? null;
 }
 
-export async function savePieceStylesToDirectory(
+async function savePieceStylesToDirectory(
   rootDirectoryHandle: LocalDirectoryHandle,
   cssText: string
 ) {
@@ -1669,7 +1366,7 @@ export async function loadPieceStylesFromDirectory(): Promise<LoadedPieceStyles 
       fileName: target.fileName,
       cssText,
       relativePath: target.displayPath,
-      sourceKind: target.fileName === "piece-styles.local.css" ? "draft" : "canonical"
+      sourceKind: target.fileName === pieceStylesDraftFileName ? "draft" : "canonical"
     };
   }
 

@@ -110,11 +110,11 @@ export function getAnimatedPieceFrames(input: {
     .sort((left, right) => left.zIndex - right.zIndex || left.pieceId.localeCompare(right.pieceId));
 }
 
-export function interpolateUnit(valueFrom: number, valueTo: number, progress: number) {
+function interpolateUnit(valueFrom: number, valueTo: number, progress: number) {
   return valueFrom + (valueTo - valueFrom) * progress;
 }
 
-export function getBoardSquarePosition(square: Square) {
+function getBoardSquarePosition(square: Square) {
   return {
     x: boardFiles.indexOf(square[0] as (typeof boardFiles)[number]),
     y: boardRanks.indexOf(square[1] as (typeof boardRanks)[number])
@@ -139,7 +139,7 @@ export function getAnimatedBoardPosition(piece: AnimatedPieceFrame) {
   return getBoardSquarePosition(fallbackSquare);
 }
 
-export function getCaptureCloudProgress(piece: AnimatedPieceFrame, lastMove: MoveRecord | null) {
+function getCaptureCloudProgress(piece: AnimatedPieceFrame, lastMove: MoveRecord | null) {
   if (!lastMove?.capturedPieceId || lastMove.pieceId !== piece.pieceId || !piece.isMoving) {
     return 0;
   }

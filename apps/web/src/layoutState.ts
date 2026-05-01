@@ -6,7 +6,7 @@ import {
   roundOrFallback
 } from "./layoutMath";
 
-export const workspacePanelIds = [
+const workspacePanelIds = [
   "board",
   "moves",
   "city-map",
@@ -18,7 +18,7 @@ export const workspacePanelIds = [
   "recent-games"
 ] as const;
 
-export const collapsibleWorkspacePanelIds = [
+const collapsibleWorkspacePanelIds = [
   "board",
   "moves",
   "city-map",
@@ -441,7 +441,7 @@ export function saveWorkspaceLayoutState(layoutState: WorkspaceLayoutState): Wor
   return nextState;
 }
 
-export function resetWorkspaceLayoutState(): WorkspaceLayoutState {
+function resetWorkspaceLayoutState(): WorkspaceLayoutState {
   const nextState = getDefaultWorkspaceLayoutState();
   const storage = getStorage();
 
@@ -452,7 +452,7 @@ export function resetWorkspaceLayoutState(): WorkspaceLayoutState {
   return nextState;
 }
 
-export function restoreWorkspacePanel(input: {
+function restoreWorkspacePanel(input: {
   layoutState: WorkspaceLayoutState;
   panelId: WorkspacePanelId;
 }): WorkspaceLayoutState {
@@ -485,7 +485,7 @@ export function restoreWorkspacePanel(input: {
   return nextState;
 }
 
-export function getWorkspacePanelRenderHeight(
+function getWorkspacePanelRenderHeight(
   layoutState: WorkspaceLayoutState,
   panelId: WorkspacePanelId
 ) {
@@ -558,7 +558,7 @@ export function setWorkspacePanelVisible(input: {
   };
 }
 
-export function expandAllWorkspacePanels(layoutState: WorkspaceLayoutState) {
+function expandAllWorkspacePanels(layoutState: WorkspaceLayoutState) {
   return {
     ...layoutState,
     collapsed: collapsibleWorkspacePanelIds.reduce((nextCollapsed, panelId) => {
@@ -593,7 +593,7 @@ export function updateWorkspaceColumnCount(input: {
   };
 }
 
-export function updateWorkspaceColumnGap(input: {
+function updateWorkspaceColumnGap(input: {
   layoutState: WorkspaceLayoutState;
   value: number;
 }) {
@@ -603,7 +603,7 @@ export function updateWorkspaceColumnGap(input: {
   };
 }
 
-export function updateWorkspaceRowHeight(input: {
+function updateWorkspaceRowHeight(input: {
   layoutState: WorkspaceLayoutState;
   value: number;
 }) {

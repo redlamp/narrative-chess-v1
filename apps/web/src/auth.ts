@@ -3,7 +3,7 @@ import { getSupabaseClient } from "./lib/supabase";
 
 export type AppRole = "player" | "author" | "admin";
 
-export async function signInWithGoogle() {
+async function signInWithGoogle() {
   const supabase = getSupabaseClient();
   if (!supabase) {
     throw new Error("Supabase is not configured.");

@@ -191,7 +191,7 @@ export function buildReferenceGameLibraryValidation(games: ReferenceGameLibrary)
   };
 }
 
-export function createReferenceGameFromSource(source: ReferenceGame, index: number): ReferenceGame {
+function createReferenceGameFromSource(source: ReferenceGame, index: number): ReferenceGame {
   const duplicatedGame = cloneReferenceGame(source);
   duplicatedGame.id = createReferenceGameId(`${source.title} copy`, index);
   duplicatedGame.title = `${source.title} copy`;
@@ -201,15 +201,15 @@ export function createReferenceGameFromSource(source: ReferenceGame, index: numb
   return duplicatedGame;
 }
 
-export function findReferenceGame(games: ReferenceGameLibrary, referenceGameId: string) {
+function findReferenceGame(games: ReferenceGameLibrary, referenceGameId: string) {
   return games.find((game) => game.id === referenceGameId) ?? null;
 }
 
-export function addReferenceGame(games: ReferenceGameLibrary) {
+function addReferenceGame(games: ReferenceGameLibrary) {
   return [...games.map(cloneReferenceGame), createReferenceGameTemplate(games.length)];
 }
 
-export function duplicateReferenceGame(input: {
+function duplicateReferenceGame(input: {
   games: ReferenceGameLibrary;
   referenceGameId: string;
 }) {
@@ -224,7 +224,7 @@ export function duplicateReferenceGame(input: {
   ];
 }
 
-export function removeReferenceGame(input: {
+function removeReferenceGame(input: {
   games: ReferenceGameLibrary;
   referenceGameId: string;
 }) {
@@ -232,7 +232,7 @@ export function removeReferenceGame(input: {
   return nextGames.length > 0 ? nextGames : getDefaultReferenceGames();
 }
 
-export function updateReferenceGame(input: {
+function updateReferenceGame(input: {
   games: ReferenceGameLibrary;
   referenceGameId: string;
   field:
@@ -331,4 +331,4 @@ export function updateReferenceGame(input: {
   return nextGames;
 }
 
-export const referenceGames = getDefaultReferenceGames();
+const referenceGames = getDefaultReferenceGames();

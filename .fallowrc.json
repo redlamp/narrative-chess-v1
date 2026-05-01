@@ -1,0 +1,69 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "workspaces": {
+    "patterns": ["apps/*", "packages/*"]
+  },
+  "ignorePatterns": ["playright@latest/**"],
+  "entry": [
+    "apps/web/index.html",
+    "apps/web/src/main.tsx",
+    "apps/web/vite.config.ts",
+    "vitest.config.ts",
+    "eslint.config.js",
+    "scripts/*.mjs",
+    "e2e/**/*.spec.ts",
+    "playwright.config.ts",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ],
+  "ignoreDependencies": [
+    "vite",
+    "vitest",
+    "@vitejs/plugin-react",
+    "@types/node",
+    "@types/react",
+    "@types/react-dom",
+    "@playwright/test",
+    "jsdom",
+    "typescript",
+    "typescript-eslint",
+    "eslint",
+    "@eslint/js",
+    "globals",
+    "@narrative-chess/content-schema",
+    "@narrative-chess/game-core",
+    "@narrative-chess/narrative-engine"
+  ],
+  "ignoreExportsUsedInFile": true,
+  "resolve": {
+    "conditions": ["style"]
+  },
+  "dynamicallyLoaded": [
+    "content/**/*.json",
+    "content/**/*.css",
+    "layouts/**/*.json"
+  ],
+  "overrides": [
+    {
+      "files": ["apps/web/src/components/ui/**/*.tsx"],
+      "rules": {
+        "unused-exports": "off",
+        "unused-files": "off",
+        "unresolved-imports": "off"
+      }
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "e2e/**/*.spec.ts"],
+      "rules": {
+        "unused-exports": "off",
+        "unused-files": "off"
+      }
+    },
+    {
+      "files": ["**/*.css"],
+      "rules": {
+        "unresolved-imports": "off"
+      }
+    }
+  ]
+}

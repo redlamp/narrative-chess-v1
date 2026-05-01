@@ -90,12 +90,12 @@ export function activatePreset(
   return { store: nextStore, layoutState: preset.layoutState };
 }
 
-export function deactivatePreset(layoutKey: string): PageLayoutPresetStore {
+function deactivatePreset(layoutKey: string): PageLayoutPresetStore {
   const store = listPageLayoutPresets(layoutKey);
   return persist(layoutKey, { ...store, activePresetId: null });
 }
 
-export function togglePresetHidden(
+function togglePresetHidden(
   layoutKey: string,
   presetId: string
 ): PageLayoutPresetStore {

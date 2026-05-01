@@ -292,7 +292,7 @@ export function saveRoleCatalog(roleCatalog: RoleCatalog): RoleCatalog {
   return nextCatalog;
 }
 
-export function buildRoleCatalogValidation(roleCatalog: RoleCatalog) {
+function buildRoleCatalogValidation(roleCatalog: RoleCatalog) {
   const result = roleCatalogSchema.safeParse({
     roles: roleCatalog
   });
@@ -348,7 +348,7 @@ export function getRolePoolsOverride(roleCatalog: RoleCatalog) {
   );
 }
 
-export function createRoleCatalogEntry(pieceKind: PieceKind = "pawn", index = 0): RoleCatalogEntry {
+function createRoleCatalogEntry(pieceKind: PieceKind = "pawn", index = 0): RoleCatalogEntry {
   return createRoleEntry({
     pieceKind,
     name: "new role",

@@ -122,7 +122,7 @@ export function getSquareTone(square: string) {
   return (parsedSquare.file + parsedSquare.rank) % 2 === 0 ? ("dark" as const) : ("light" as const);
 }
 
-export function getBoardSquareCenter(cityBoard: CityBoard, square: string): [number, number] {
+function getBoardSquareCenter(cityBoard: CityBoard, square: string): [number, number] {
   const parsedSquare = parseSquare(square);
   const bounds = getCityBounds(cityBoard);
   if (!parsedSquare) {
@@ -170,7 +170,7 @@ export function getDistanceMeters(left: [number, number], right: [number, number
   return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(halfChord), Math.sqrt(1 - halfChord));
 }
 
-export function buildDistrictQuery(cityBoard: CityBoard, district: DistrictCell) {
+function buildDistrictQuery(cityBoard: CityBoard, district: DistrictCell) {
   const queryParts = [
     district.landmarks[0] ?? null,
     district.name,
@@ -181,7 +181,7 @@ export function buildDistrictQuery(cityBoard: CityBoard, district: DistrictCell)
   return queryParts.join(", ");
 }
 
-export function buildGoogleEmbedUrl(query: string, viewMode: MapViewMode, zoom: number) {
+function buildGoogleEmbedUrl(query: string, viewMode: MapViewMode, zoom: number) {
   const params = new URLSearchParams({
     q: query,
     z: String(zoom),
@@ -192,7 +192,7 @@ export function buildGoogleEmbedUrl(query: string, viewMode: MapViewMode, zoom: 
   return `https://www.google.com/maps?${params.toString()}`;
 }
 
-export function buildGoogleOpenUrl(query: string) {
+function buildGoogleOpenUrl(query: string) {
   const params = new URLSearchParams({
     api: "1",
     query
@@ -296,7 +296,7 @@ export function createMapLibreRasterStyle(viewMode: MapViewMode): StyleSpecifica
   };
 }
 
-export function createDistrictMarkerGeoJson(input: {
+function createDistrictMarkerGeoJson(input: {
   cityBoard: CityBoard;
   activeSquare: string | null;
 }) {
@@ -353,7 +353,7 @@ function createRadiusCoordinates(center: [number, number], radiusMeters: number)
   return coordinates;
 }
 
-export function createDistrictRadiusGeoJson(input: {
+function createDistrictRadiusGeoJson(input: {
   cityBoard: CityBoard;
   districts: DistrictCell[];
   activeDistrictId?: string | null;

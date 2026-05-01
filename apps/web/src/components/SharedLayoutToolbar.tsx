@@ -44,11 +44,6 @@ export type SharedLayoutToolbarComponent = {
   statusLabel?: string | null;
 };
 
-export type SharedLayoutFileReference = {
-  name: string;
-  fileName: string;
-};
-
 export type SharedLayoutPageOption = {
   value: string;
   label: string;

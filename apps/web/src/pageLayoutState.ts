@@ -7,7 +7,7 @@ import {
   roundOrFallback
 } from "./layoutMath";
 
-export const pageLayoutPanelIds = [
+const pageLayoutPanelIds = [
   "intro",
   "index",
   "secondary",

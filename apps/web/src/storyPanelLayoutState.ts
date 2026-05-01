@@ -1,6 +1,6 @@
 import { clamp, getStorage, roundOrFallback } from "./layoutMath";
 
-export const storyPanelSectionIds = [
+const storyPanelSectionIds = [
   "beat",
   "tile",
   "character",
@@ -136,7 +136,7 @@ export function normalizeStoryPanelLayoutState(value: unknown): StoryPanelLayout
   };
 }
 
-export function listStoryPanelLayoutState(): StoryPanelLayoutState {
+function listStoryPanelLayoutState(): StoryPanelLayoutState {
   const storage = getStorage();
   if (!storage) {
     return getDefaultStoryPanelLayoutState();
@@ -154,7 +154,7 @@ export function listStoryPanelLayoutState(): StoryPanelLayoutState {
   }
 }
 
-export function saveStoryPanelLayoutState(layoutState: StoryPanelLayoutState): StoryPanelLayoutState {
+function saveStoryPanelLayoutState(layoutState: StoryPanelLayoutState): StoryPanelLayoutState {
   const nextState = normalizeStoryPanelLayoutState(layoutState);
   const storage = getStorage();
 
@@ -185,7 +185,7 @@ export function updateStoryPanelRect(input: {
   };
 }
 
-export function getStoryPanelLayoutRowCount(layoutState: StoryPanelLayoutState) {
+function getStoryPanelLayoutRowCount(layoutState: StoryPanelLayoutState) {
   const maxRow = storyPanelSectionIds.reduce((currentMax, panelId) => {
     const panel = layoutState.panels[panelId];
     return Math.max(currentMax, panel.y + panel.h - 1);

@@ -163,7 +163,7 @@ function sortPageLayoutFiles(files: PageLayoutFileReference[]) {
   return [...files].sort((left, right) => Date.parse(right.savedAt) - Date.parse(left.savedAt));
 }
 
-export function listKnownPageLayoutFiles(layoutKey?: string) {
+function listKnownPageLayoutFiles(layoutKey?: string) {
   const storage = getStorage();
   if (!storage) {
     return [] as PageLayoutFileReference[];
