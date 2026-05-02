@@ -1,4 +1,4 @@
-import type { GameSnapshot, MoveRecord, PieceKind, PieceState, Square } from "@narrative-chess/content-schema";
+import type { GameSnapshot, PieceKind, PieceState, Square } from "@narrative-chess/content-schema";
 import { boardFiles, boardRanks } from "./boardNavigation";
 
 export type AnimatedPieceFrame = {
@@ -139,18 +139,3 @@ export function getAnimatedBoardPosition(piece: AnimatedPieceFrame) {
   return getBoardSquarePosition(fallbackSquare);
 }
 
-function getCaptureCloudProgress(piece: AnimatedPieceFrame, lastMove: MoveRecord | null) {
-  if (!lastMove?.capturedPieceId || lastMove.pieceId !== piece.pieceId || !piece.isMoving) {
-    return 0;
-  }
-
-  const progress = piece.progress;
-  if (progress <= 0.42 || progress >= 0.98) {
-    return 0;
-  }
-
-  const normalized = clamp((progress - 0.42) / 0.56, 0, 1);
-  return normalized <= 0.6
-    ? 0.18 + (normalized / 0.6) * 0.82
-    : clamp(1 - (normalized - 0.6) / 0.4, 0, 1);
-}

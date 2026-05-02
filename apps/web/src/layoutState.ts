@@ -441,50 +441,6 @@ export function saveWorkspaceLayoutState(layoutState: WorkspaceLayoutState): Wor
   return nextState;
 }
 
-function resetWorkspaceLayoutState(): WorkspaceLayoutState {
-  const nextState = getDefaultWorkspaceLayoutState();
-  const storage = getStorage();
-
-  if (storage) {
-    storage.setItem(storageKey, JSON.stringify(nextState));
-  }
-
-  return nextState;
-}
-
-function restoreWorkspacePanel(input: {
-  layoutState: WorkspaceLayoutState;
-  panelId: WorkspacePanelId;
-}): WorkspaceLayoutState {
-  const restoredRect = scalePanelRect(
-    input.panelId,
-    defaultLayoutState.panels[input.panelId],
-    defaultLayoutState.columnCount,
-    input.layoutState.columnCount
-  );
-
-  const nextState: WorkspaceLayoutState = {
-    ...input.layoutState,
-    panels: {
-      ...input.layoutState.panels,
-      [input.panelId]: restoredRect
-    },
-    visible: {
-      ...input.layoutState.visible,
-      [input.panelId]: true
-    }
-  };
-
-  if (input.panelId !== "board") {
-    nextState.collapsed = {
-      ...nextState.collapsed,
-      [input.panelId]: false
-    };
-  }
-
-  return nextState;
-}
-
 function getWorkspacePanelRenderHeight(
   layoutState: WorkspaceLayoutState,
   panelId: WorkspacePanelId
@@ -558,16 +514,6 @@ export function setWorkspacePanelVisible(input: {
   };
 }
 
-function expandAllWorkspacePanels(layoutState: WorkspaceLayoutState) {
-  return {
-    ...layoutState,
-    collapsed: collapsibleWorkspacePanelIds.reduce((nextCollapsed, panelId) => {
-      nextCollapsed[panelId] = false;
-      return nextCollapsed;
-    }, {} as Record<CollapsibleWorkspacePanelId, boolean>)
-  };
-}
-
 export function updateWorkspaceColumnCount(input: {
   layoutState: WorkspaceLayoutState;
   value: number;
@@ -590,26 +536,6 @@ export function updateWorkspaceColumnCount(input: {
       );
       return nextPanels;
     }, {} as Record<WorkspacePanelId, WorkspacePanelRect>)
-  };
-}
-
-function updateWorkspaceColumnGap(input: {
-  layoutState: WorkspaceLayoutState;
-  value: number;
-}) {
-  return {
-    ...input.layoutState,
-    columnGap: normalizeColumnGap(input.value)
-  };
-}
-
-function updateWorkspaceRowHeight(input: {
-  layoutState: WorkspaceLayoutState;
-  value: number;
-}) {
-  return {
-    ...input.layoutState,
-    rowHeight: clamp(Math.round(input.value), workspaceMinimumRowHeight, workspaceMaximumRowHeight)
   };
 }
 

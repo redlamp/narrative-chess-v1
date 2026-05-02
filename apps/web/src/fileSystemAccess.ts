@@ -9,7 +9,6 @@ import { hydrateEdinburghBoardDraft } from "./edinburghReviewState";
 import {
   createWorkspaceLayoutFileName,
   createWorkspaceLayoutFileRecord,
-  forgetWorkspaceLayoutFile,
   normalizeWorkspaceLayoutName,
   normalizeWorkspaceLayoutFileRecord,
   rememberWorkspaceLayoutFile,
@@ -19,11 +18,7 @@ import { type WorkspaceLayoutState } from "./layoutState";
 import {
   createPageLayoutFileName,
   createPageLayoutFileRecord,
-  forgetPageLayoutFile,
-  normalizePageLayoutFileRecord,
-  normalizePageLayoutName,
-  rememberPageLayoutFile,
-  type PageLayoutFileReference
+  rememberPageLayoutFile
 } from "./pageLayoutFiles";
 import {
   type PageLayoutPanelId,
@@ -93,15 +88,12 @@ type LocalSaveTarget = {
   fileExists: boolean;
 };
 
-const localDraftFileName = "edinburgh-board.local.json";
-const canonicalBoardFileName = "edinburgh-board.json";
 const localClassicGamesFileName = "classic-games.local.json";
 const canonicalClassicGamesFileName = "classic-games.json";
 const localRoleCatalogFileName = "role-catalog.local.json";
 const canonicalRoleCatalogFileName = "role-catalog.json";
 const directoryDbName = "narrative-chess-local-content";
 const directoryStoreName = "handles";
-const edinburghDirectoryHandleKey = "edinburgh-review-directory";
 const cityReviewDirectoryHandleKey = "city-review-directory";
 const classicGamesDirectoryHandleKey = "classic-games-directory";
 const roleCatalogDirectoryHandleKey = "role-catalog-directory";
@@ -127,16 +119,6 @@ type LoadedWorkspaceLayoutFile = {
   relativePath: string;
   savedAt: string;
   knownFiles: WorkspaceLayoutFileReference[];
-};
-
-type LoadedPageLayoutFile = {
-  directoryName: string;
-  fileName: string;
-  layoutName: string;
-  layoutState: PageLayoutState;
-  relativePath: string;
-  savedAt: string;
-  knownFiles: PageLayoutFileReference[];
 };
 
 type LoadedPieceStyles = {
@@ -415,12 +397,6 @@ async function ensureReadWritePermission(handle: LocalFileSystemHandle) {
   throw new Error("Read/write permission was not granted for the selected folder.");
 }
 
-async function resolveEdinburghBoardTarget(
-  rootDirectoryHandle: LocalDirectoryHandle
-): Promise<LocalSaveTarget> {
-  return resolveSubdirSaveTarget(rootDirectoryHandle, "cities", localDraftFileName);
-}
-
 function createCityFileStem(cityId: string) {
   return normalizeWorkspaceLayoutName(cityId)
     .toLowerCase()
@@ -546,20 +522,6 @@ async function pickLocalDirectory() {
   });
 }
 
-async function connectEdinburghReviewDirectory() {
-  const handle = await pickLocalDirectory();
-  await writeStoredDirectoryHandle(edinburghDirectoryHandleKey, handle);
-
-  return {
-    directoryName: handle.name
-  };
-}
-
-async function getConnectedEdinburghReviewDirectoryName() {
-  const handle = await readStoredDirectoryHandle(edinburghDirectoryHandleKey);
-  return handle?.name ?? null;
-}
-
 export async function connectClassicGamesDirectory() {
   const handle = await pickLocalDirectory();
   await writeStoredDirectoryHandle(classicGamesDirectoryHandleKey, handle);
@@ -588,30 +550,6 @@ export async function getConnectedRoleCatalogDirectoryName() {
   return handle?.name ?? null;
 }
 
-async function saveEdinburghBoardToDirectory(
-  rootDirectoryHandle: LocalDirectoryHandle,
-  board: CityBoard
-) {
-  const parsedBoard = cityBoardSchema.parse(board);
-  await ensureReadWritePermission(rootDirectoryHandle);
-
-  const target = await resolveEdinburghBoardTarget(rootDirectoryHandle);
-  await ensureReadWritePermission(target.directoryHandle);
-
-  const fileHandle = await target.directoryHandle.getFileHandle(target.fileName, {
-    create: true
-  });
-  const writable = await fileHandle.createWritable();
-
-  await writable.write(`${JSON.stringify(parsedBoard, null, 2)}\n`);
-  await writable.close();
-
-  return {
-    displayPath: target.displayPath,
-    mode: target.fileExists ? "updated" : "created"
-  } as const;
-}
-
 async function readJsonFile(
   directoryHandle: LocalDirectoryHandle,
   fileName: string
@@ -623,28 +561,6 @@ async function readJsonFile(
   } catch {
     return null;
   }
-}
-
-async function requireStoredDirectoryHandle() {
-  const handle = await readStoredDirectoryHandle(edinburghDirectoryHandleKey);
-
-  if (!handle) {
-    throw new Error("Connect a repo root or content folder before saving to disk.");
-  }
-
-  return handle;
-}
-
-async function saveEdinburghDraftToDirectory(board: CityBoard) {
-  const handle = await requireStoredDirectoryHandle();
-  const result = await saveEdinburghBoardToDirectory(handle, board);
-
-  return {
-    directoryName: handle.name,
-    displayPath: result.displayPath,
-    relativePath: result.displayPath,
-    mode: result.mode
-  };
 }
 
 async function requireClassicGamesDirectoryHandle() {
@@ -679,31 +595,6 @@ export async function saveClassicGamesDraftToDirectory(games: ReferenceGame[]) {
     displayPath: target.displayPath,
     mode: target.fileExists ? "updated" : "created",
     relativePath: target.displayPath
-  } as const;
-}
-
-async function saveClassicGamesToDirectory(
-  rootDirectoryHandle: LocalDirectoryHandle,
-  games: ReferenceGame[]
-) {
-  const parsedGames = referenceGameLibrarySchema.parse(games);
-  await ensureReadWritePermission(rootDirectoryHandle);
-
-  const target = await resolveClassicGamesTarget(rootDirectoryHandle);
-  await ensureReadWritePermission(target.directoryHandle);
-
-  const fileHandle = await target.directoryHandle.getFileHandle(target.fileName, {
-    create: true
-  });
-  const writable = await fileHandle.createWritable();
-
-  await writable.write(`${JSON.stringify(parsedGames, null, 2)}\n`);
-  await writable.close();
-
-  return {
-    displayPath: target.displayPath,
-    directoryName: rootDirectoryHandle.name,
-    mode: target.fileExists ? "updated" : "created"
   } as const;
 }
 
@@ -836,42 +727,6 @@ export async function loadRoleCatalogFromDirectory(): Promise<LoadedRoleCatalogL
   return loadRoleCatalogFromDirectoryHandle(handle);
 }
 
-async function loadEdinburghDraftFromDirectory(
-  fallback: CityBoard
-): Promise<LoadedDirectoryDraft | null> {
-  const rootDirectoryHandle = await readStoredDirectoryHandle(edinburghDirectoryHandleKey);
-
-  if (!rootDirectoryHandle) {
-    return null;
-  }
-
-  await ensureReadWritePermission(rootDirectoryHandle);
-
-  const target = await resolveEdinburghBoardTarget(rootDirectoryHandle);
-  const draftFile = await readJsonFile(target.directoryHandle, localDraftFileName);
-  if (draftFile) {
-    return {
-      board: hydrateEdinburghBoardDraft(draftFile, fallback),
-      relativePath: target.displayPath,
-      sourceKind: "draft"
-    };
-  }
-
-  const canonicalFile = await readJsonFile(target.directoryHandle, canonicalBoardFileName);
-  if (canonicalFile) {
-    return {
-      board: hydrateEdinburghBoardDraft(canonicalFile, fallback),
-      relativePath:
-        target.displayPath === localDraftFileName
-          ? canonicalBoardFileName
-          : target.displayPath.replace(localDraftFileName, canonicalBoardFileName),
-      sourceKind: "canonical"
-    };
-  }
-
-  return null;
-}
-
 async function requireCityReviewDirectoryHandle() {
   const handle = await readStoredDirectoryHandle(cityReviewDirectoryHandleKey);
 
@@ -880,20 +735,6 @@ async function requireCityReviewDirectoryHandle() {
   }
 
   return handle;
-}
-
-async function connectCityReviewDirectory() {
-  const handle = await pickLocalDirectory();
-  await writeStoredDirectoryHandle(cityReviewDirectoryHandleKey, handle);
-
-  return {
-    directoryName: handle.name
-  };
-}
-
-async function getConnectedCityReviewDirectoryName() {
-  const handle = await readStoredDirectoryHandle(cityReviewDirectoryHandleKey);
-  return handle?.name ?? null;
 }
 
 async function saveCityBoardToDirectory(
@@ -1031,33 +872,6 @@ export async function saveWorkspaceLayoutFileToDirectory(input: {
   } as const;
 }
 
-async function deleteWorkspaceLayoutFileFromDirectory(name: string) {
-  const handle = await requireWorkspaceLayoutDirectoryHandle();
-  const normalizedName = normalizeWorkspaceLayoutName(name);
-  const fileName = createWorkspaceLayoutFileName(normalizedName);
-
-  await ensureReadWritePermission(handle);
-
-  const targets = await resolveWorkspaceLayoutSearchTargets(handle, fileName);
-  const target = targets[0] ?? null;
-
-  if (target && target.directoryHandle.removeEntry) {
-    await target.directoryHandle.removeEntry(fileName);
-  } else if (target) {
-    throw new Error("The selected folder cannot remove files from this browser session.");
-  }
-
-  const knownFiles = forgetWorkspaceLayoutFile(fileName);
-
-  return {
-    directoryName: handle.name,
-    fileName,
-    knownFiles,
-    layoutName: normalizedName,
-    relativePath: target?.displayPath ?? fileName
-  } as const;
-}
-
 export async function loadWorkspaceLayoutFileFromDirectory(
   name: string
 ): Promise<LoadedWorkspaceLayoutFile | null> {
@@ -1141,90 +955,6 @@ export async function savePageLayoutFileToDirectory(input: {
     relativePath: target.displayPath,
     savedAt: layoutFile.savedAt
   } as const;
-}
-
-async function deletePageLayoutFileFromDirectory(input: {
-  layoutKey: string;
-  name: string;
-}) {
-  const handle = await requireWorkspaceLayoutDirectoryHandle();
-  const normalizedName = normalizePageLayoutName(input.name);
-  const fileName = createPageLayoutFileName({
-    layoutKey: input.layoutKey,
-    name: normalizedName
-  });
-
-  await ensureReadWritePermission(handle);
-
-  const targets = await resolveWorkspaceLayoutSearchTargets(handle, fileName);
-  const target = targets[0] ?? null;
-
-  if (target && target.directoryHandle.removeEntry) {
-    await target.directoryHandle.removeEntry(fileName);
-  } else if (target) {
-    throw new Error("The selected folder cannot remove files from this browser session.");
-  }
-
-  const knownFiles = forgetPageLayoutFile(fileName, input.layoutKey);
-
-  return {
-    directoryName: handle.name,
-    fileName,
-    knownFiles,
-    layoutName: normalizedName,
-    relativePath: target?.displayPath ?? fileName
-  } as const;
-}
-
-async function loadPageLayoutFileFromDirectory(input: {
-  layoutKey: string;
-  layoutVariant: PageLayoutVariant;
-  panelIds: PageLayoutPanelId[];
-  name: string;
-}): Promise<LoadedPageLayoutFile | null> {
-  const handle = await requireWorkspaceLayoutDirectoryHandle();
-
-  const normalizedName = normalizePageLayoutName(input.name);
-  const fileName = createPageLayoutFileName({
-    layoutKey: input.layoutKey,
-    name: normalizedName
-  });
-
-  await ensureReadWritePermission(handle);
-
-  const targets = await resolveWorkspaceLayoutSearchTargets(handle, fileName);
-  for (const target of targets) {
-    const rawLayoutFile = await readJsonFile(target.directoryHandle, fileName);
-    const parsedLayoutFile = normalizePageLayoutFileRecord({
-      value: rawLayoutFile,
-      layoutKey: input.layoutKey,
-      layoutVariant: input.layoutVariant,
-      panelIds: input.panelIds
-    });
-    if (!parsedLayoutFile) {
-      continue;
-    }
-
-    const knownFiles = rememberPageLayoutFile({
-      layoutKey: parsedLayoutFile.layoutKey,
-      name: parsedLayoutFile.name,
-      fileName,
-      relativePath: target.displayPath,
-      savedAt: parsedLayoutFile.savedAt
-    });
-
-    return {
-      directoryName: handle.name,
-      fileName,
-      knownFiles,
-      layoutName: parsedLayoutFile.name,
-      layoutState: parsedLayoutFile.layoutState,
-      relativePath: target.displayPath,
-      savedAt: parsedLayoutFile.savedAt
-    };
-  }
-
-  return null;
 }
 
 export async function saveLayoutBundleToDirectory(input: {

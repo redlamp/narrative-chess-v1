@@ -151,13 +151,3 @@ export function saveAppSettings(settings: AppSettings): AppSettings {
   return nextSettings;
 }
 
-function resetAppSettings(): AppSettings {
-  const nextSettings = getDefaultAppSettings();
-  const storage = getStorage();
-
-  if (storage) {
-    storage.setItem(storageKey, JSON.stringify(nextSettings));
-  }
-
-  return nextSettings;
-}

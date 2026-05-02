@@ -1,4 +1,4 @@
-import { clamp, getStorage, roundOrFallback } from "./layoutMath";
+import { clamp, roundOrFallback } from "./layoutMath";
 
 const storyPanelSectionIds = [
   "beat",
@@ -24,7 +24,6 @@ export type StoryPanelLayoutState = {
   panels: Record<StoryPanelSectionId, StoryPanelSectionRect>;
 };
 
-const storageKey = "narrative-chess:story-panel-layout:v1";
 const defaultColumnCount = 8;
 const minimumColumns = 4;
 const maximumColumns = 16;
@@ -34,7 +33,6 @@ const maximumColumnGap = 32;
 const defaultRowHeight = 44;
 const minimumRowHeight = 16;
 const maximumRowHeight = 120;
-const minimumRows = 12;
 
 const minimumPanelWidth: Record<StoryPanelSectionId, number> = {
   beat: 2,
@@ -136,35 +134,6 @@ export function normalizeStoryPanelLayoutState(value: unknown): StoryPanelLayout
   };
 }
 
-function listStoryPanelLayoutState(): StoryPanelLayoutState {
-  const storage = getStorage();
-  if (!storage) {
-    return getDefaultStoryPanelLayoutState();
-  }
-
-  const rawValue = storage.getItem(storageKey);
-  if (!rawValue) {
-    return getDefaultStoryPanelLayoutState();
-  }
-
-  try {
-    return normalizeStoryPanelLayoutState(JSON.parse(rawValue));
-  } catch {
-    return getDefaultStoryPanelLayoutState();
-  }
-}
-
-function saveStoryPanelLayoutState(layoutState: StoryPanelLayoutState): StoryPanelLayoutState {
-  const nextState = normalizeStoryPanelLayoutState(layoutState);
-  const storage = getStorage();
-
-  if (storage) {
-    storage.setItem(storageKey, JSON.stringify(nextState));
-  }
-
-  return nextState;
-}
-
 export function updateStoryPanelRect(input: {
   layoutState: StoryPanelLayoutState;
   panelId: StoryPanelSectionId;
@@ -185,12 +154,4 @@ export function updateStoryPanelRect(input: {
   };
 }
 
-function getStoryPanelLayoutRowCount(layoutState: StoryPanelLayoutState) {
-  const maxRow = storyPanelSectionIds.reduce((currentMax, panelId) => {
-    const panel = layoutState.panels[panelId];
-    return Math.max(currentMax, panel.y + panel.h - 1);
-  }, minimumRows);
-
-  return Math.max(minimumRows, maxRow);
-}
 

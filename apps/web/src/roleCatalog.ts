@@ -292,27 +292,6 @@ export function saveRoleCatalog(roleCatalog: RoleCatalog): RoleCatalog {
   return nextCatalog;
 }
 
-function buildRoleCatalogValidation(roleCatalog: RoleCatalog) {
-  const result = roleCatalogSchema.safeParse({
-    roles: roleCatalog
-  });
-
-  if (result.success) {
-    return {
-      isValid: true,
-      issues: [] as string[]
-    };
-  }
-
-  return {
-    isValid: false,
-    issues: result.error.issues.map((issue) => {
-      const path = issue.path.length ? issue.path.join(".") : "root";
-      return `${path}: ${issue.message}`;
-    })
-  };
-}
-
 export function resetRoleCatalog(): RoleCatalog {
   const nextCatalog = getDefaultRoleCatalog();
   const storage = getStorage();
