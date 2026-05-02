@@ -60,7 +60,7 @@ Client locks the board for non-player side and non-turn states; server-side `app
 Use only public Vite vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_ENABLE_SUPABASE_PUBLISHED_CITIES`. Never put service-role or `sb_secret_*` keys in `VITE_*`, `.env.local`, GH Pages vars/secrets, or any tracked file — `security:scan` will fail the build.
 
 ### Vite base path
-`apps/web/vite.config.ts` sets `base` to `/narrative-chess/` when `GITHUB_ACTIONS=true`, `/` otherwise. Asset paths must respect this; don't hardcode absolute paths.
+`apps/web/vite.config.ts` sets `base` to `/narrative-chess-v1/` when `GITHUB_ACTIONS=true`, `/` otherwise. Asset paths must respect this; don't hardcode absolute paths.
 
 ### Package boundaries (enforced by `AGENTS.md`)
 - No chess legality in `apps/web` components — go through `packages/game-core`.
