@@ -433,26 +433,28 @@ export function UserMenu({
 
   return (
     <div className="app-menu" ref={menuRef}>
-      <TooltipProvider delayDuration={150}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="max-w-48 justify-between gap-2"
-              aria-expanded={isOpen}
-              aria-controls={panelId}
-              aria-haspopup="dialog"
-              aria-label={accountEmail ? "Open account details" : "Open sign in"}
-              onClick={() => onOpenChange(!isOpen)}
-            >
-              <span className="truncate">{buttonLabel}</span>
-              <User data-icon="inline-end" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{accountEmail ? "Account details" : "Sign in"}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      {accountEmail ? (
+        <TooltipProvider delayDuration={150}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="max-w-48 justify-between gap-2"
+                aria-expanded={isOpen}
+                aria-controls={panelId}
+                aria-haspopup="dialog"
+                aria-label="Open account details"
+                onClick={() => onOpenChange(!isOpen)}
+              >
+                <span className="truncate">{buttonLabel}</span>
+                <User data-icon="inline-end" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Account details</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : null}
 
       {isOpen ? (
         <Card

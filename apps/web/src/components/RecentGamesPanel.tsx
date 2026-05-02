@@ -1121,10 +1121,8 @@ export function RecentGamesPanel({
 
   return (
     <TooltipProvider delayDuration={150}>
-      <Tabs defaultValue="active" className="recent-games-panel w-full">
+      <Tabs defaultValue="historic" className="recent-games-panel w-full">
       <TabsList className="recent-games-tabs">
-        <TabsTrigger value="active">Active</TabsTrigger>
-        <TabsTrigger value="saved">Yours ({yoursGameCount})</TabsTrigger>
         <TabsTrigger value="historic">Historic</TabsTrigger>
       </TabsList>
 
