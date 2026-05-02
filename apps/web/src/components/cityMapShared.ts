@@ -181,26 +181,6 @@ function buildDistrictQuery(cityBoard: CityBoard, district: DistrictCell) {
   return queryParts.join(", ");
 }
 
-function buildGoogleEmbedUrl(query: string, viewMode: MapViewMode, zoom: number) {
-  const params = new URLSearchParams({
-    q: query,
-    z: String(zoom),
-    t: viewMode === "satellite" ? "k" : "m",
-    output: "embed"
-  });
-
-  return `https://www.google.com/maps?${params.toString()}`;
-}
-
-function buildGoogleOpenUrl(query: string) {
-  const params = new URLSearchParams({
-    api: "1",
-    query
-  });
-
-  return `https://www.google.com/maps/search/?${params.toString()}`;
-}
-
 export function buildOpenStreetMapUrl(center: [number, number], zoom: number) {
   const [longitude, latitude] = center;
   const params = new URLSearchParams({

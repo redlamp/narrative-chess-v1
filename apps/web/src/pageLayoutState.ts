@@ -7,15 +7,6 @@ import {
   roundOrFallback
 } from "./layoutMath";
 
-const pageLayoutPanelIds = [
-  "intro",
-  "index",
-  "secondary",
-  "detail",
-  "tertiary",
-  "quaternary"
-] as const;
-
 export type PageLayoutPanelId = string;
 
 export type PageLayoutVariant = "two-pane" | "three-pane" | "research" | "match";

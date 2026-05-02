@@ -330,5 +330,3 @@ function updateReferenceGame(input: {
 
   return nextGames;
 }
-
-const referenceGames = getDefaultReferenceGames();
